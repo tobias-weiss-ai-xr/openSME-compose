@@ -6,7 +6,7 @@ services:
   stalwart:
     image: stalwartlabs/stalwart:v0.16
     container_name: opensme-stalwart
-    hostname: mail.${OPENSME_DOMAIN:-opensme.example.com}
+    hostname: mail.${OPENSME_DOMAIN:-opensme.org}
     restart: unless-stopped
     ports:
       - "25:25"
@@ -15,7 +15,7 @@ services:
       - "993:993"
     environment:
       TZ: Europe/Berlin
-      STALWART_PUBLIC_URL: https://${MAIL_DOMAIN:-mail.opensme.example.com}
+      STALWART_PUBLIC_URL: https://${MAIL_DOMAIN:-mail.opensme.org}
       STALWART_RECOVERY_ADMIN: admin:${STALWART_ADMIN_PASSWORD:-}
     volumes:
       - stalwart-etc:/etc/stalwart
@@ -31,7 +31,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.example.com}`)"
+      - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.org}`)"
       - "traefik.http.routers.stalwart.tls=true"
       - "traefik.http.routers.stalwart.tls.certresolver=letsencrypt"
       - "traefik.http.services.stalwart.loadbalancer.server.port=8080"

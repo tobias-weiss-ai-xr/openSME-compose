@@ -9,14 +9,12 @@ mail, groupware, and online office — all behind a single Traefik reverse proxy
 ## Hardware Tiers
 
 | Tier | Users | vCPU | RAM | Storage | Reference |
-|---|---|---|---|---|---|
-| **Micro** | 5–10 | 4 | 16 GB | 100 GB NVMe | Hetzner CX22 |
-| **Small** | 10–50 | 8 | 32 GB | 250 GB NVMe | Hetzner CX32 |
-| **Medium** | 50–150 | 12 | 48 GB | 500 GB NVMe | Hetzner CX42 |
-| **Large** | 150–500 | 16+ | 64 GB | 1 TB NVMe | Hetzner CX62 / 2-node |
+|---|---|---|---|---|---|---|
+| **Small** | 1–50 | 4–8 | 16–32 GB | 100–250 GB NVMe | Hetzner CX22 / CX32 |
+| **Medium** | 50–500 | 12–16 | 48–64 GB | 500 GB–1 TB NVMe | Hetzner CX42 / CX62 |
+| **Enterprise** | 500+ | individuell | | | |
 
-All tiers run the exact same Compose stack — scale vertically by beefing up the
-single node. At 500+ users you split mail (Stalwart) onto a second node.
+All tiers run the same Compose stack — scale vertically.
 
 ## Architecture
 
@@ -82,13 +80,13 @@ See `.env.example` for all options. Key variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENSME_DOMAIN` | `opensme.example.com` | Root domain |
+| `OPENSME_DOMAIN` | `opensme.org` | Root domain |
 | `POSTGRES_PASSWORD` | `CHANGEME_*` | DB password |
 | `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt email |
 
 ## License
 
-**Free for organizations with up to 50 users (Micro + Small tier).**
+**Free for organizations with up to 50 users (Small tier — AGPL v3).**
 Larger deployments require a commercial license from
 [[REDACTED]](https://[REDACTED]) or
 [graphwiz.ai](https://graphwiz.ai).
@@ -97,10 +95,9 @@ See [LICENSE.md](LICENSE.md) for full terms.
 
 | Tier | Users | License |
 |---|---|---|
-| Micro | 5–10 | ✅ Free |
-| Small | 10–50 | ✅ Free |
-| Medium | 50–150 | 💰 Commercial |
-| Large | 150–500 | 💰 Commercial |
+| **Small** | 1–50 | ✅ Free (AGPL v3) |
+| **Medium** | 50–500 | 💰 Commercial |
+| **Enterprise** | 500+ | 💰 Individuell |
 
 ## Demo / Dev
 

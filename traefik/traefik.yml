@@ -30,7 +30,7 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: ${TRAEFIK_ACME_EMAIL:-admin@opensme.example.com}
+      email: ${TRAEFIK_ACME_EMAIL:-admin@opensme.org}
       storage: /etc/traefik/acme.json
       caServer: https://acme-v02.api.letsencrypt.org/directory
       httpChallenge:

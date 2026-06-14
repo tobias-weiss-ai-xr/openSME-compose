@@ -1,81 +1,77 @@
-# openSME License
+# openSME — Dual License
 
 Copyright © 2026 Tobias Weiss. All rights reserved.
 
-**TL;DR** — Free for up to 50 users (self-hosted). For larger deployments
-you need a paid license from [[REDACTED]](https://[REDACTED])
-or [graphwiz.ai](https://graphwiz.ai).
+openSME is available under a dual license:
+
+1. **GNU Affero General Public License v3** — for organizations with up
+   to 50 users (Community Edition).
+2. **Commercial License** — for larger deployments (Enterprise Edition).
 
 ---
 
-## 1. Community License (Free)
+## Terms of the GNU Affero General Public License v3 (AGPL-3.0)
 
-### Eligibility
-Organizations with **fifty (50) or fewer employees, contractors, and
-external users combined** are eligible to use openSME free of charge.
+This program is free software: you can redistribute it and/or modify it
+under the terms of the [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.html)
+as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
 
-### Grant
-Subject to the limitations below, you may:
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+General Public License for more details.
 
-1. **Use** the software for any lawful internal business purpose.
-2. **Modify** the source code for your own use.
-3. **Self-host** on your own infrastructure.
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-### Limitations
-- This license does **not** include support, updates, or bug-fix
-  guarantees.
-- Redistribution of modified versions to third parties is permitted only if
-  the modifications are contributed back upstream.
-- You may not remove or alter any license notices.
+### How to Apply
+
+To apply the AGPL v3 to this program, each source file should contain
+the following notice:
+
+    openSME — Docker Compose-based digital workplace
+    Copyright (C) 2026 Tobias Weiss
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-## 2. Commercial License (Paid)
+## Commercial License
 
-### When Required
-A commercial license is required if any of the following apply:
-
-1. Your organization exceeds **fifty (50) active users**.
-2. You host the software as a **managed service** for third parties.
-3. You require **support, SLA guarantees, or priority updates**.
-
-### How to Purchase
-Commercial licenses are available at:
+Organizations with more than 50 users (Medium and Enterprise tiers)
+require a **Commercial License**, available at:
 
 - [[REDACTED]](https://[REDACTED])
 - [graphwiz.ai](https://graphwiz.ai)
 
+See the [Enterprise Edition](https://github.com/tobias-weiss-ai-xr/opensme-compose-enterprise)
+for the fully tuned multi-node deployment stack.
+
 ### What You Get
-- Full source code (same as Community Edition).
+- Full source code with enterprise scalability features.
 - Priority email support.
-- Periodic security and stability updates.
-- Perpetual license for the purchased version.
+- Security and stability updates during license term.
 
 ---
 
-## 3. General Terms
+## Tier Reference
 
-**Disclaimer of Warranty.** The software is provided "as is", without
-warranty of any kind, express or implied.
-
-**Limitation of Liability.** In no event shall the author be liable for
-any claim, damages, or other liability arising from the use of the
-software.
-
-**Contributions.** By submitting a pull request or patch, you grant the
-project maintainer a perpetual, irrevocable license to use your
-contribution under the terms of this license.
-
----
-
-## 4. Tier Reference
-
-| Tier | Max Users | License Required |
+| Tier | Users | License |
 |---|---|---|
-| Micro | 5 | Community (free) |
-| Small | 50 | Community (free) |
-| Medium | 150 | Commercial |
-| Large | 500 | Commercial |
+| **Small** | 1–50 | ✅ Free (AGPL v3) |
+| **Medium** | 50–500 | 💰 Commercial |
+| **Enterprise** | 500+ | 💰 Individuell |
 
-When in doubt about your user count or use case, contact
-[hello@[REDACTED]](mailto:hello@[REDACTED]).
+When in doubt, contact [hello@[REDACTED]](mailto:hello@[REDACTED]).

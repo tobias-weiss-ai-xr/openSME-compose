@@ -32,7 +32,7 @@ path = "/var/lib/stalwart/data"
 size = 4294967296
 
 [smtp]
-hostname = "mail.opensme.example.com"
+hostname = "mail.opensme.org"
 port = 25
 tls-port = 465
 max-recipients = 100

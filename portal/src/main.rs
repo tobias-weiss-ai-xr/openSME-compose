@@ -234,12 +234,12 @@ fn init_logging() {
 
 fn load_config() -> AppConfig {
     AppConfig {
-        portal_domain: load_env("PORTAL_DOMAIN", "portal.opensme.example.com"),
-        opensme_domain: load_env("OPENSME_DOMAIN", "opensme.example.com"),
-        opencloud_url: load_env("OPENCLOUD_URL", "https://cloud.opensme.example.com"),
-        mail_url: load_env("MAIL_URL", "https://webmail.opensme.example.com"),
-        keycloak_url: load_env("KEYCLOAK_URL", "https://auth.opensme.example.com"),
-        collabora_url: load_env("COLLABORA_URL", "https://collabora.opensme.example.com"),
+        portal_domain: load_env("PORTAL_DOMAIN", "portal.opensme.org"),
+        opensme_domain: load_env("OPENSME_DOMAIN", "opensme.org"),
+        opencloud_url: load_env("OPENCLOUD_URL", "https://cloud.opensme.org"),
+        mail_url: load_env("MAIL_URL", "https://webmail.opensme.org"),
+        keycloak_url: load_env("KEYCLOAK_URL", "https://auth.opensme.org"),
+        collabora_url: load_env("COLLABORA_URL", "https://collabora.opensme.org"),
     }
 }
 

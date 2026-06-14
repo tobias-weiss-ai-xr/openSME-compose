@@ -25,7 +25,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.example.com}`) && PathPrefix(`/SOGo`)"
+      - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.org}`) && PathPrefix(`/SOGo`)"
       - "traefik.http.routers.sogo.tls=true"
       - "traefik.http.routers.sogo.tls.certresolver=letsencrypt"
       - "traefik.http.services.sogo.loadbalancer.server.port=20000"

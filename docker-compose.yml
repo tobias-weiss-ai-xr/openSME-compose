@@ -24,7 +24,7 @@ services:
       - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
       - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
       - "--entryPoints.websecure.http3=true"
-      - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.example.com}"
+      - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.org}"
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
       - "--api.dashboard=true"
@@ -41,7 +41,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.example.com}`)"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.org}`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.middlewares=auth"
       - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_USERS:-admin:$$2y$$10$$CHANGEME}"
@@ -204,12 +204,12 @@ services:
     container_name: opensme-portal
     restart: unless-stopped
     environment:
-      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-portal.opensme.example.com}
-      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.example.com}
-      OPENCLOUD_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.example.com}
-      MAIL_URL: https://${SOGO_DOMAIN:-webmail.opensme.example.com}
-      KEYCLOAK_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.example.com}/auth
-      COLLABORA_URL: https://${COLLABORA_DOMAIN:-collabora.opensme.example.com}
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-portal.opensme.org}
+      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
+      OPENCLOUD_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}
+      MAIL_URL: https://${SOGO_DOMAIN:-webmail.opensme.org}
+      KEYCLOAK_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}/auth
+      COLLABORA_URL: https://${COLLABORA_DOMAIN:-collabora.opensme.org}
       RUST_LOG: ${LOG_LEVEL:-info}
     ports:
       - "127.0.0.1:8080:8080"
@@ -220,7 +220,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.example.com}`)"
+      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
       - "traefik.http.routers.portal.tls=true"
       - "traefik.http.routers.portal.tls.certresolver=letsencrypt"
       - "traefik.http.services.portal.loadbalancer.server.port=8080"

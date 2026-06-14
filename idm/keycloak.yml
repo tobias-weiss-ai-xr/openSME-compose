@@ -43,7 +43,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      KC_HOSTNAME: ${KEYCLOAK_DOMAIN:-auth.opensme.example.com}
+      KC_HOSTNAME: ${KEYCLOAK_DOMAIN:-auth.opensme.org}
       KC_HOSTNAME_STRICT: true
       KC_HOSTNAME_STRICT_HTTPS: true
       KC_PROXY: edge
@@ -72,7 +72,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.example.com}`)"
+      - "traefik.http.routers.keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.org}`)"
       - "traefik.http.routers.keycloak.tls=true"
       - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"

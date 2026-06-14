@@ -5,7 +5,7 @@
 
 set -e
 
-LDAP_BASE_DN="dc=opensme,dc=example,dc=com"
+LDAP_BASE_DN="dc=opensme,dc=org"
 LDAP_ADMIN_DN="cn=admin,${LDAP_BASE_DN}"
 LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}"
 
