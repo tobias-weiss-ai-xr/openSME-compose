@@ -1,0 +1,105 @@
+# ── OpenCloud + Collabora overlay ──────────────
+# Include via: COMPOSE_FILE=docker-compose.yml:opencloud/opencloud.yml
+# Provides file sync/sharing + online office editing.
+
+services:
+  opencloud:
+    image: opencloudeu/opencloud-rolling:6.0.0
+    container_name: opensme-opencloud
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - opencloud-config:/var/lib/opencloud
+      - opencloud-data:/var/lib/opencloud/data
+    environment:
+      OC_INSECURE: true
+      OC_LOG_LEVEL: ${LOG_LEVEL:-info}
+      OC_LOG_PRETTY: ${LOG_PRETTY:-true}
+      OC_ADMIN_USERNAME: ${OC_ADMIN_USERNAME:-admin}
+      OC_ADMIN_PASSWORD: ${OC_ADMIN_PASSWORD:-CHANGEME_oc_admin}
+      OC_DOMAIN: ${OPENCLOUD_DOMAIN:-cloud.opensme.example.com}
+      OC_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.example.com}
+      OC_IDP_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.example.com}/auth
+      OC_OIDC_ISSUER: https://${KEYCLOAK_DOMAIN:-auth.opensme.example.com}/auth/realms/opensme
+      OC_OIDC_CLIENT_ID: opencloud
+      OC_OIDC_CLIENT_SECRET: ${OC_OIDC_SECRET:-CHANGEME_oidc_secret}
+      PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
+      STORAGE_USERS_DRIVER: decomposeds3
+      DECOMPOSEDS3_ENDPOINT: ${OC_S3_ENDPOINT:-http://minio:9000}
+      DECOMPOSEDS3_ACCESS_KEY: ${OC_S3_ACCESS_KEY:-minio}
+      DECOMPOSEDS3_SECRET_KEY: ${OC_S3_SECRET_KEY:-CHANGEME_minio}
+      OC_ADD_RUN_SERVICES: notifications,antivirus
+      # Performance tuning
+      OC_PERMISSIONS_SSH_KEY_AGE_MAX: 0
+      OC_STORAGE_USERS_MAX_CONCURRENCY: 10
+      OC_HTTP_CACHE_TTL: 3600
+      OC_UPLOAD_MAX_SIZE: 10737418240
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.example.com}`)"
+      - "traefik.http.routers.opencloud.tls=true"
+      - "traefik.http.routers.opencloud.tls.certresolver=letsencrypt"
+      - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 2G
+
+  collabora:
+    image: collabora/code:24.04
+    container_name: opensme-collabora
+    restart: unless-stopped
+    environment:
+      aliasgroup1: https://${OPENCLOUD_DOMAIN:-cloud.opensme.example.com}:443
+      extra_params: >-
+        --o:ssl.enable=false
+        --o:ssl.termination=true
+        --o:num_prespawn_children=4
+        --o:max_connections=200
+        --o:max_documents=100
+      domain: ${OPENSME_DOMAIN:-opensme.example.com}
+      DONT_GEN_SSL_CERT: true
+      username: ${COLLABORA_USERNAME:-admin}
+      password: ${COLLABORA_PASSWORD:-CHANGEME_collabora}
+    cap_add:
+      - MKNOD
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9980/hosting/discovery"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.example.com}`)"
+      - "traefik.http.routers.collabora.tls=true"
+      - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
+      - "traefik.http.services.collabora.loadbalancer.server.port=9980"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+volumes:
+  opencloud-config:
+  opencloud-data:

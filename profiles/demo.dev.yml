@@ -1,0 +1,140 @@
+# ═══════════════════════════════════════════════
+# openSME — Demo / Dev Profile
+# ═══════════════════════════════════════════════
+# Minimal footprint for:
+#   - Demo deployments (2 vCPU, 4 GB RAM, 50 GB SSD)
+#   - Local development
+#   - CI/CD pipelines
+#
+# Use: docker compose -f docker-compose.yml -f profiles/demo.dev.yml up -d
+# OR:  COMPOSE_FILE="docker-compose.yml:profiles/demo.dev.yml" docker compose up -d
+# ═══════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL (minimal) ─────────────────────
+  postgres:
+    command:
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=512MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=100"
+      - "-c"
+      - "wal_buffers=4MB"
+      - "-c"
+      - "min_wal_size=256MB"
+      - "-c"
+      - "max_wal_size=1GB"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  # ── Skip PgBouncer in demo/dev (direct connect) ─
+  pgbouncer:
+    profiles:
+      - donotstart
+
+  # ── Redis (minimal, no persistence for dev) ──
+  redis:
+    command:
+      - redis-server
+      - --save ""
+      - --appendonly no
+      - --maxmemory 256mb
+      - --maxmemory-policy allkeys-lru
+      - --loglevel warning
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # ── Memcached (minimal) ──────────────────────
+  memcached:
+    command: memcached -m 128 -c 1024 -t 2
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ── Portal (dev-friendly) ────────────────────
+  portal:
+    ports:
+      - "127.0.0.1:8080:8080"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./portal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ── Keycloak (minimal, direct PG, no pool) ───
+  keycloak:
+    environment:
+      KC_DB_URL: jdbc:postgresql://postgres:5432/opensme
+      KC_DB_POOL_INITIAL_SIZE: 2
+      KC_DB_POOL_MIN_SIZE: 2
+      KC_DB_POOL_MAX_SIZE: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── OpenCloud (minimal, no antivirus) ────────
+  opencloud:
+    environment:
+      OC_ADD_RUN_SERVICES: "notifications"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── Collabora (skip for demo/dev - too heavy) ─
+  collabora:
+    profiles:
+      - donotstart
+
+  # ── Stalwart (skip for demo/dev) ─────────────
+  stalwart:
+    profiles:
+      - donotstart
+
+  # ── SOGo (skip for demo/dev) ─────────────────
+  sogo:
+    profiles:
+      - donotstart

@@ -1,0 +1,26 @@
+# Env
+.env
+
+# TLS certs
+certs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Rust
+target/
+portal/target/
+
+# Docker
+.docker/
+
+# Logs
+logs/
+*.log

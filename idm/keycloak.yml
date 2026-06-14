@@ -1,0 +1,90 @@
+# ── Keycloak + LDAP overlay (IAM/SSO) ──────────
+# Include via: COMPOSE_FILE=docker-compose.yml:idm/keycloak.yml
+# Provides OIDC/SAML authentication for all opensme services.
+
+services:
+  ldap:
+    image: bitnami/openldap:2.6
+    container_name: opensme-ldap
+    restart: unless-stopped
+    volumes:
+      - ldap-data:/bitnami/openldap
+      - ./idm/config/ldap-init.sh:/docker-entrypoint-init.d/init.sh:ro
+    environment:
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}
+      LDAP_ROOT: dc=${OPENSME_DOMAIN:-opensme},dc=example,dc=com
+      LDAP_ADMIN_DN: cn=admin,dc=${OPENSME_DOMAIN:-opensme},dc=example,dc=com
+      LDAP_USERS: user01,user02
+      LDAP_PASSWORDS: ${LDAP_USER_PASSWORD:-CHANGEME_user}
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -b '' -s base 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: opensme-keycloak
+    restart: unless-stopped
+    command: start --optimized
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_HOSTNAME: ${KEYCLOAK_DOMAIN:-auth.opensme.example.com}
+      KC_HOSTNAME_STRICT: true
+      KC_HOSTNAME_STRICT_HTTPS: true
+      KC_PROXY: edge
+      KC_HTTP_ENABLED: true
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://pgbouncer:5432/opensme?prepareThreshold=0
+      KC_DB_USERNAME: opensme
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
+      KC_DB_POOL_INITIAL_SIZE: 5
+      KC_DB_POOL_MIN_SIZE: 5
+      KC_DB_POOL_MAX_SIZE: 30
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGEME_keycloak_admin}
+      KC_FEATURES: token-exchange,admin-fine-grained-authz
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.example.com}`)"
+      - "traefik.http.routers.keycloak.tls=true"
+      - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+volumes:
+  ldap-data:
+  keycloak-data:

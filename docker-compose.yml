@@ -1,0 +1,244 @@
+# ═══════════════════════════════════════════════
+# openSME — Core Services
+# ═══════════════════════════════════════════════
+# Always runs: Traefik, PostgreSQL (+ PgBouncer), Redis, Memcached, Portal
+# Add features via COMPOSE_FILE:
+#   idm/keycloak.yml    → Keycloak + LDAP (IAM/SSO)
+#   opencloud/...yml    → OpenCloud (files/collaboration)
+#   mail/stalwart.yml   → Stalwart (mail server)
+#   mail/sogo.yml       → SOGo (webmail/groupware)
+# ═══════════════════════════════════════════════
+
+services:
+  # ── Reverse Proxy ───────────────────────────
+  traefik:
+    image: traefik:v3.3
+    container_name: opensme-traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.network=opensme-net"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entryPoints.websecure.http3=true"
+      - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.example.com}"
+      - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
+      - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
+      - "--api.dashboard=true"
+      # Rate limiting for 500 users
+      - "--entryPoints.websecure.rateLimit.average=100"
+      - "--entryPoints.websecure.rateLimit.burst=200"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-data:/etc/traefik
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.example.com}`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_USERS:-admin:$$2y$$10$$CHANGEME}"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ── Database ─────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: opensme-postgres
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
+      POSTGRES_USER: opensme
+      POSTGRES_DB: opensme
+      # Production tuning for up to 500 users
+      POSTGRES_CONFIG_FILE: /etc/postgresql/postgresql.conf
+    command:
+      - "-c"
+      - "shared_buffers=1GB"
+      - "-c"
+      - "effective_cache_size=3GB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "maintenance_work_mem=256MB"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "min_wal_size=1GB"
+      - "-c"
+      - "max_wal_size=4GB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opensme"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 2G
+
+  # ── Connection Pool (PgBouncer) ─────────────
+  pgbouncer:
+    image: bitnami/pgbouncer:1.23
+    container_name: opensme-pgbouncer
+    restart: unless-stopped
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USERNAME: opensme
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
+      POSTGRESQL_DATABASE: opensme
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      PGBOUNCER_MAX_CLIENT_CONN: 200
+      PGBOUNCER_MAX_DB_CONNECTIONS: 50
+      PGBOUNCER_MAX_USER_CONNECTIONS: 50
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U opensme"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ── Cache ────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: opensme-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save 300 100
+      - --save 60 10000
+      - --appendonly yes
+      - --appendfsync everysec
+      - --maxmemory 2gb
+      - --maxmemory-policy allkeys-lru
+      - --loglevel notice
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  memcached:
+    image: memcached:1.6-alpine
+    container_name: opensme-memcached
+    restart: unless-stopped
+    command: memcached -m 2048 -c 4096 -t 4
+    healthcheck:
+      test: ["CMD", "memcached-tool", "localhost:11211", "stats"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # ── Rust Portal ─────────────────────────────
+  portal:
+    build:
+      context: ./portal
+      dockerfile: Dockerfile
+    container_name: opensme-portal
+    restart: unless-stopped
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-portal.opensme.example.com}
+      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.example.com}
+      OPENCLOUD_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.example.com}
+      MAIL_URL: https://${SOGO_DOMAIN:-webmail.opensme.example.com}
+      KEYCLOAK_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.example.com}/auth
+      COLLABORA_URL: https://${COLLABORA_DOMAIN:-collabora.opensme.example.com}
+      RUST_LOG: ${LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.example.com}`)"
+      - "traefik.http.routers.portal.tls=true"
+      - "traefik.http.routers.portal.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portal.loadbalancer.server.port=8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+networks:
+  opensme-net:
+    name: opensme-net
+    driver: bridge
+
+volumes:
+  traefik-data:
+  postgres-data:
+  redis-data:

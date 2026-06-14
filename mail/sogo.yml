@@ -1,0 +1,42 @@
+# ── SOGo Groupware overlay ─────────────────────
+# Include via: COMPOSE_FILE=docker-compose.yml:mail/sogo.yml
+# Webmail, calendar, contacts (connects to Stalwart IMAP/SMTP)
+
+services:
+  sogo:
+    image: salvoxia/sogo:latest
+    container_name: opensme-sogo
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./mail/sogo/sogo.conf:/etc/sogo/sogo.conf:ro
+      - sogo-data:/srv
+    environment:
+      TZ: Europe/Berlin
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:20000/SOGo"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.example.com}`) && PathPrefix(`/SOGo`)"
+      - "traefik.http.routers.sogo.tls=true"
+      - "traefik.http.routers.sogo.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sogo.loadbalancer.server.port=20000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+volumes:
+  sogo-data:
