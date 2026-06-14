@@ -86,6 +86,22 @@ See `.env.example` for all options. Key variables:
 | `POSTGRES_PASSWORD` | `CHANGEME_*` | DB password |
 | `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt email |
 
+## License
+
+**Free for organizations with up to 50 users (Micro + Small tier).**
+Larger deployments require a commercial license from
+[[REDACTED]](https://[REDACTED]) or
+[graphwiz.ai](https://graphwiz.ai).
+
+See [LICENSE.md](LICENSE.md) for full terms.
+
+| Tier | Users | License |
+|---|---|---|
+| Micro | 5–10 | ✅ Free |
+| Small | 10–50 | ✅ Free |
+| Medium | 50–150 | 💰 Commercial |
+| Large | 150–500 | 💰 Commercial |
+
 ## Demo / Dev
 
 ```bash
