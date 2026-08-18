@@ -1,15 +1,15 @@
 #!/bin/sh
-# OpenCloud entrypoint — generate config in a writable location.
-# /etc/opencloud volume may be root-owned; use --config-path to write elsewhere.
+# OpenCloud entrypoint — generate config on first run.
+# /etc/opencloud may be root-owned, so we init into a temp dir then copy.
 set -e
 
-OC_CONFIG_DIR="/var/lib/opencloud/config"
-mkdir -p "$OC_CONFIG_DIR"
-
-if [ ! -f "$OC_CONFIG_DIR/opencloud.yaml" ]; then
+if [ ! -f /etc/opencloud/opencloud.yaml ]; then
+  TMPDIR=$(mktemp -d)
   echo "opencloud-entrypoint: no config found, running init..."
-  opencloud init -f --insecure=true --config-path "$OC_CONFIG_DIR"
-  echo "opencloud-entrypoint: config generated at $OC_CONFIG_DIR/opencloud.yaml"
+  opencloud init -f --insecure=true --config-path "$TMPDIR"
+  cp "$TMPDIR/opencloud.yaml" /etc/opencloud/opencloud.yaml
+  rm -rf "$TMPDIR"
+  echo "opencloud-entrypoint: config generated."
 fi
 
-exec opencloud server --config-path "$OC_CONFIG_DIR"
+exec opencloud server
