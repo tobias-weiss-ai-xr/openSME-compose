@@ -43,6 +43,7 @@ services:
       OC_STORAGE_USERS_MAX_CONCURRENCY: 10
       OC_HTTP_CACHE_TTL: 3600
       OC_UPLOAD_MAX_SIZE: 10737418240
+    user: "0:0"
     entrypoint: ["/bin/sh"]
     command: ["/entrypoint.sh", "server"]
     healthcheck:
