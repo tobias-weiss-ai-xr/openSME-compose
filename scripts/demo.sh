@@ -2,8 +2,8 @@
 # ── openSME — Demo Launcher ─────────────
 # One-command setup for demo / local development.
 # Requires: Docker + Docker Compose (v2).
-# Starts: Portal, PostgreSQL, Redis, Memcached, Keycloak, OpenCloud.
-# Skips: PgBouncer, LDAP, Collabora, Stalwart, SOGo (too heavy for demo).
+# Starts: Portal, PostgreSQL, Redis, Memcached, Keycloak (+LDAP), OpenCloud.
+# Skips: PgBouncer, Collabora, Stalwart, SOGo (too heavy for demo).
 #
 # Usage:
 #   ./scripts/demo.sh                    # first run (creates .env)
@@ -124,6 +124,11 @@ ok "openSME Demo is running!"
 # ── Get admin password ────────────────────────
 ADMIN_PW=$(grep KEYCLOAK_ADMIN_PASSWORD .env | cut -d= -f2)
 OC_ADMIN=$(grep OC_ADMIN_PASSWORD .env | cut -d= -f2)
+TRAEFIK_HASH=$(grep TRAEFIK_USERS .env | cut -d= -f2-)
+TRAEFIK_PASS_DISPLAY="(see .env — TRAEFIK_USERS hash)"
+if [[ -n "${TRAEFIK_PASS:-}" ]]; then
+  TRAEFIK_PASS_DISPLAY="${TRAEFIK_PASS}"
+fi
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
@@ -142,7 +147,7 @@ echo -e "    Password: ${OC_ADMIN}"
 echo ""
 echo -e "  ${YELLOW}Traefik Dashboard (if enabled):${NC}"
 echo -e "    User:     admin"
-echo -e "    Password: ${TRAEFIK_PASS}"
+echo -e "    Password: ${TRAEFIK_PASS_DISPLAY}"
 echo ""
 echo -e "${GREEN}───────────────────────────────────────────${NC}"
 echo ""

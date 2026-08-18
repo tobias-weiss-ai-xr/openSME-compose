@@ -2,7 +2,7 @@
 # Include via: COMPOSE_FILE=docker-compose.yml:mail/sogo.yml
 # Webmail, calendar, contacts (connects to Stalwart IMAP/SMTP).
 #
-# Config is rendered from sogo.conf.template via envsubst at startup.
+# Config is rendered from sogo.conf.template at startup.
 # Required env vars: SOGO_DB_PASSWORD, LDAP_ROOT_DN, LDAP_ADMIN_PASSWORD,
 #                    OPENSME_DOMAIN, TZ
 

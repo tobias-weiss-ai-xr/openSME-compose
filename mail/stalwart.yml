@@ -2,7 +2,7 @@
 # Include via: COMPOSE_FILE=docker-compose.yml:mail/stalwart.yml
 # Rust-based mail server: SMTP, IMAP, JMAP, CalDAV, CardDAV.
 #
-# Config is rendered from config.toml.template via envsubst at startup.
+# Config is rendered from config.toml.template at startup.
 
 services:
   stalwart:

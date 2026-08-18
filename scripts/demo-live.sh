@@ -185,10 +185,8 @@ done
 # ── Build and start ─────────────────────────────────
 step "Building and starting openSME (live demo)"
 
-COMPOSE_FILES="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:profiles/demo.live.yml"
-
 info "Compose files:"
-for f in ${COMPOSE_FILES//:/ }; do
+for f in docker-compose.yml idm/keycloak.yml opencloud/opencloud.yml profiles/demo.live.yml; do
   info "  ${f}"
 done
 echo ""
@@ -228,6 +226,10 @@ wait_for_healthy "opensme-opencloud"  120 || true
 # ── Summary ────────────────────────────────────────
 ADMIN_PW=$(grep KEYCLOAK_ADMIN_PASSWORD .env | cut -d= -f2)
 OC_ADMIN=$(grep OC_ADMIN_PASSWORD .env | cut -d= -f2)
+TRAEFIK_PASS_DISPLAY="(see .env — TRAEFIK_USERS hash)"
+if [[ -n "${TRAEFIK_PASS:-}" ]]; then
+  TRAEFIK_PASS_DISPLAY="${TRAEFIK_PASS}"
+fi
 
 echo ""
 echo -e "${GREEN}═════════════════════════════════════════════════════${NC}"
@@ -243,7 +245,7 @@ echo ""
 echo -e "  ${CYAN}Credentials:${NC}"
 echo -e "    Keycloak admin:  ${YELLOW}admin / ${ADMIN_PW}${NC}"
 echo -e "    OpenCloud admin: ${YELLOW}admin / ${OC_ADMIN}${NC}"
-echo -e "    Traefik dashboard: ${YELLOW}admin / ${TRAEFIK_PASS}${NC}"
+echo -e "    Traefik dashboard: ${YELLOW}admin / ${TRAEFIK_PASS_DISPLAY}${NC}"
 echo ""
 echo -e "  ${CYAN}Useful commands:${NC}"
 echo -e "    Logs:   docker compose logs -f"
