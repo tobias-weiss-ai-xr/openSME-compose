@@ -22,7 +22,7 @@ services:
       - stalwart-data:/var/lib/stalwart
       - ./mail/stalwart/config.toml:/etc/stalwart/config.toml:ro
     healthcheck:
-      test: ["CMD-SHELL", "ss -tln | grep -q ':8080' || exit 1"]
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8080'"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -34,6 +34,7 @@ services:
       - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.org}`)"
       - "traefik.http.routers.stalwart.tls=true"
       - "traefik.http.routers.stalwart.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.stalwart.entrypoints=websecure"
       - "traefik.http.services.stalwart.loadbalancer.server.port=8080"
     deploy:
       resources:

@@ -4,6 +4,7 @@
 
 services:
   sogo:
+    # NOTE: salvoxia/sogo is a community image. Pin a specific tag in production.
     image: salvoxia/sogo:latest
     container_name: opensme-sogo
     restart: unless-stopped
