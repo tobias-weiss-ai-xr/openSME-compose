@@ -13,6 +13,8 @@ Docker Compose-based — from 5 to 500 users.
 [![Traefik](https://img.shields.io/badge/Reverse_Proxy-Traefik_v3-24a7c0?logo=traefikproxy&logoColor=white)](https://traefik.io/)
 [![Rust](https://img.shields.io/badge/Portal-Rust_Axum-ce422b?logo=rust&logoColor=white)](https://axum.rs/)
 
+[Quick Start](#quick-start) · [Architecture](#architecture) · [Overlays](#overlay-system) · [Configuration](#configuration) · [License](#license)
+
 </div>
 
 ---
@@ -41,18 +43,6 @@ That's a **95–99% cost reduction** while keeping full data sovereignty.
 - **Schools &amp; municipalities** required by law to keep data on-premises
 - **Privacy-conscious teams** who need mail, files, calendar, and office in one stack
 - **MSPs / IT consultants** deploying productivity suites for clients
-
-| | |
-|---|---|
-| **IAM / SSO** | Keycloak + LDAP — OIDC, SAML, centralized auth |
-| **Files** | OpenCloud — sync, share, collaborate |
-| **Office** | Collabora — real-time document editing in the browser |
-| **Mail** | Stalwart — modern Rust SMTP/IMAP server |
-| **Groupware** | SOGo — webmail, calendar, contacts |
-| **Database** | PostgreSQL 17 + PgBouncer connection pooling |
-| **Cache** | Redis 7 + Memcached 1.6 |
-| **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
-| **Portal** | Custom Rust/Axum landing page — service directory |
 
 ## What's inside?
 
