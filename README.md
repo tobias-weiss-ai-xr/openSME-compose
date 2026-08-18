@@ -9,7 +9,7 @@
 Docker Compose-based — from 5 to 500 users.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![Docker](https://img.shields.io/badge/DockerCompose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose)
 [![Traefik](https://img.shields.io/badge/Reverse_Proxy-Traefik_v3-24a7c0?logo=traefikproxy&logoColor=white)](https://traefik.io/)
 [![Rust](https://img.shields.io/badge/Portal-Rust_Axum-ce422b?logo=rust&logoColor=white)](https://axum.rs/)
 
@@ -28,9 +28,10 @@ Docker Compose-based — from 5 to 500 users.
 | **Mail server included** | Via add-on | ❌ Plugin needed | ✅ Stalwart (Rust) |
 | **Groupware (calendar/contacts)** | ✅ | ⚠️ Plugins | ✅ SOGo |
 | **Online office editing** | ✅ | ⚠️ Via Collabora | ✅ Collabora built-in |
-| **SSO / IAM** | ✅ | ❌ | ✅ Keycloak + LDAP |
+| **SSO / IAM** | ✅ | ❌ | ✅ Zitadel |
 | **Single Docker Compose stack** | N/A | ❌ Manual | ✅ One `docker compose up` |
 | **AGPL — no vendor lock-in** | N/A | ✅ | ✅ |
+| **No JVM** | N/A | N/A | ✅ Zitadel is Go-native |
 
 For 50 users on Google Workspace: **$300–$1,800/month**.
 With openSME on a Hetzner CX22 (~€15/mo): **€15/month total.**
@@ -48,11 +49,11 @@ That's a **95–99% cost reduction** while keeping full data sovereignty.
 
 | | |
 |---|---|
-| **IAM / SSO** | Keycloak 26 + OpenLDAP — OIDC, SAML, centralized auth |
-| **Files** | OpenCloud — sync, share, collaborate |
-| **Office** | Collabora — real-time document editing in the browser |
-| **Mail** | Stalwart — modern Rust SMTP/IMAP server |
-| **Groupware** | SOGo — webmail, calendar, contacts |
+| **IAM / SSO** | [Zitadel](https://zitadel.com/) — Go-native, no JVM, built-in user store |
+| **Files** | [OpenCloud](https://opencloud.eu/) — sync, share, collaborate |
+| **Office** | [Collabora](https://www.collaboraoffice.com/) — real-time document editing in the browser |
+| **Mail** | [Stalwart](https://stalw.art/) — modern Rust SMTP/IMAP server |
+| **Groupware** | [SOGo](https://www.sogo.nu/) — webmail, calendar, contacts |
 | **Database** | PostgreSQL 17 + PgBouncer connection pooling |
 | **Cache** | Redis 7 + Memcached 1.6 |
 | **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
@@ -67,44 +68,42 @@ graph TB
     end
 
     subgraph Proxy ["Reverse Proxy"]
-        Traefik["Traefik v3<br/>:443 · Let's Encrypt"]
+        Traefik["Traefik v3\nbr/>:443 · Let's Encrypt"]
     end
 
     subgraph Core ["Core Services"]
-        Portal["Portal<br/>(Rust / Axum :8080)"]
+        Portal["Portal\n/>(Rust / Axum :8080)"]
     end
 
-    subgraph IAM ["Identity (optional overlay)"]
-        Keycloak["Keycloak 26<br/>OIDC / SAML"]
-        LDAP["OpenLDAP<br/>User directory"]
+    subgraph IAM ["Identity"]
+        Zitadel["Zitadel\n/>Go-native IAM\n/>OIDC / SAML"]
     end
 
-    subgraph Files ["Files & Office (optional overlay)"]
-        OpenCloud["OpenCloud<br/>File sync & share"]
-        Collabora["Collabora<br/>Online office"]
+    subgraph Files ["Files & Office"]
+        OpenCloud["OpenCloud\n/>File sync & share"]
+        Collabora["Collabora\n/>Online office"]
     end
 
-    subgraph Mail ["Mail & Groupware (optional overlay)"]
-        Stalwart["Stalwart<br/>SMTP / IMAP"]
-        SOGo["SOGo<br/>Webmail / Calendar"]
+    subgraph Mail ["Mail & Groupware"]
+        Stalwart["Stalwart\n/>SMTP / IMAP"]
+        SOGo["SOGo\n/>Webmail / Calendar"]
     end
 
     subgraph Data ["Data Layer"]
-        Postgres[("PostgreSQL 17<br/>+ PgBouncer")]
-        Redis[("Redis 7")]
-        Memcached[("Memcached 1.6")]
+        Postgres["PostgreSQL 17\n/>+ PgBouncer"]
+        Redis["Redis 7"]
+        Memcached["Memcached 1.6"]
     end
 
     Client -->|"HTTPS"| Traefik
     Traefik --> Portal
-    Traefik --> Keycloak
+    Traefik --> Zitadel
     Traefik --> OpenCloud
     Traefik --> Collabora
     Traefik --> Stalwart
     Traefik --> SOGo
 
-    Keycloak --> LDAP
-    Keycloak --> Postgres
+    Zitadel --> Postgres
     OpenCloud --> Postgres
     OpenCloud --> Redis
     SOGo --> Postgres
@@ -113,8 +112,7 @@ graph TB
 
     style Traefik fill:#1f63d9,stroke:#2f7ff2,color:#fff
     style Portal fill:#0c1626,stroke:#2dd4bf,color:#e3ecff
-    style Keycloak fill:#0c1626,stroke:#55a3fb,color:#e3ecff
-    style LDAP fill:#0c1626,stroke:#55a3fb,color:#e3ecff
+    style Zitadel fill:#0c1626,stroke:#55a3fb,color:#e3ecff
     style OpenCloud fill:#0c1626,stroke:#2dd4bf,color:#e3ecff
     style Collabora fill:#0c1626,stroke:#2dd4bf,color:#e3ecff
     style Stalwart fill:#0c1626,stroke:#55a3fb,color:#e3ecff
@@ -123,6 +121,23 @@ graph TB
     style Redis fill:#163d85,stroke:#55a3fb,color:#e3ecff
     style Memcached fill:#163d85,stroke:#55a3fb,color:#e3ecff
 ```
+
+### Why Zitadel instead of Keycloak?
+
+| | Keycloak | Zitadel |
+|---|---|---|
+| **Language** | Java (JVM, ~512 MB base) | Go (binary, ~100 MB) |
+| **Startup time** | 30–60 s | 5–10 s |
+| **RAM (idle)** | 512 MB+ | 100 MB |
+| **External DB** | Required (or embedded H2) | Required (Postgres) |
+| **LDAP** | Separate service (OpenLDAP) | Built-in user store |
+| **Machine-to-machine** | Separate client config | First-class citizen |
+| **Audit logging** | Via extensions | Built-in event log |
+| **Multi-tenancy** | Realms (manual) | Organisations (per-tenant) |
+| **License** | Apache 2.0 | Apache 2.0 (AGPL-adjacent) |
+
+Zitadel replaces both Keycloak *and* OpenLDAP in a single container,
+halving the service count for the IAM layer.
 
 ## Prerequisites
 
@@ -159,11 +174,11 @@ docker compose up -d
 
 ```bash
 # Core + IAM + file sync + online office
-export COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml"
+export COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml"
 docker compose up -d
 
 # Full stack (add mail + groupware)
-export COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:mail/stalwart.yml:mail/sogo.yml"
+export COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml:mail/stalwart.yml:mail/sogo.yml"
 docker compose up -d
 ```
 
@@ -172,7 +187,7 @@ docker compose up -d
 ```bash
 ./scripts/demo.sh
 # → Portal:    http://localhost:8080
-# → Keycloak:  http://localhost:8081
+# → Zitadel:   http://localhost:8081
 # → OpenCloud: http://localhost:8082
 ```
 
@@ -183,10 +198,10 @@ Requires **2 vCPU / 4 GB RAM** — perfect for evaluation.
 All tiers run the **same Compose stack** — scale vertically, no config changes.
 
 | Tier | Users | vCPU | RAM | Storage | Reference |
-|---|---|---|---|---|---|
+|---|---|---|---|---|
 | **Small** | 1–50 | 4–8 | 16–32 GB | 100–250 GB NVMe | Hetzner CX22 / CX32 |
 | **Medium** | 50–500 | 12–16 | 48–64 GB | 500 GB–1 TB NVMe | Hetzner CX42 / CX62 |
-| **Enterprise** | 500+ | Individual | | | Contact for sizing |
+| **Enterprise** | 500+ | Individual | | Contact for sizing | 
 
 ## Overlay System
 
@@ -195,41 +210,61 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | Overlay | Services | Domain | When to add |
 |---|---|---|---|
 | `docker-compose.yml` | Portal, Traefik, PostgreSQL, Redis, Memcached | `portal.*` | Always (core) |
-| `idm/keycloak.yml` | Keycloak + OpenLDAP | `auth.*` | For SSO / IAM |
+| `idm/zitadel.yml` | Zitadel (IAM/SSO) | `auth.*` | For SSO / IAM |
 | `opencloud/opencloud.yml` | OpenCloud + Collabora | `cloud.*`, `collabora.*` | For file sync & office |
+| `opencloud/minio.yml` | MinIO (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) |
 | `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
 | `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
 | `profiles/demo.dev.yml` | (overrides) | — | For demo / dev (low resources) |
+| `profiles/demo.live.yml` | (overrides) | — | Public demo with Traefik |
+| `profiles/demo.coexist.yml` | (overrides) | — | Piggyback existing Traefik |
+
+### Docker Compose file order
+
+Files are merged left-to-right — **last file wins** for maps. Always order:
+
+``nbase → overlays → profile
+```
+
+Example:
+``ndocker compose \
+  -f docker-compose.yml \n  -f idm/zitadel.yml \n  -f opencloud/opencloud.yml \n  -f opencloud/minio.yml \n  -f mail/stalwart.yml \n  -f mail/sogo.yml \n  up -d
+```
 
 ## Project Structure
 
-```
+``
 opensme-compose/
 ├── docker-compose.yml          # Core: Traefik, PostgreSQL, Redis, Memcached, Portal
 ├── .env.example                # All configuration variables
 ├── idm/
-│   └── keycloak.yml            # Overlay: Keycloak + OpenLDAP (IAM/SSO)
+│   ├── zitadel.yml             # Overlay: Zitadel (IAM/SSO, replaces Keycloak + LDAP)
 ├── opencloud/
-│   └── opencloud.yml           # Overlay: OpenCloud + Collabora (files & office)
+│   ├── opencloud.yml           # Overlay: OpenCloud + Collabora (files & office)
+│   ├── minio.yml              # Overlay: MinIO S3 storage
+│   └── opencloud-entrypoint.sh  # Auto-init on first run
 ├── mail/
 │   ├── stalwart.yml            # Overlay: Stalwart mail server
 │   └── sogo.yml                # Overlay: SOGo groupware (webmail/calendar)
 ├── profiles/
-│   └── demo.dev.yml            # Profile: minimal resources for demo/dev
+│   ├── demo.dev.yml           # Profile: minimal resources for demo/dev
+│   ├── demo.live.yml          # Profile: public demo with Traefik
+│   └── demo.coexist.yml       # Profile: piggyback existing Traefik
 ├── portal/                     # Rust/Axum portal (service directory)
 │   ├── Cargo.toml
-│   ├── Dockerfile              # Multi-stage build with cargo-chef
-│   └── src/main.rs
+   ├── Dockerfile
+   └── src/main.rs
 ├── scripts/
-│   ├── start.sh                # Start stack (core + keycloak + opencloud)
-│   ├── stop.sh                 # Stop all services
-│   ├── demo.sh                 # One-command demo with random passwords
-│   └── backup.sh               # Backup PostgreSQL + Traefik data
-├── traefik/
-│   └── traefik.yml             # Traefik static configuration reference
+│   ├── start.sh               # Start stack (core + zitadel + opencloud)
+│   ├── stop.sh                # Stop all opensme containers
+│   ├── demo.sh                # One-command demo with random passwords
+│   ├── demo-live.sh           # Deploy to server with Let's Encrypt
+│   └── backup.sh              # Backup PostgreSQL + Traefik data
+├── postgres-init/
+│   └── 00-create-databases.sql  # Auto-creates zitadel + sogo DBs on first start
 └── docs/
     └── assets/
-        └── teaser.svg          # README banner image
+        └── teaser.svg
 ```
 
 ## Development
@@ -248,10 +283,10 @@ Environment variables for local development:
 |---|---|---|
 | `PORTAL_DOMAIN` | `portal.opensme.org` | Portal hostname |
 | `OPENSME_DOMAIN` | `opensme.org` | Root domain |
+| `IDP_URL` | *(empty — card hidden)* | Zitadel link on landing page |
 | `OPENCLOUD_URL` | `https://cloud.opensme.org` | OpenCloud link |
-| `MAIL_URL` | `https://webmail.opensme.org` | Webmail link |
-| `KEYCLOAK_URL` | `https://auth.opensme.org` | Keycloak link |
-| `COLLABORA_URL` | `https://collabora.opensme.org` | Collabora link |
+| `MAIL_URL` | *(empty — card hidden)* | Webmail link |
+| `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
 
 ## Troubleshooting
 
@@ -265,7 +300,8 @@ sudo lsof -i :80 -i :443
 # Or on systemd hosts: sudo systemctl stop nginx caddy
 ```
 
-For local development, map services to different ports in `.env`.
+For local development, use `profiles/demo.dev.yml` (maps portal to `localhost:8080`),
+or use the `profiles/demo.coexist.yml` to piggyback an existing Traefik.
 </details>
 
 <details>
@@ -273,9 +309,10 @@ For local development, map services to different ports in `.env`.
 
 Traefik uses Let's Encrypt's HTTP-01 challenge. If you hit rate limits:
 
-1. Set `TRAEFIK_ACME_ENABLED=false` in `.env` during testing
-2. Use the `demo.sh` script (no TLS needed)
-3. Wait 1 hour for the rate limit window to reset
+1. Use the `demo.sh` script (no TLS needed)
+2. Wait 1 hour for the rate limit window to reset
+3. Use DNS-01 challenge (configure in Traefik) for frequent reissues
+
 
 Production: ensure `TRAEFIK_ACME_EMAIL` is set and DNS A records point to your server.
 </details>
@@ -295,28 +332,64 @@ If `POSTGRES_PASSWORD` was changed after first start, the existing volume
 keeps the old password. Remove the volume or update the password inside psql.
 </details>
 
-<details>
-<summary><b>Keycloak returns 502 / startup timeout</b></summary>
+< details>
+<summary><b>Zitadel first-start errors</b></summary>
 
-Keycloak needs 60+ seconds on first start (realm import). Check:
+Zitadel requires a **master key file** (`idm/secrets/masterkey`) for encryption.
+On first start, create it:
 
 ```bash
-docker compose logs -f keycloak
-# Wait for "Keycloak started in X seconds"
+head -c 32 /dev/urandom | base64 > idm/secrets/masterkey
+chmod 600 idm/secrets/masterkey
 ```
 
-If PgBouncer isn't running, Keycloak can't reach PostgreSQL. Verify:
+The `demo.sh` and `demo-live.sh` scripts generate this automatically.
+
+If Zitadel fails to connect to PostgreSQL on first start:
+
 ```bash
-docker compose ps pgbouncer
+docker compose logs opensme-zitadel
+# Look for "failed to connect" or "connection refused"
+```
+
+Ensure the `zitadel` database exists in PostgreSQL. The `postgres-init/00-create-databases.sql`
+runs on first container start and creates it automatically. For existing volumes,
+create it manually:
+
+```bash
+docker compose exec -T postgres psql -U opensme -c 'CREATE DATABASE zitadel;'
 ```
 </details>
 
 <details>
-<summary><b>OpenCloud can't connect to Keycloak</b></summary>
+<summary><b>OpenCloud can't connect to Zitadel</b></summary>
 
-Verify that `OC_OIDC_ISSUER` matches your Keycloak realm URL. The default
-realm is `opensme`. Check Keycloak's realm settings at
-`https://auth.your-domain/auth/admin/`.
+Verify that `OC_OIDC_ISSUER` matches your Zitadel domain:
+
+```bash
+# In .env:
+ZITADEL_DOMAIN=auth.opensme.org
+# OpenCloud should have:
+OC_OIDC_ISSUER=https://auth.opensme.org
+```
+
+Then register OpenCloud as an OIDC client in Zitadel's console at
+`https://auth.your-domain/ui/`.
+</details>
+
+<details>
+<summary><b>OpenCloud fails with "transfer_secret not set"</b></summary>
+
+OpenCloud 6.0 requires secrets that are generated by `opencloud init`. The
+included `opencloud-entrypoint.sh` handles this automatically on first run
+by running `opencloud init -f --insecure=true` before starting the server.
+
+If the config is corrupted, remove the config volume:
+
+```bash
+docker volume rm opensme_opencloud-config
+EXISTING_NETWORK=traefik-web docker compose ... up -d --force-recreate
+```
 </details>
 
 ## Configuration
@@ -327,7 +400,8 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 |---|---|---|
 | `OPENSME_DOMAIN` | `opensme.org` | Root domain for all services |
 | `POSTGRES_PASSWORD` | `CHANGEME_*` | PostgreSQL superuser password |
-| `KEYCLOAK_ADMIN_PASSWORD` | `CHANGEME_*` | Keycloak admin password |
+| `ZITADEL_ADMIN_PASSWORD` | `CHANGEME_*` | Zitadel admin password |
+| `ZITADEL_ADMIN_EMAIL` | `admin@...` | Zitadel admin email |
 | `OC_ADMIN_PASSWORD` | `CHANGEME_*` | OpenCloud admin password |
 | `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt registration email |
 | `TRAEFIK_USERS` | `admin:$$apr1$$...` | Traefik dashboard basic-auth (htpasswd) |
@@ -340,9 +414,10 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 
 | Script | Description |
 |---|---|
-| `scripts/start.sh` | Start the stack (core + keycloak + opencloud) |
-| `scripts/stop.sh` | Stop all services |
+| `scripts/start.sh` | Start the stack (core + zitadel + opencloud) |
+| `scripts/stop.sh` | Stop all opensme containers |
 | `scripts/demo.sh` | Launch minimal demo with random passwords |
+| `scripts/demo-live.sh` | Deploy to server with Let's Encrypt |
 | `scripts/backup.sh` | Backup PostgreSQL + Traefik data |
 
 ## Backup &amp; Restore
@@ -352,7 +427,7 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 ```bash
 ./scripts/backup.sh
 # → ./backups/postgres_20260818_120000.sql.gz
-# → ./backups/traefik_20260818_120000.tar.gz
+# → ./backups/taefik_20260818_120000.tar.gz
 ```
 
 For automated daily backups, add a cron entry:
@@ -382,11 +457,19 @@ portal.opensme.org.   IN A   <your-server-ip>
 auth.opensme.org.     IN A   <your-server-ip>
 cloud.opensme.org.    IN A   <your-server-ip>
 collabora.opensme.org. IN A  <your-server-ip>
-webmail.opensme.org.  IN A   <your-server-ip>
+webmail.opensme.org.  IN A  <your-server-ip>
 mail.opensme.org.     IN A   <your-server-ip>
 ```
 
 Or use a wildcard: `*.opensme.org. IN A <your-server-ip>`.
+
+For the **live demo** (`home.opensme.org`), you only need:
+
+```
+home.opensme.org.        IN A   <your-server-ip>
+auth.home.opensme.org.   IN A   <your-server-ip>
+cloud.home.opensme.org.  IN A   <your-server-ip>
+```
 
 ## Security
 
@@ -394,7 +477,7 @@ Or use a wildcard: `*.opensme.org. IN A <your-server-ip>`.
 <summary><b>Production checklist</b></summary>
 
 1. **Change all `CHANGEME_*` passwords** in `.env` — use `openssl rand -base64 24`
-2. **Set `TRAEFIK_ACME_ENABLED=true`** for automatic HTTPS via Let's Encrypt
+2. **Generate a Zitadel master key**: `head -c 32 /dev/urandom | base64 > idm/secrets/masterkey && chmod 600 idm/secrets/masterkey`
 3. **Set a strong `TRAEFIK_USERS`** htpasswd: `htpasswd -nb admin 'YOUR_PASSWORD'`
 4. **Close unnecessary ports** — only 80, 443 should be public. PostgreSQL (5432),
    Redis (6379), etc. must be on `opensme-net` only, never published.
@@ -411,15 +494,14 @@ Or use a wildcard: `*.opensme.org. IN A <your-server-ip>`.
 <details>
 <summary><b>OIDC / SAML configuration</b></summary>
 
-Keycloak is pre-configured with a `opensme` realm. To add client applications:
+Zitadel has a built-in project/app management UI at
+`https://auth.your-domain/ui/`. To register OpenCloud as an OIDC client:
 
-1. Navigate to `https://auth.your-domain/auth/admin/`
-2. Log in with `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD`
-3. Create a client under the `opensme` realm
-4. Set the redirect URI to your application's callback URL
-
-OpenCloud is pre-configured as an OIDC client (`OC_OIDC_CLIENT_ID=opencloud`).
-To add custom apps, follow the [Keycloak OIDC guide](https://www.keycloak.org/docs/latest/securing_apps/).
+1. Log in to `https://auth.your-domain/ui/`
+2. Navigate to **Projects** → **opensme** → **Applications**
+3. Create a new application with redirect URI
+   `https://cloud.your-domain` (no trailing slash)
+4. Copy the client ID and secret into `.env` as `OC_OIDC_CLIENT_ID` / `OC_OIDC_SECRET`
 
 </details>
 
@@ -444,7 +526,7 @@ Images are pinned to major versions for stability:
 |---|---|---|
 | PostgreSQL | `postgres:17-alpine` | 17.x |
 | Redis | `redis:7-alpine` | 7.x |
-| Keycloak | `quay.io/keycloak/keycloak:26.1` | 26.1.x |
+| Zitadel | `ghcr.io/zitadel/zitadel:latest` | (rolling) |
 | OpenCloud | `opencloudeu/opencloud-rolling:6.0.0` | 6.0.x |
 | Collabora | `collabora/code:24.04` | 24.04.x |
 | Traefik | `traefik:v3.3` | 3.3.x |
@@ -469,7 +551,7 @@ Built with:
 
 - [Axum](https://github.com/tokio-rs/axum) — Rust web framework (Portal)
 - [Traefik](https://traefik.io/) — Reverse proxy &amp; automatic TLS
-- [Keycloak](https://www.keycloak.org/) — Identity &amp; access management
+- [Zitadel](https://zitadel.com/) — Identity &amp; access management
 - [OpenCloud](https://opencloud.eu/) — File sync, share &amp; collaboration
 - [Collabora](https://www.collaboraoffice.com/) — Online office editing
 - [Stalwart](https://stalw.art/) — Modern mail server (Rust)

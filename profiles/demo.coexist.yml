@@ -21,7 +21,7 @@
 #
 # Use:
 #   EXISTING_NETWORK=traefik-web docker compose \
-#     -f docker-compose.yml -f idm/keycloak.yml -f opencloud/opencloud.yml \
+#     -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml \
 #     -f profiles/demo.live.yml -f profiles/demo.coexist.yml up -d
 # ═══════════════════════════════════════════════════
 
@@ -61,14 +61,14 @@ services:
       - "traefik.http.services.opensme-portal.loadbalancer.server.port=8080"
 
   # ── Keycloak ────────────────────────────────
-  keycloak:
+  zitadel:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opensme-keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.org}`)"
-      - "traefik.http.routers.opensme-keycloak.tls=true"
-      - "traefik.http.routers.opensme-keycloak.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
-      - "traefik.http.services.opensme-keycloak.loadbalancer.server.port=8080"
+      - "traefik.http.routers.opensme-zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.opensme-zitadel.tls=true"
+      - "traefik.http.routers.opensme-zitadel.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
+      - "traefik.http.services.opensme-zitadel.loadbalancer.server.port=8080"
 
   # ── LDAP ───────────────────────────────────
   ldap:

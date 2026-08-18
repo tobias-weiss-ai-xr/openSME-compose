@@ -1,0 +1,73 @@
+# ── Zitadel (Identity & Access Management) ─────────
+# Include via: COMPOSE_FILE=docker-compose.yml:idm/zitadel.yml
+# Replaces Keycloak. Go-based, no JVM, built-in DB, ~100 MB RAM.
+#
+# First start: log in at https://auth.<domain>
+# Default: zitadel-admin@<domain> / <ZITADEL_ADMIN_PASSWORD>
+
+services:
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
+    container_name: opensme-zitadel
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # ── Database ──
+      ZITADEL_MASTERKEYFROMFILE: /masterkey
+      # ── External DB (Postgres 17 in docker-compose.yml) ──
+      ZITADEL_DATABASE_POSTGRES_HOST: postgres
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: ${ZITADEL_DB_NAME:-zitadel}
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${POSTGRES_USER:-opensme}
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${POSTGRES_PASSWORD}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: ${POSTGRES_USER:-opensme}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${POSTGRES_PASSWORD}
+      ZITADEL_DATABASE_POSTGRES_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_USER_SSLMODE: disable
+      # ── External domain ──
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-auth.opensme.org}
+      ZITADEL_EXTERNALPORT: 443
+      ZITADEL_EXTERNALSECURE: true
+      # ── First admin ──
+      ZITADEL_FIRSTINSTANCE_ORGID: opensme
+      ZITADEL_FIRSTINSTANCE_ORGNAME: openSME
+      ZITADEL_FIRSTINSTANCE_USERADMIN_EMAIL: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.org}}
+      ZITADEL_FIRSTINSTANCE_USERADMIN_FIRSTNAME: Admin
+      ZITADEL_FIRSTINSTANCE_USERADMIN_LASTNAME: openSME
+      ZITADEL_FIRSTINSTANCE_USERADMIN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-CHANGEME_zitadel}
+      # ── Instance ID (stable across restarts) ──
+      ZITADEL_FIRSTINSTANCE_MACHINE_KEYPATH: /machinekey
+      ZITADEL_FIRSTINSTANCE_MACHINE_KEYSIZE: 4096
+      # ── Security ──
+      ZITADEL_DEFAULTINSTANCE_PASSWORD_COMPLEXITY_POLICY: 0
+    volumes:
+      - ./idm/secrets:/masterkey:ro
+      - zitadel-machinekey:/machinekey
+    healthcheck:
+      test: ["CMD", "/zitadel", "ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.zitadel.tls=true"
+      - "traefik.http.routers.zitadel.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.zitadel.entrypoints=websecure"
+      - "traefik.http.services.zitadel.loadbalancer.server.port=8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+volumes:
+  zitadel-machinekey:

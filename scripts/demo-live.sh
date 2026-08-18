@@ -94,7 +94,8 @@ if [[ "$FORCE_ENV" == true ]] || [[ ! -f .env ]]; then
 # ── Domains ──
 OPENSME_DOMAIN=home.opensme.org
 PORTAL_DOMAIN=home.opensme.org
-KEYCLOAK_DOMAIN=auth.home.opensme.org
+ZITADEL_DOMAIN=auth.home.opensme.org
+IDP_URL=https://"$ZITADEL_DOMAIN"
 OPENCLOUD_DOMAIN=cloud.home.opensme.org
 
 # ── LDAP ──
@@ -102,7 +103,7 @@ LDAP_ROOT_DN=dc=opensme,dc=org
 
 # ── Database ──
 POSTGRES_PASSWORD=$(pw)
-KEYCLOAK_DB_PASSWORD=$(pw)
+ZITADEL_DB_PASSWORD=$(pw)
 SOGO_DB_PASSWORD=$(pw)
 
 # ── LDAP ──
@@ -110,8 +111,8 @@ LDAP_ADMIN_PASSWORD=$(pw)
 LDAP_USER_PASSWORD=$(pw)
 
 # ── Keycloak ──
-KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=$(pw)
+ZITADEL_ADMIN=admin
+ZITADEL_ADMIN_PASSWORD=$(pw)
 
 # ── OpenCloud ──
 OC_ADMIN_USERNAME=admin
@@ -144,7 +145,7 @@ source .env
 
 DOMAINS=(
   "$PORTAL_DOMAIN"
-  "$KEYCLOAK_DOMAIN"
+  "$ZITADEL_DOMAIN"
   "$OPENCLOUD_DOMAIN"
 )
 
@@ -190,13 +191,13 @@ done
 step "Building and starting openSME (live demo)"
 
 info "Compose files:"
-for f in docker-compose.yml idm/keycloak.yml opencloud/opencloud.yml profiles/demo.live.yml; do
+for f in docker-compose.yml idm/zitadel.yml opencloud/opencloud.yml profiles/demo.live.yml; do
   info "  ${f}"
 done
 echo ""
 
 docker compose -f docker-compose.yml \
-              -f idm/keycloak.yml \
+              -f idm/zitadel.yml \
               -f opencloud/opencloud.yml \
               -f profiles/demo.live.yml \
               up -d --build --remove-orphans
@@ -224,11 +225,11 @@ wait_for_healthy() {
 
 wait_for_healthy "opensme-postgres" 60
 wait_for_healthy "opensme-redis"    30
-wait_for_healthy "opensme-keycloak"  120 || true
+wait_for_healthy "opensme-zitadel"  120 || true
 wait_for_healthy "opensme-opencloud"  120 || true
 
 # ── Summary ────────────────────────────────────────
-ADMIN_PW=$(grep KEYCLOAK_ADMIN_PASSWORD .env | cut -d= -f2)
+ADMIN_PW=$(grep ZITADEL_ADMIN_PASSWORD .env | cut -d= -f2)
 OC_ADMIN=$(grep OC_ADMIN_PASSWORD .env | cut -d= -f2)
 TRAEFIK_PASS_DISPLAY="(see .env — TRAEFIK_USERS hash)"
 if [[ -n "${TRAEFIK_PASS:-}" ]]; then
@@ -242,7 +243,7 @@ echo -e "${GREEN}═════════════════════
 echo ""
 echo -e "  ${CYAN}Services:${NC}"
 echo -e "    Portal:     ${BLUE}https://${PORTAL_DOMAIN}${NC}"
-echo -e "    Keycloak:   ${BLUE}https://${KEYCLOAK_DOMAIN}${NC}"
+echo -e "    Zitadel:   ${BLUE}https://${ZITADEL_DOMAIN}${NC}"
 echo -e "    OpenCloud:  ${BLUE}https://${OPENCLOUD_DOMAIN}${NC}"
 echo -e "    Traefik:    ${BLUE}https://traefik.${OPENSME_DOMAIN}${NC}"
 echo ""

@@ -2,14 +2,14 @@
 # ── openSME — Stop ─────────────────────
 # Stops all running opensme containers in the current project.
 # Uses 'docker compose down' with the same COMPOSE_FILE that was used
-# to start (default: core + keycloak + opencloud), falling back to
+# to start (default: core + zitadel + opencloud), falling back to
 # stopping any remaining opensme-* containers.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml}"
 
 echo "🛑 Stopping openSME..."
 

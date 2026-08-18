@@ -4,11 +4,11 @@
 # Public-facing demo with Let's Encrypt HTTPS.
 # Minimal footprint: ~2 vCPU, 4 GB RAM.
 #
-# Use: COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:profiles/demo.live.yml"
+# Use: COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml:profiles/demo.live.yml"
 #   docker compose up -d
 #
-# Included:  Portal, Traefik, PostgreSQL, Redis, Memcached, Keycloak, OpenCloud
-# Excluded:  PgBouncer, LDAP, Collabora, Stalwart, SOGo
+# Included: Portal, Traefik, PostgreSQL, Redis, Memcached, Zitadel, OpenCloud
+# Excluded: PgBouncer, LDAP, Collabora, Stalwart, SOGo
 # ═════════════════════════════════════════════════
 
 services:
@@ -17,23 +17,14 @@ services:
     command:
       - "-c"
       - "shared_buffers=128MB"
-      - "-c"
       - "effective_cache_size=512MB"
-      - "-c"
       - "work_mem=8MB"
-      - "-c"
       - "maintenance_work_mem=64MB"
-      - "-c"
       - "max_connections=50"
-      - "-c"
       - "random_page_cost=1.1"
-      - "-c"
       - "effective_io_concurrency=100"
-      - "-c"
       - "wal_buffers=4MB"
-      - "-c"
       - "min_wal_size=256MB"
-      - "-c"
       - "max_wal_size=1GB"
     deploy:
       resources:
@@ -93,23 +84,7 @@ services:
           cpus: "0.1"
           memory: 32M
 
-  # ── Keycloak (direct PG, no pool) ──────────────
-  keycloak:
-    environment:
-      KC_DB_URL: jdbc:postgresql://postgres:5432/opensme
-      KC_DB_POOL_INITIAL_SIZE: 2
-      KC_DB_POOL_MIN_SIZE: 2
-      KC_DB_POOL_MAX_SIZE: 5
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.5"
-          memory: 512M
-
-  # ── LDAP — skip for demo (Keycloak built-in user store) ──
+  # ── LDAP — skip for demo (Zitadel built-in user store) ──
   ldap:
     profiles:
       - donotstart

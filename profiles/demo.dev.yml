@@ -6,7 +6,7 @@
 #   - Local development
 #   - CI/CD pipelines
 #
-# Use: docker compose -f docker-compose.yml -f idm/keycloak.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml up -d
+# Use: docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml up -d
 # ═══════════════════════════════════════════════
 
 services:
@@ -95,12 +95,12 @@ services:
           memory: 64M
 
   # ── Keycloak (minimal, direct PG, no pool) ───
-  keycloak:
+  zitadel:
     environment:
-      KC_DB_URL: jdbc:postgresql://postgres:5432/opensme
-      KC_DB_POOL_INITIAL_SIZE: 2
-      KC_DB_POOL_MIN_SIZE: 2
-      KC_DB_POOL_MAX_SIZE: 5
+      
+      
+      
+      
     deploy:
       resources:
         limits:

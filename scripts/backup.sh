@@ -9,8 +9,8 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
-# Read active compose file (default: core + keycloak + opencloud)
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml}"
+# Read active compose file (default: core + zitadel + opencloud)
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml}"
 export COMPOSE_FILE
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
