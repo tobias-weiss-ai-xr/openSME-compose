@@ -1,171 +1,227 @@
-# openSME 🏢
+<div align="center">
 
-Self-hosted digital workplace for small and medium enterprises.
+<img src="docs/assets/teaser.svg" alt="openSME — Self-hosted digital workplace" width="100%"/>
+
+# openSME
+
+**Self-hosted digital workplace for small &amp; medium enterprises.**
+
 Docker Compose-based — from 5 to 500 users.
 
-Built on [openSME](https://opensme.eu/) principles: IAM, file sync & share,
-mail, groupware, and online office — all behind a single Traefik reverse proxy.
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![Traefik](https://img.shields.io/badge/Reverse_Proxy-Traefik_v3-24a7c0?logo=traefikproxy&logoColor=white)](https://traefik.io/)
+[![Rust](https://img.shields.io/badge/Portal-Rust_Axum-ce422b?logo=rust&logoColor=white)](https://axum.rs/)
 
-## Hardware Tiers
+</div>
 
-| Tier | Users | vCPU | RAM | Storage | Reference |
-|---|---|---|---|---|---|---|
-| **Small** | 1–50 | 4 | 16 GB | 100 GB NVMe | Hetzner CX32 |
-| **Medium** | 50–500 | 8 | 32 GB | 500 GB NVMe | Hetzner CX42 |
-| **Enterprise** | 500+ | custom | custom | custom | custom |
+---
 
-All tiers run the same Compose stack — scale vertically.
+## What is openSME?
+
+openSME is a complete, self-hosted productivity suite — file sync, mail,
+groupware, identity management, and online office — behind a single Traefik
+reverse proxy. You bring a server; Docker Compose does the rest.
+
+No vendor lock-in. No per-seat cloud fees. Your data stays on your hardware.
+
+| | |
+|---|---|
+| **IAM / SSO** | Keycloak + LDAP — OIDC, SAML, centralized auth |
+| **Files** | OpenCloud — sync, share, collaborate |
+| **Office** | Collabora — real-time document editing in the browser |
+| **Mail** | Stalwart — modern Rust SMTP/IMAP server |
+| **Groupware** | SOGo — webmail, calendar, contacts |
+| **Database** | PostgreSQL 17 + PgBouncer connection pooling |
+| **Cache** | Redis 7 + Memcached 1.6 |
+| **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
+| **Portal** | Custom Rust/Axum landing page — service directory |
 
 ## Architecture
 
-```
-                    ┌───────── Traefik (:443) ─────────┐
-                    │                                   │
-              ┌─────┴─────┐              ┌──────────────┴──┐
-              │  Portal    │              │  Keycloak/LDAP   │
-              │ (Rust/Axum) │              │   (IAM/SSO)      │
-              └─────┬─────┘              └────────┬─────────┘
-                    │                             │
-         ┌──────────┴──────────┐      ┌───────────┴──────────┐
-         │    OpenCloud +      │      │   Stalwart + SOGo     │
-         │    Collabora        │      │   (Mail + Groupware)  │
-         └──────────┬──────────┘      └──────────┬────────────┘
-                    │                             │
-              ┌─────┴─────────── PostgreSQL ──────┴──── Redis ───┐
-              │        (creates opensme + sogo DBs)             │
-              └─────────────── Memcached ───────────────────────┘
+```mermaid
+graph TB
+    subgraph Internet ["🌐 Internet"]
+        Client["Users"]
+    end
+
+    subgraph Proxy ["Reverse Proxy"]
+        Traefik["Traefik v3<br/>:443 · Let's Encrypt"]
+    end
+
+    subgraph Core ["Core Services"]
+        Portal["Portal<br/>(Rust / Axum :8080)"]
+    end
+
+    subgraph IAM ["Identity (optional overlay)"]
+        Keycloak["Keycloak 26<br/>OIDC / SAML"]
+        LDAP["OpenLDAP<br/>User directory"]
+    end
+
+    subgraph Files ["Files & Office (optional overlay)"]
+        OpenCloud["OpenCloud<br/>File sync & share"]
+        Collabora["Collabora<br/>Online office"]
+    end
+
+    subgraph Mail ["Mail & Groupware (optional overlay)"]
+        Stalwart["Stalwart<br/>SMTP / IMAP"]
+        SOGo["SOGo<br/>Webmail / Calendar"]
+    end
+
+    subgraph Data ["Data Layer"]
+        Postgres[("PostgreSQL 17<br/>+ PgBouncer")]
+        Redis[("Redis 7")]
+        Memcached[("Memcached 1.6")]
+    end
+
+    Client -->|"HTTPS"| Traefik
+    Traefik --> Portal
+    Traefik --> Keycloak
+    Traefik --> OpenCloud
+    Traefik --> Collabora
+    Traefik --> Stalwart
+    Traefik --> SOGo
+
+    Keycloak --> LDAP
+    Keycloak --> Postgres
+    OpenCloud --> Postgres
+    OpenCloud --> Redis
+    SOGo --> Postgres
+    SOGo --> Memcached
+    Stalwart --> Postgres
+
+    style Traefik fill:#1f63d9,stroke:#2f7ff2,color:#fff
+    style Portal fill:#0c1626,stroke:#2dd4bf,color:#e3ecff
+    style Keycloak fill:#0c1626,stroke:#55a3fb,color:#e3ecff
+    style LDAP fill:#0c1626,stroke:#55a3fb,color:#e3ecff
+    style OpenCloud fill:#0c1626,stroke:#2dd4bf,color:#e3ecff
+    style Collabora fill:#0c1626,stroke:#2dd4bf,color:#e3ecff
+    style Stalwart fill:#0c1626,stroke:#55a3fb,color:#e3ecff
+    style SOGo fill:#0c1626,stroke:#55a3fb,color:#e3ecff
+    style Postgres fill:#1a4fae,stroke:#2f7ff2,color:#fff
+    style Redis fill:#163d85,stroke:#55a3fb,color:#e3ecff
+    style Memcached fill:#163d85,stroke:#55a3fb,color:#e3ecff
 ```
 
 ## Quick Start
 
-```bash
-# 1. Config
-cp .env.example .env
-# Edit .env with your domains and passwords
+### 1. Clone &amp; configure
 
-# 2. Start core services
-./scripts/start.sh
+```bash
+git clone https://github.com/tobias-weiss-ai-xr/opensme-compose.git
+cd opensme-compose
+cp .env.example .env
+# Edit .env — set your domains and passwords
 ```
 
-## Services
+### 2. Start core services
 
-| Service | Domain | Overlay | Required |
-|---|---|---|---|
-| Portal | `portal.*` | Core | ✅ |
-| Traefik | `traefik.*` | Core | ✅ |
-| Keycloak + LDAP | `auth.*` | `idm/keycloak.yml` | recommended |
-| OpenCloud | `cloud.*` | `opencloud/opencloud.yml` | optional |
-| MinIO (S3) | `minio.*` | `opencloud/minio.yml` | required with OpenCloud |
-| Collabora | `collabora.*` | `opencloud/opencloud.yml` | optional |
-| Stalwart Mail | `mail.*` | `mail/stalwart.yml` | optional |
-| SOGo Webmail | `webmail.*` | `mail/sogo.yml` | optional |
+```bash
+# Portal + Traefik + PostgreSQL + Redis + Memcached
+docker compose up -d
+```
+
+### 3. Add features (overlays)
+
+```bash
+# Core + IAM + file sync + online office
+export COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml"
+docker compose up -d
+
+# Full stack (add mail + groupware)
+export COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:mail/stalwart.yml:mail/sogo.yml"
+docker compose up -d
+```
+
+### 4. Try the demo (minimal resources)
+
+```bash
+./scripts/demo.sh
+# → Portal:    http://localhost:8080
+# → Keycloak:  http://localhost:8081
+# → OpenCloud: http://localhost:8082
+```
+
+Requires **2 vCPU / 4 GB RAM** — perfect for evaluation.
+
+## Hardware Tiers
+
+All tiers run the **same Compose stack** — scale vertically, no config changes.
+
+| Tier | Users | vCPU | RAM | Storage | Reference |
+|---|---|---|---|---|---|
+| **Small** | 1–50 | 4–8 | 16–32 GB | 100–250 GB NVMe | Hetzner CX22 / CX32 |
+| **Medium** | 50–500 | 12–16 | 48–64 GB | 500 GB–1 TB NVMe | Hetzner CX42 / CX62 |
+| **Enterprise** | 500+ | Individual | | | Contact for sizing |
 
 ## Overlay System
 
-Each feature is a separate Docker Compose file.
-Combine them via `COMPOSE_FILE` env var:
+Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 
-```bash
-# All services (500-user stack):
-COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:opencloud/minio.yml:mail/stalwart.yml:mail/sogo.yml" \
-  docker compose up -d
+| Overlay | Services | Domain | When to add |
+|---|---|---|---|
+| `docker-compose.yml` | Portal, Traefik, PostgreSQL, Redis, Memcached | `portal.*` | Always (core) |
+| `idm/keycloak.yml` | Keycloak + OpenLDAP | `auth.*` | For SSO / IAM |
+| `opencloud/opencloud.yml` | OpenCloud + Collabora | `cloud.*`, `collabora.*` | For file sync & office |
+| `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
+| `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
+| `profiles/demo.dev.yml` | (overrides) | — | For demo / dev (low resources) |
 
-# Core + IAM + files (no mail):
-COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:opencloud/minio.yml" \
-  docker compose up -d
-```
+## Configuration
 
-**Important:** Compose file order matters — last file wins. Always put profiles last:
-```
-base → overlays → profile
-```
-
-## Storage
-
-OpenCloud uses [decomposed S3](https://docs.opencloud.eu/docs/deploy/storage/) by default.
-Include `opencloud/minio.yml` for a bundled MinIO instance.
-
-For local storage (no S3 needed), override in a profile:
-```yaml
-opencloud:
-  environment:
-    STORAGE_USERS_DRIVER: ocis
-```
-
-## Config
-
-See `.env.example` for all options. Key variables:
+All configuration via `.env`. See [`.env.example`](.env.example) for the full list.
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENSME_DOMAIN` | `opensme.org` | Root domain |
-| `LDAP_ROOT_DN` | `dc=opensme,dc=org` | LDAP base DN |
-| `POSTGRES_PASSWORD` | `CHANGEME_*` | DB password |
-| `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt email |
-| `TRAEFIK_USERS` | (auto-generated) | htpasswd entry for dashboard |
+| `OPENSME_DOMAIN` | `opensme.org` | Root domain for all services |
+| `POSTGRES_PASSWORD` | `CHANGEME_*` | PostgreSQL superuser password |
+| `KEYCLOAK_ADMIN_PASSWORD` | `CHANGEME_*` | Keycloak admin password |
+| `OC_ADMIN_PASSWORD` | `CHANGEME_*` | OpenCloud admin password |
+| `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt registration email |
+| `TRAEFIK_USERS` | `admin:$$apr1$$...` | Traefik dashboard basic-auth (htpasswd) |
+| `OPENSME_TIER` | `starter` | Resource profile: `starter` \| `business` \| `enterprise` |
 
-## Notes
+> **⚠️ Change all `CHANGEME_*` passwords before production!**
+> Use `openssl rand -base64 24` to generate secure values.
 
-- **Keycloak v26**: The `/auth` context path has been removed. All services use root path.
-- **SOGo + Stalwart**: Config files are templates rendered at startup via `sed`.
-- **PostgreSQL init**: `postgres-init/00-create-databases.sql` auto-creates the `sogo` database.
-- **Traefik dashboard**: Password is auto-generated by demo scripts, or set via `TRAEFIK_USERS`.
+## Scripts
+
+| Script | Description |
+|---|---|
+| `scripts/start.sh` | Start the stack (core + keycloak + opencloud) |
+| `scripts/stop.sh` | Stop all services |
+| `scripts/demo.sh` | Launch minimal demo with random passwords |
+| `scripts/backup.sh` | Backup PostgreSQL + Traefik data |
 
 ## License
 
-**Free for organizations with up to 50 users (Small tier — AGPL v3).**
-Larger deployments require a commercial license from
-[[REDACTED]](https://[REDACTED]) or
-[graphwiz.ai](https://graphwiz.ai).
-
-See [LICENSE.md](LICENSE.md) for full terms.
+**Free for organizations with up to 50 users** (Small tier — AGPL v3).
+Larger deployments require a commercial license.
 
 | Tier | Users | License |
 |---|---|---|
 | **Small** | 1–50 | ✅ Free (AGPL v3) |
 | **Medium** | 50–500 | 💰 Commercial |
-| **Enterprise** | 500+ | 💰 Custom |
+| **Enterprise** | 500+ | 💰 Individual |
 
-## Demo / Dev
-
-### Local (localhost)
-
-```bash
-./scripts/demo.sh
-```
-
-Portal, Keycloak (+LDAP), OpenCloud on localhost (port 8080).
-Good for 2 vCPU / 4 GB RAM evaluation.
-
-### Live (public HTTPS)
-
-```bash
-# 1. Point DNS to your server:
-#    home.opensme.org       → A <your-IP>
-#    auth.home.opensme.org  → A <your-IP>
-#    cloud.home.opensme.org → A <your-IP>
-
-# 2. Deploy:
-./scripts/demo-live.sh
-```
-
-One-command deploy with Let's Encrypt, auto-generated secrets.
-Minimum: 2 vCPU / 4 GB RAM, ports 80 + 443.
-
-## Development
-
-```bash
-cd portal && cargo run
-```
+See [LICENSE.md](LICENSE.md) for full terms. Commercial licenses available at
+[[REDACTED]](https://[REDACTED]) or [graphwiz.ai](https://graphwiz.ai).
 
 ## Credits
 
 Built with:
-- [Axum](https://github.com/tokio-rs/axum) — Rust web framework
-- [Traefik](https://traefik.io/) — Reverse proxy
-- [Keycloak](https://www.keycloak.org/) — IAM/SSO
-- [OpenCloud](https://opencloud.eu/) — File sync & share
-- [MinIO](https://min.io/) — S3-compatible storage
-- [Collabora](https://www.collaboraoffice.com/) — Online office
-- [Stalwart](https://stalw.art/) — Mail server (Rust)
-- [SOGo](https://www.sogo.nu/) — Groupware
+
+- [Axum](https://github.com/tokio-rs/axum) — Rust web framework (Portal)
+- [Traefik](https://traefik.io/) — Reverse proxy &amp; automatic TLS
+- [Keycloak](https://www.keycloak.org/) — Identity &amp; access management
+- [OpenCloud](https://opencloud.eu/) — File sync, share &amp; collaboration
+- [Collabora](https://www.collaboraoffice.com/) — Online office editing
+- [Stalwart](https://stalw.art/) — Modern mail server (Rust)
+- [SOGo](https://www.sogo.nu/) — Groupware &amp; webmail
+- [PostgreSQL](https://www.postgresql.org/) — Relational database
+
+<div align="center">
+
+**[Quick Start](#quick-start) · [Architecture](#architecture) · [Configuration](#configuration) · [License](#license)**
+
+</div>
