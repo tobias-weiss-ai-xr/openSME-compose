@@ -47,6 +47,7 @@ services:
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.middlewares=auth"
       # NOTE: Set TRAEFIK_USERS to a valid htpasswd entry (htpasswd -nb user pass)
       #       Default placeholder will reject all requests — change before using.
