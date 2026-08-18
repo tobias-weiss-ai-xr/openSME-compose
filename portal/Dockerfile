@@ -1,4 +1,4 @@
-ARG RUST_VERSION=1.85
+ARG RUST_VERSION=1.87
 FROM rust:${RUST_VERSION}-slim-bookworm AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
