@@ -17,17 +17,48 @@ Docker Compose-based — from 5 to 500 users.
 
 ---
 
-## What is openSME?
+## Why openSME?
 
-openSME is a complete, self-hosted productivity suite — file sync, mail,
-groupware, identity management, and online office — behind a single Traefik
-reverse proxy. You bring a server; Docker Compose does the rest.
+| | Cloud Suite (Google / Microsoft) | Nextcloud | openSME |
+|---|---|---|---|
+| **Data sovereignty** | ❌ Data on vendor servers | ✅ Self-hosted | ✅ Self-hosted |
+| **Per-seat pricing** | 💰 $6–$36/user/mo | Free (self-hosted) | Free ≤50 users |
+| **Mail server included** | Via add-on | ❌ Plugin needed | ✅ Stalwart (Rust) |
+| **Groupware (calendar/contacts)** | ✅ | ⚠️ Plugins | ✅ SOGo |
+| **Online office editing** | ✅ | ⚠️ Via Collabora | ✅ Collabora built-in |
+| **SSO / IAM** | ✅ | ❌ | ✅ Keycloak + LDAP |
+| **Single Docker Compose stack** | N/A | ❌ Manual | ✅ One `docker compose up` |
+| **AGPL — no vendor lock-in** | N/A | ✅ | ✅ |
 
-No vendor lock-in. No per-seat cloud fees. Your data stays on your hardware.
+For 50 users on Google Workspace: **$300–$1,800/month**.
+With openSME on a Hetzner CX22 (~€15/mo): **€15/month total.**
+That's a **95–99% cost reduction** while keeping full data sovereignty.
+
+### Who is this for?
+
+- **Small businesses** (5–50 users) who want Google Workspace functionality
+  without per-seat fees or data leaving their control
+- **Schools &amp; municipalities** required by law to keep data on-premises
+- **Privacy-conscious teams** who need mail, files, calendar, and office in one stack
+- **MSPs / IT consultants** deploying productivity suites for clients
 
 | | |
 |---|---|
 | **IAM / SSO** | Keycloak + LDAP — OIDC, SAML, centralized auth |
+| **Files** | OpenCloud — sync, share, collaborate |
+| **Office** | Collabora — real-time document editing in the browser |
+| **Mail** | Stalwart — modern Rust SMTP/IMAP server |
+| **Groupware** | SOGo — webmail, calendar, contacts |
+| **Database** | PostgreSQL 17 + PgBouncer connection pooling |
+| **Cache** | Redis 7 + Memcached 1.6 |
+| **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
+| **Portal** | Custom Rust/Axum landing page — service directory |
+
+## What's inside?
+
+| | |
+|---|---|
+| **IAM / SSO** | Keycloak 26 + OpenLDAP — OIDC, SAML, centralized auth |
 | **Files** | OpenCloud — sync, share, collaborate |
 | **Office** | Collabora — real-time document editing in the browser |
 | **Mail** | Stalwart — modern Rust SMTP/IMAP server |
