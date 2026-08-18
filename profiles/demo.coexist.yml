@@ -1,0 +1,102 @@
+# ═════════════════════════════════════════════════
+# openSME — Coexist Profile
+# ═══════════════════════════════════════════════════
+# Piggybacks on an EXISTING Traefik instance (no second Traefik).
+# Use when another Docker Compose project already owns ports 80/443.
+#
+# Requirements:
+#   - An existing Traefik is running with exposedByDefault=false
+#   - Its Docker network is accessible (default: opencloud-compose_opencloud-net)
+#   - Its entrypoints are named 'http' and 'https' (standard)
+#
+# What this does:
+#   - Disables our Traefik (the existing one handles routing + TLS)
+#   - Moves all services to the existing Traefik's Docker network
+#   - Rewrites all Traefik labels to use existing entrypoint names
+#   - Removes port 80/443 bindings and dashboard labels
+#
+# Use with demo-live.sh by setting COMPOSE_PROFILE=coexist:
+#   COMPOSE_PROFILE=coexist ./scripts/demo-live.sh
+#
+# Or manually:
+#   COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:profiles/demo.live.yml:profiles/demo.coexist.yml" \
+#     docker compose up -d
+# ═══════════════════════════════════════════════════
+
+# Network: join the existing Traefik's Docker network.
+# Adjust EXISTING_NETWORK to match your setup.
+# Find it: docker inspect <traefik-container> --format '{{range $n, $_ := .NetworkSettings.Networks}}{{$n}}'
+networks:
+  opensme-net:
+    name: ${EXISTING_NETWORK:-opencloud-compose_opencloud-net}
+    external: true
+
+services:
+  # ── Disable our Traefik entirely ───────────────
+  traefik:
+    profiles:
+      - donotstart
+
+  # ── PostgreSQL ────────────────────────────────
+  postgres:
+    networks: []
+
+  # ── Redis ────────────────────────────────────
+  redis:
+    networks: []
+
+  # ── Memcached ──────────────────────────────
+  memcached:
+    networks: []
+
+  # ── Portal ───────────────────────────────────
+  # Override labels: use 'https' entrypoint (not 'websecure')
+  portal:
+    ports: []
+    networks: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opensme-portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.opensme-portal.tls=true"
+      - "traefik.http.routers.opensme-portal.entrypoints=https"
+      - "traefik.http.services.opensme-portal.loadbalancer.server.port=8080"
+
+  # ── Keycloak ────────────────────────────────
+  keycloak:
+    networks: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opensme-keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.opensme-keycloak.tls=true"
+      - "traefik.http.routers.opensme-keycloak.entrypoints=https"
+      - "traefik.http.services.opensme-keycloak.loadbalancer.server.port=8080"
+
+  # ── LDAP ───────────────────────────────────
+  ldap:
+    networks: []
+
+  # ── OpenCloud ──────────────────────────────
+  opencloud:
+    networks: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opensme-opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
+      - "traefik.http.routers.opensme-opencloud.tls=true"
+      - "traefik.http.routers.opensme-opencloud.entrypoints=https"
+      - "traefik.http.services.opensme-opencloud.loadbalancer.server.port=9200"
+
+  # ── MinIO ──────────────────────────────────
+  minio:
+    networks: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opensme-minio.rule=Host(`minio.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.opensme-minio.tls=true"
+      - "traefik.http.routers.opensme-minio.entrypoints=https"
+      - "traefik.http.services.opensme-minio.loadbalancer.server.port=9000"
+
+  # ── MinIO Console ────────────────────────
+  # Use a dedicated router name to avoid conflicts with existing 'minio'
+  # (override the default from minio.yml which names it 'minio-console')
+  # NOTE: This router is defined in minio.yml; we override it here.
+    # (No additional override needed — the router name 'minio-console' is unique)

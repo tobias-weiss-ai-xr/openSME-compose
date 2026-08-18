@@ -3,8 +3,12 @@
 # openSME — Live Demo Deployer
 # ═══════════════════════════════════════════════════════════════
 # One-command deploy for home.opensme.org.
-# Starts: Traefik, Portal, PostgreSQL, Redis, Memcached, Keycloak, OpenCloud.
+# Starts: Portal, PostgreSQL, Redis, Memcached, Keycloak, OpenCloud.
 # Skips:  PgBouncer, LDAP, Collabora, Stalwart, SOGo.
+#
+# Modes:
+#   Normal:         Runs its own Traefik on ports 80/443.
+#   Coexist:       Piggybacks on an existing Traefik (set COMPOSE_PROFILE=coexist).
 #
 # Prerequisites:
 #   - Docker + Compose v2
