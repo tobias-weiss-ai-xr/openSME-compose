@@ -81,7 +81,6 @@ services:
 
   # ── Portal (no raw port, Traefik-only) ────────
   portal:
-    ports: []                          # remove localhost:8080, route via Traefik only
     depends_on:
       postgres:
         condition: service_healthy

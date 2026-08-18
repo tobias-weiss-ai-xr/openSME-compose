@@ -222,8 +222,6 @@ services:
       KEYCLOAK_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}
       COLLABORA_URL: ${COLLABORA_URL:-}
       RUST_LOG: ${LOG_LEVEL:-info}
-    ports:
-      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy

@@ -52,7 +52,6 @@ services:
 
   # ── Portal ───────────────────────────────────
   portal:
-    ports: []
     networks: []
     labels:
       - "traefik.enable=true"
