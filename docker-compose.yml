@@ -13,9 +13,13 @@
 
 services:
   # ── Reverse Proxy ───────────────────────────
+  # Built-in Traefik for standalone deployments. On shared hosts with a
+  # system Traefik, use profiles/system-traefik.yml to disable this and
+  # connect the portal to the host's traefik-web network instead.
   traefik:
     image: traefik:v3.3
     container_name: opensme-traefik
+    profiles: ["standalone"]
     restart: unless-stopped
     command:
       - "--providers.docker=true"

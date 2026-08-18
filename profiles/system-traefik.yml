@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════
+# openSME — System Traefik Profile
+# ═══════════════════════════════════════════════
+# Use when the host already has a system Traefik (e.g. on a shared server).
+# Disables the built-in Traefik and connects the portal to the host's
+# traefik-web network with labels for the system Traefik's cert resolver.
+#
+# Usage:
+#   COMPOSE_FILE="docker-compose.yml:profiles/system-traefik.yml" docker compose up -d
+#
+# Requirements:
+#   - External network "traefik-web" must exist (created by system Traefik)
+#   - System Traefik must use certresolver "mytlschallenge"
+#   - DNS A records for PORTAL_DOMAIN (and other service domains) must point to the host
+# ═══════════════════════════════════════════════
+
+services:
+  # ── Disable built-in Traefik ─────────────────
+  traefik:
+    profiles:
+      - donotstart
+
+  # ── Portal (system Traefik labels) ───────────
+  portal:
+    networks:
+      - opensme-net
+      - traefik-web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-web"
+      - "traefik.http.routers.portal-http.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.portal-http.entrypoints=web"
+      - "traefik.http.routers.portal-http.middlewares=https-redirect@file"
+      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.portal.entrypoints=websecure"
+      - "traefik.http.routers.portal.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.portal.loadbalancer.server.port=8080"
+    ports: !reset []
+
+networks:
+  opensme-net:
+    name: opensme-net
+    driver: bridge
+  traefik-web:
+    external: true
+    name: traefik-web
