@@ -13,8 +13,8 @@ services:
     environment:
       LDAP_ADMIN_USERNAME: admin
       LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}
-      LDAP_ROOT: dc=${OPENSME_DOMAIN:-opensme},dc=example,dc=com
-      LDAP_ADMIN_DN: cn=admin,dc=${OPENSME_DOMAIN:-opensme},dc=example,dc=com
+      LDAP_ROOT: ${LDAP_ROOT_DN:-dc=opensme,dc=org}
+      LDAP_ADMIN_DN: cn=admin,${LDAP_ROOT_DN:-dc=opensme,dc=org}
       LDAP_USERS: user01,user02
       LDAP_PASSWORDS: ${LDAP_USER_PASSWORD:-CHANGEME_user}
     healthcheck:
@@ -75,6 +75,7 @@ services:
       - "traefik.http.routers.keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.org}`)"
       - "traefik.http.routers.keycloak.tls=true"
       - "traefik.http.routers.keycloak.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
     deploy:
       resources:

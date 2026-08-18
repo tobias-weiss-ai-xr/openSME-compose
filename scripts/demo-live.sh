@@ -89,6 +89,9 @@ PORTAL_DOMAIN=home.opensme.org
 KEYCLOAK_DOMAIN=auth.home.opensme.org
 OPENCLOUD_DOMAIN=cloud.home.opensme.org
 
+# ── LDAP ──
+LDAP_ROOT_DN=dc=opensme,dc=org
+
 # ── Database ──
 POSTGRES_PASSWORD=$(pw)
 KEYCLOAK_DB_PASSWORD=$(pw)
@@ -106,6 +109,10 @@ KEYCLOAK_ADMIN_PASSWORD=$(pw)
 OC_ADMIN_USERNAME=admin
 OC_ADMIN_PASSWORD=$(pw)
 OC_OIDC_SECRET=$(pw)
+
+# ── Portal (empty = hidden from landing page) ──
+MAIL_URL=
+COLLABORA_URL=
 
 # ── Traefik ──
 TRAEFIK_ACME_EMAIL=${ACME_EMAIL}
@@ -211,6 +218,7 @@ wait_for_healthy() {
 wait_for_healthy "opensme-postgres" 60
 wait_for_healthy "opensme-redis"    30
 wait_for_healthy "opensme-keycloak"  120 || true
+wait_for_healthy "opensme-opencloud"  120 || true
 
 # ── Summary ────────────────────────────────────────
 ADMIN_PW=$(grep KEYCLOAK_ADMIN_PASSWORD .env | cut -d= -f2)

@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::signal;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -28,6 +28,15 @@ struct Service {
     url: String,
 }
 
+/// HTML-escape a string to prevent XSS in rendered templates.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+
 fn load_env(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| {
         warn!(%key, "environment variable not set, using default");
@@ -40,18 +49,20 @@ fn build_landing_page(config: &AppConfig) -> String {
     let cards: String = services
         .iter()
         .map(|s| {
+            let name = html_escape(&s.name);
+            let desc = html_escape(&s.description);
+            let url = html_escape(&s.url);
             format!(
-                r#"<a href="{url}" class="card" target="_blank" rel="noopener">
+                r#"<a href="{url}" class="card" target="_blank" rel="noopener noreferrer">
                 <h2>{name}</h2>
                 <p>{desc}</p>
-            </a>"#,
-                url = s.url,
-                name = s.name,
-                desc = s.description
+            </a>"#
             )
         })
         .collect::<Vec<_>>()
         .join("\n");
+
+    let domain = html_escape(&config.opensme_domain);
 
     format!(
         r#"<!DOCTYPE html>
@@ -60,6 +71,7 @@ fn build_landing_page(config: &AppConfig) -> String {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>openSME Portal</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:;">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -145,35 +157,51 @@ fn build_landing_page(config: &AppConfig) -> String {
         openSME Portal &mdash; {domain}
     </footer>
 </body>
-</html>"#,
-        cards = cards,
-        domain = config.opensme_domain
+</html>"#
     )
 }
 
+/// Return only services that have a non-default URL (i.e. actually configured).
 fn get_services(config: &AppConfig) -> Vec<Service> {
-    vec![
-        Service {
-            name: "OpenCloud".into(),
-            description: "Cloud storage, file sharing and collaboration".into(),
-            url: config.opencloud_url.clone(),
-        },
-        Service {
-            name: "Webmail".into(),
-            description: "SOGo groupware — email, calendar and contacts".into(),
-            url: config.mail_url.clone(),
-        },
-        Service {
-            name: "Collabora".into(),
-            description: "Online document editing".into(),
-            url: config.collabora_url.clone(),
-        },
-        Service {
+    let mut services = Vec::new();
+
+    // Only include Keycloak — always expected
+    if !config.keycloak_url.is_empty() {
+        services.push(Service {
             name: "Keycloak".into(),
             description: "Single sign-on and identity management".into(),
             url: config.keycloak_url.clone(),
-        },
-    ]
+        });
+    }
+
+    // OpenCloud — only if URL differs from the raw default
+    if !config.opencloud_url.is_empty() {
+        services.push(Service {
+            name: "OpenCloud".into(),
+            description: "Cloud storage, file sharing and collaboration".into(),
+            url: config.opencloud_url.clone(),
+        });
+    }
+
+    // Collabora — only if explicitly configured (not empty)
+    if !config.collabora_url.is_empty() {
+        services.push(Service {
+            name: "Collabora".into(),
+            description: "Online document editing".into(),
+            url: config.collabora_url.clone(),
+        });
+    }
+
+    // Webmail — only if explicitly configured (not empty)
+    if !config.mail_url.is_empty() {
+        services.push(Service {
+            name: "Webmail".into(),
+            description: "Email, calendar and contacts".into(),
+            url: config.mail_url.clone(),
+        });
+    }
+
+    services
 }
 
 async fn handle_root(State(config): State<Arc<AppConfig>>) -> impl IntoResponse {
@@ -185,19 +213,22 @@ async fn handle_health() -> impl IntoResponse {
     Json(serde_json::json!({"status": "ok"}))
 }
 
-async fn handle_services(
-    State(config): State<Arc<AppConfig>>,
-) -> impl IntoResponse {
+async fn handle_services(State(config): State<Arc<AppConfig>>) -> impl IntoResponse {
     let services = get_services(&config);
     Json(serde_json::json!({ "services": services }))
 }
 
 fn build_router(config: Arc<AppConfig>) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     Router::new()
         .route("/", get(handle_root))
         .route("/health", get(handle_health))
         .route("/api/services", get(handle_services))
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .with_state(config)
 }
 
@@ -237,9 +268,9 @@ fn load_config() -> AppConfig {
         portal_domain: load_env("PORTAL_DOMAIN", "portal.opensme.org"),
         opensme_domain: load_env("OPENSME_DOMAIN", "opensme.org"),
         opencloud_url: load_env("OPENCLOUD_URL", "https://cloud.opensme.org"),
-        mail_url: load_env("MAIL_URL", "https://webmail.opensme.org"),
-        keycloak_url: load_env("KEYCLOAK_URL", "https://auth.opensme.org"),
-        collabora_url: load_env("COLLABORA_URL", "https://collabora.opensme.org"),
+        mail_url: load_env("MAIL_URL", ""),
+        keycloak_url: load_env("KEYCLOAK_URL", "https://auth.opensme.org/auth"),
+        collabora_url: load_env("COLLABORA_URL", ""),
     }
 }
 

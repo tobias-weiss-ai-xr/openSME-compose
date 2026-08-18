@@ -1,13 +1,15 @@
-# ═══════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
 # openSME — Core Services
-# ═══════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
 # Always runs: Traefik, PostgreSQL (+ PgBouncer), Redis, Memcached, Portal
 # Add features via COMPOSE_FILE:
 #   idm/keycloak.yml    → Keycloak + LDAP (IAM/SSO)
 #   opencloud/...yml    → OpenCloud (files/collaboration)
 #   mail/stalwart.yml   → Stalwart (mail server)
 #   mail/sogo.yml       → SOGo (webmail/groupware)
-# ═══════════════════════════════════════════════
+#
+# Compose file order matters: base → overlays → profile (last wins).
+# ═══════════════════════════════════════════════════════════════
 
 services:
   # ── Reverse Proxy ───────────────────────────
@@ -43,8 +45,12 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.org}`)"
       - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.middlewares=auth"
-      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_USERS:-admin:$$2y$$10$$CHANGEME}"
+      # NOTE: Set TRAEFIK_USERS to a valid htpasswd entry (htpasswd -nb user pass)
+      #       Default placeholder will reject all requests — change before using.
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_USERS:-admin:$$apr1$$CHANGEME}"
     deploy:
       resources:
         limits:
@@ -65,8 +71,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
       POSTGRES_USER: opensme
       POSTGRES_DB: opensme
-      # Production tuning for up to 500 users
-      POSTGRES_CONFIG_FILE: /etc/postgresql/postgresql.conf
+    # Production tuning for up to 500 users (via CLI args)
     command:
       - "-c"
       - "shared_buffers=1GB"
@@ -207,9 +212,9 @@ services:
       PORTAL_DOMAIN: ${PORTAL_DOMAIN:-portal.opensme.org}
       OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
       OPENCLOUD_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}
-      MAIL_URL: https://${SOGO_DOMAIN:-webmail.opensme.org}
+      MAIL_URL: ${MAIL_URL:-}
       KEYCLOAK_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}/auth
-      COLLABORA_URL: https://${COLLABORA_DOMAIN:-collabora.opensme.org}
+      COLLABORA_URL: ${COLLABORA_URL:-}
       RUST_LOG: ${LOG_LEVEL:-info}
     ports:
       - "127.0.0.1:8080:8080"
@@ -223,6 +228,7 @@ services:
       - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
       - "traefik.http.routers.portal.tls=true"
       - "traefik.http.routers.portal.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.portal.entrypoints=websecure"
       - "traefik.http.services.portal.loadbalancer.server.port=8080"
     deploy:
       resources:

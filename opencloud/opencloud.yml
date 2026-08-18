@@ -1,6 +1,9 @@
 # ── OpenCloud + Collabora overlay ──────────────
 # Include via: COMPOSE_FILE=docker-compose.yml:opencloud/opencloud.yml
 # Provides file sync/sharing + online office editing.
+#
+# NOTE: Production uses decomposeds3 storage — a MinIO service must be
+#       added separately, or override STORAGE_USERS_DRIVER=ocis for local storage.
 
 services:
   opencloud:
@@ -49,6 +52,7 @@ services:
       - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
       - "traefik.http.routers.opencloud.tls=true"
       - "traefik.http.routers.opencloud.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.opencloud.entrypoints=websecure"
       - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
     deploy:
       resources:
@@ -90,6 +94,7 @@ services:
       - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.org}`)"
       - "traefik.http.routers.collabora.tls=true"
       - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.collabora.entrypoints=websecure"
       - "traefik.http.services.collabora.loadbalancer.server.port=9980"
     deploy:
       resources:

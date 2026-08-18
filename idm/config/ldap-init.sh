@@ -2,10 +2,13 @@
 # ── openSME LDAP initialization ─────────────
 # Runs on first container start via docker-entrypoint-init.d
 # Creates organizational units and sample users.
+#
+# Uses LDAP_ROOT_DN env var (set in idm/keycloak.yml).
+# Falls back to dc=opensme,dc=org for backward compat.
 
 set -e
 
-LDAP_BASE_DN="dc=opensme,dc=org"
+LDAP_BASE_DN="${LDAP_ROOT_DN:-dc=opensme,dc=org}"
 LDAP_ADMIN_DN="cn=admin,${LDAP_BASE_DN}"
 LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}"
 
@@ -20,37 +23,24 @@ add_ldif() {
     -f "${ldif_file}"
 }
 
-# Create organizational structure
-cat > /tmp/ou-people.ldif <<EOF
-dn: ou=people,${LDAP_BASE_DN}
+# ── Organizational structure ────────────────
+for ou in people groups apps; do
+  cat > "/tmp/ou-${ou}.ldif" <<EOF
+dn: ou=${ou},${LDAP_BASE_DN}
 objectClass: organizationalUnit
-ou: people
+ou: ${ou}
 EOF
+  add_ldif "/tmp/ou-${ou}.ldif" 2>/dev/null || true
+done
 
-cat > /tmp/ou-groups.ldif <<EOF
-dn: ou=groups,${LDAP_BASE_DN}
-objectClass: organizationalUnit
-ou: groups
-EOF
-
-cat > /tmp/ou-apps.ldif <<EOF
-dn: ou=apps,${LDAP_BASE_DN}
-objectClass: organizationalUnit
-ou: apps
-EOF
-
-# Add organizational units
-add_ldif /tmp/ou-people.ldif 2>/dev/null || true
-add_ldif /tmp/ou-groups.ldif 2>/dev/null || true
-add_ldif /tmp/ou-apps.ldif 2>/dev/null || true
-
-# Create groups
+# ── Groups ───────────────────────────────────
 cat > /tmp/group-admins.ldif <<EOF
 dn: cn=admins,ou=groups,${LDAP_BASE_DN}
 objectClass: groupOfNames
 cn: admins
 member: cn=admin,${LDAP_BASE_DN}
 EOF
+add_ldif /tmp/group-admins.ldif 2>/dev/null || true
 
 cat > /tmp/group-users.ldif <<EOF
 dn: cn=users,ou=groups,${LDAP_BASE_DN}
@@ -59,8 +49,6 @@ cn: users
 member: uid=user01,ou=people,${LDAP_BASE_DN}
 member: uid=user02,ou=people,${LDAP_BASE_DN}
 EOF
-
-add_ldif /tmp/group-admins.ldif 2>/dev/null || true
 add_ldif /tmp/group-users.ldif 2>/dev/null || true
 
 echo "LDAP initialization complete."

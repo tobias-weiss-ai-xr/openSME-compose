@@ -1,5 +1,8 @@
 # Stalwart Mail Server — production config for up to 500 users
 # Full config is persisted to stalwart-etc volume on first start.
+# NOTE: TLS certificate paths are for Traefik-provided certs or must be
+#       provisioned separately. Set acme.enable=true in production for
+#       auto-provisioned certs, or mount certs into the stalwart-etc volume.
 
 [session]
 threads = 8
@@ -23,9 +26,11 @@ fts = "internal"
 fts.index_dir = "/var/lib/stalwart/fts"
 
 [tls]
-enable = true
-certificate = "/etc/stalwart/certs/cert.pem"
-private-key = "/etc/stalwart/certs/key.pem"
+# Certs are auto-provisioned by Stalwart's built-in ACME or mounted manually.
+# For first-time setup, comment out certificate/private-key to skip TLS.
+# enable = true
+# certificate = "/etc/stalwart/certs/cert.pem"
+# private-key = "/etc/stalwart/certs/key.pem"
 
 [lmdb]
 path = "/var/lib/stalwart/data"
@@ -54,6 +59,7 @@ max-concurrent-requests = 100
 rate-limit = "200/1m"
 
 [acme]
+# Enable in production for auto-provisioned TLS certs
 enable = false
 
 [authentication]

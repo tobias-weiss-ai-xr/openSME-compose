@@ -6,8 +6,7 @@
 #   - Local development
 #   - CI/CD pipelines
 #
-# Use: docker compose -f docker-compose.yml -f profiles/demo.dev.yml up -d
-# OR:  COMPOSE_FILE="docker-compose.yml:profiles/demo.dev.yml" docker compose up -d
+# Use: docker compose -f docker-compose.yml -f idm/keycloak.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml up -d
 # ═══════════════════════════════════════════════
 
 services:
@@ -111,10 +110,11 @@ services:
           cpus: "0.5"
           memory: 512M
 
-  # ── OpenCloud (minimal, no antivirus) ────────
+  # ── OpenCloud (minimal, local storage, no antivirus) ─
   opencloud:
     environment:
       OC_ADD_RUN_SERVICES: "notifications"
+      STORAGE_USERS_DRIVER: ocis
     deploy:
       resources:
         limits:

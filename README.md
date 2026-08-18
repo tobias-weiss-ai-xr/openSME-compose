@@ -10,9 +10,9 @@ mail, groupware, and online office — all behind a single Traefik reverse proxy
 
 | Tier | Users | vCPU | RAM | Storage | Reference |
 |---|---|---|---|---|---|---|
-| **Small** | 1–50 | 4–8 | 16–32 GB | 100–250 GB NVMe | Hetzner CX22 / CX32 |
-| **Medium** | 50–500 | 12–16 | 48–64 GB | 500 GB–1 TB NVMe | Hetzner CX42 / CX62 |
-| **Enterprise** | 500+ | individuell | | | |
+| **Small** | 1–50 | 4 | 16 GB | 100 GB NVMe | Hetzner CX32 |
+| **Medium** | 50–500 | 8 | 32 GB | 500 GB NVMe | Hetzner CX42 |
+| **Enterprise** | 500+ | custom | custom | custom | custom |
 
 All tiers run the same Compose stack — scale vertically.
 
@@ -45,10 +45,6 @@ cp .env.example .env
 
 # 2. Start core services
 ./scripts/start.sh
-
-# 3. Add IAM + file sync
-export COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml"
-docker compose up -d
 ```
 
 ## Services
@@ -74,6 +70,23 @@ COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:mail/s
   docker compose up -d
 ```
 
+**Important:** Compose file order matters — last file wins. Always put profiles last:
+```
+base → overlays → profile
+```
+
+## Storage
+
+OpenCloud uses [decomposed S3](https://docs.opencloud.eu/docs/deploy/storage/) by default.
+A MinIO service must be added separately, or override with local storage:
+
+```yaml
+# In your profile overlay:
+opencloud:
+  environment:
+    STORAGE_USERS_DRIVER: ocis   # built-in local storage, no S3 needed
+```
+
 ## Config
 
 See `.env.example` for all options. Key variables:
@@ -81,8 +94,10 @@ See `.env.example` for all options. Key variables:
 | Variable | Default | Description |
 |---|---|---|
 | `OPENSME_DOMAIN` | `opensme.org` | Root domain |
+| `LDAP_ROOT_DN` | `dc=opensme,dc=org` | LDAP base DN (derived from domain) |
 | `POSTGRES_PASSWORD` | `CHANGEME_*` | DB password |
 | `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt email |
+| `TRAEFIK_USERS` | (placeholder) | htpasswd entry for Traefik dashboard |
 
 ## License
 
@@ -97,7 +112,7 @@ See [LICENSE.md](LICENSE.md) for full terms.
 |---|---|---|
 | **Small** | 1–50 | ✅ Free (AGPL v3) |
 | **Medium** | 50–500 | 💰 Commercial |
-| **Enterprise** | 500+ | 💰 Individuell |
+| **Enterprise** | 500+ | 💰 Custom |
 
 ## Demo / Dev
 
@@ -107,7 +122,7 @@ See [LICENSE.md](LICENSE.md) for full terms.
 ./scripts/demo.sh
 ```
 
-Portal, Keycloak, OpenCloud on localhost ports (8080–8082).
+Portal, Keycloak, OpenCloud on localhost (port 8080).
 Good for 2 vCPU / 4 GB RAM evaluation.
 
 ### Live (public HTTPS)

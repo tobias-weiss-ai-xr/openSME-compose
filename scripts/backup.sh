@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # ── openSME — Backup ───────────────────
-# Backs up PostgreSQL (all databases) and persistent volumes.
+# Backs up PostgreSQL (all databases) via docker exec.
+# Persistent Docker volumes can be backed up via:
+#   docker run --rm -v <src_vol>:/data -v $(pwd)/backups:/backup \
+#     alpine tar czf /backup/vol_<timestamp>.tar.gz /data
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
+
+# Read active compose file (default: core + keycloak + opencloud)
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml}"
+export COMPOSE_FILE
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
@@ -17,11 +24,6 @@ echo "   → PostgreSQL..."
 docker compose exec -T postgres pg_dumpall -U opensme \
   | gzip > "${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz"
 
-# Alertmanager keys etc.
-echo "   → Traefik data..."
-docker compose run --rm -v "${PWD}/backups:/backups" alpine \
-  tar czf "/backups/traefik_${TIMESTAMP}.tar.gz" -C /var/lib/docker/volumes opensme-compose_traefik-data 2>/dev/null || true
-
 echo ""
 echo "✅ Backup complete: ${BACKUP_DIR}/"
-ls -lh "${BACKUP_DIR}/"
+ls -lh "${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz"
