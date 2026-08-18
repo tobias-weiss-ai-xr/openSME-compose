@@ -134,6 +134,19 @@ graph TB
     style Memcached fill:#163d85,stroke:#55a3fb,color:#e3ecff
 ```
 
+## Prerequisites
+
+| Requirement | Minimum | Recommended |
+|---|---|---|
+| **OS** | Linux (Docker required) | Ubuntu 22.04+ / Debian 12+ |
+| **Docker** | 24.0+ | 25.0+ |
+| **Docker Compose** | v2.20+ | v2.29+ |
+| **RAM** | 4 GB (demo) | 16 GB (Small) — 64 GB (Medium) |
+| **CPU** | 2 vCPU (demo) | 4–16 vCPU |
+| **Disk** | 20 GB SSD | 100 GB–1 TB NVMe |
+| **Domain** | One A record | Wildcard or per-service A records |
+| **Ports** | 80, 443 open | — |
+
 ## Quick Start
 
 ### 1. Clone &amp; configure
@@ -197,6 +210,124 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
 | `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
 | `profiles/demo.dev.yml` | (overrides) | — | For demo / dev (low resources) |
+
+## Project Structure
+
+```
+opensme-compose/
+├── docker-compose.yml          # Core: Traefik, PostgreSQL, Redis, Memcached, Portal
+├── .env.example                # All configuration variables
+├── idm/
+│   └── keycloak.yml            # Overlay: Keycloak + OpenLDAP (IAM/SSO)
+├── opencloud/
+│   └── opencloud.yml           # Overlay: OpenCloud + Collabora (files & office)
+├── mail/
+│   ├── stalwart.yml            # Overlay: Stalwart mail server
+│   └── sogo.yml                # Overlay: SOGo groupware (webmail/calendar)
+├── profiles/
+│   └── demo.dev.yml            # Profile: minimal resources for demo/dev
+├── portal/                     # Rust/Axum portal (service directory)
+│   ├── Cargo.toml
+│   ├── Dockerfile              # Multi-stage build with cargo-chef
+│   └── src/main.rs
+├── scripts/
+│   ├── start.sh                # Start stack (core + keycloak + opencloud)
+│   ├── stop.sh                 # Stop all services
+│   ├── demo.sh                 # One-command demo with random passwords
+│   └── backup.sh               # Backup PostgreSQL + Traefik data
+├── traefik/
+│   └── traefik.yml             # Traefik static configuration reference
+└── docs/
+    └── assets/
+        └── teaser.svg          # README banner image
+```
+
+## Development
+
+The Portal is a Rust application using [Axum](https://axum.rs/):
+
+```bash
+cd portal
+cargo run
+# → Portal listening on 0.0.0.0:8080
+```
+
+Environment variables for local development:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORTAL_DOMAIN` | `portal.opensme.org` | Portal hostname |
+| `OPENSME_DOMAIN` | `opensme.org` | Root domain |
+| `OPENCLOUD_URL` | `https://cloud.opensme.org` | OpenCloud link |
+| `MAIL_URL` | `https://webmail.opensme.org` | Webmail link |
+| `KEYCLOAK_URL` | `https://auth.opensme.org` | Keycloak link |
+| `COLLABORA_URL` | `https://collabora.opensme.org` | Collabora link |
+
+## Troubleshooting
+
+<details>
+<summary><b>Port 80/443 already in use</b></summary>
+
+Traefik binds `:80` and `:443`. Stop conflicting services:
+
+```bash
+sudo lsof -i :80 -i :443
+# Or on systemd hosts: sudo systemctl stop nginx caddy
+```
+
+For local development, map services to different ports in `.env`.
+</details>
+
+<details>
+<summary><b>Let's Encrypt rate limits</b></summary>
+
+Traefik uses Let's Encrypt's HTTP-01 challenge. If you hit rate limits:
+
+1. Set `TRAEFIK_ACME_ENABLED=false` in `.env` during testing
+2. Use the `demo.sh` script (no TLS needed)
+3. Wait 1 hour for the rate limit window to reset
+
+Production: ensure `TRAEFIK_ACME_EMAIL` is set and DNS A records point to your server.
+</details>
+
+<details>
+<summary><b>PostgreSQL won't start</b></summary>
+
+```bash
+# Check logs
+docker compose logs postgres
+
+# Common fix: remove stale data volume (⚠️ data loss!)
+docker compose down -v
+```
+
+If `POSTGRES_PASSWORD` was changed after first start, the existing volume
+keeps the old password. Remove the volume or update the password inside psql.
+</details>
+
+<details>
+<summary><b>Keycloak returns 502 / startup timeout</b></summary>
+
+Keycloak needs 60+ seconds on first start (realm import). Check:
+
+```bash
+docker compose logs -f keycloak
+# Wait for "Keycloak started in X seconds"
+```
+
+If PgBouncer isn't running, Keycloak can't reach PostgreSQL. Verify:
+```bash
+docker compose ps pgbouncer
+```
+</details>
+
+<details>
+<summary><b>OpenCloud can't connect to Keycloak</b></summary>
+
+Verify that `OC_OIDC_ISSUER` matches your Keycloak realm URL. The default
+realm is `opensme`. Check Keycloak's realm settings at
+`https://auth.your-domain/auth/admin/`.
+</details>
 
 ## Configuration
 
