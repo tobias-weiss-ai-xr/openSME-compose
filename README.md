@@ -101,12 +101,29 @@ See [LICENSE.md](LICENSE.md) for full terms.
 
 ## Demo / Dev
 
+### Local (localhost)
+
 ```bash
 ./scripts/demo.sh
 ```
 
-Starts Portal + Keycloak + OpenCloud on minimal resources.
+Portal, Keycloak, OpenCloud on localhost ports (8080–8082).
 Good for 2 vCPU / 4 GB RAM evaluation.
+
+### Live (public HTTPS)
+
+```bash
+# 1. Point DNS to your server:
+#    home.opensme.org       → A <your-IP>
+#    auth.home.opensme.org  → A <your-IP>
+#    cloud.home.opensme.org → A <your-IP>
+
+# 2. Deploy:
+./scripts/demo-live.sh
+```
+
+One-command deploy with Let's Encrypt, auto-generated secrets.
+Minimum: 2 vCPU / 4 GB RAM, ports 80 + 443.
 
 ## Development
 

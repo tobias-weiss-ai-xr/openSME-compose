@@ -1,0 +1,145 @@
+# ═════════════════════════════════════════════════
+# openSME — Live Demo Profile
+# ═════════════════════════════════════════════════
+# Public-facing demo with Let's Encrypt HTTPS.
+# Minimal footprint: ~2 vCPU, 4 GB RAM.
+#
+# Use: COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:profiles/demo.live.yml"
+#   docker compose up -d
+#
+# Included:  Portal, Traefik, PostgreSQL, Redis, Memcached, Keycloak, OpenCloud
+# Excluded:  PgBouncer, LDAP, Collabora, Stalwart, SOGo
+# ═════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL (minimal for demo) ─────────────
+  postgres:
+    command:
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=512MB"
+      - "-c"
+      - "work_mem=8MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=100"
+      - "-c"
+      - "wal_buffers=4MB"
+      - "-c"
+      - "min_wal_size=256MB"
+      - "-c"
+      - "max_wal_size=1GB"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  # ── Skip PgBouncer (direct PG connect in demo) ─
+  pgbouncer:
+    profiles:
+      - donotstart
+
+  # ── Redis (minimal, no persistence) ──────────
+  redis:
+    command:
+      - redis-server
+      - --save ""
+      - --appendonly no
+      - --maxmemory 256mb
+      - --maxmemory-policy allkeys-lru
+      - --loglevel warning
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # ── Memcached (minimal) ──────────────────────
+  memcached:
+    command: memcached -m 128 -c 1024 -t 2
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ── Portal (no raw port, Traefik-only) ────────
+  portal:
+    ports: []                          # remove localhost:8080, route via Traefik only
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+  # ── Keycloak (direct PG, no pool) ──────────────
+  keycloak:
+    environment:
+      KC_DB_URL: jdbc:postgresql://postgres:5432/opensme
+      KC_DB_POOL_INITIAL_SIZE: 2
+      KC_DB_POOL_MIN_SIZE: 2
+      KC_DB_POOL_MAX_SIZE: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── LDAP — skip for demo (Keycloak built-in user store) ──
+  ldap:
+    profiles:
+      - donotstart
+
+  # ── OpenCloud (local storage, no S3/MinIO) ───
+  opencloud:
+    environment:
+      OC_ADD_RUN_SERVICES: "notifications"
+      STORAGE_USERS_DRIVER: ocis
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── Collabora — skip (too heavy for demo) ─────
+  collabora:
+    profiles:
+      - donotstart
+
+  # ── Stalwart — skip ──────────────────────────
+  stalwart:
+    profiles:
+      - donotstart
+
+  # ── SOGo — skip ──────────────────────────────
+  sogo:
+    profiles:
+      - donotstart
