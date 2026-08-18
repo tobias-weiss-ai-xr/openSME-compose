@@ -30,6 +30,7 @@ services:
       OC_OIDC_ISSUER: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}/realms/opensme
       OC_OIDC_CLIENT_ID: opencloud
       OC_OIDC_CLIENT_SECRET: ${OC_OIDC_SECRET:-CHANGEME_oidc_secret}
+      OC_JWT_SECRET: ${OC_JWT_SECRET:-CHANGEME_jwt_secret}
       PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
       STORAGE_USERS_DRIVER: decomposeds3
       DECOMPOSEDS3_ENDPOINT: ${OC_S3_ENDPOINT:-http://minio:9000}

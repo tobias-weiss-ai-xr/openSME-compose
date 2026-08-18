@@ -38,7 +38,7 @@ services:
     image: quay.io/keycloak/keycloak:26.1
     container_name: opensme-keycloak
     restart: unless-stopped
-    command: start --optimized
+    command: start
     depends_on:
       postgres:
         condition: service_healthy
