@@ -6,8 +6,8 @@
 #
 # Requirements:
 #   - An existing Traefik is running with exposedByDefault=false
-#   - Its Docker network is accessible (default: opencloud-compose_opencloud-net)
-#   - Its entrypoints are named 'http' and 'https' (standard)
+#   - Its Docker network is accessible (default: traefik-web)
+#   - Its HTTPS entrypoint name is configurable (default: websecure)
 #
 # What this does:
 #   - Disables our Traefik (the existing one handles routing + TLS)
@@ -15,20 +15,21 @@
 #   - Rewrites all Traefik labels to use existing entrypoint names
 #   - Removes port 80/443 bindings and dashboard labels
 #
-# Use with demo-live.sh by setting COMPOSE_PROFILE=coexist:
-#   COMPOSE_PROFILE=coexist ./scripts/demo-live.sh
+# Env vars:
+#   EXISTING_NETWORK       Docker network name (default: traefik-web)
+#   EXISTING_TRAEFIK_HTTPS HTTPS entrypoint name (default: websecure)
 #
-# Or manually:
-#   COMPOSE_FILE="docker-compose.yml:idm/keycloak.yml:opencloud/opencloud.yml:profiles/demo.live.yml:profiles/demo.coexist.yml" \
-#     docker compose up -d
+# Use:
+#   EXISTING_NETWORK=traefik-web docker compose \
+#     -f docker-compose.yml -f idm/keycloak.yml -f opencloud/opencloud.yml \
+#     -f profiles/demo.live.yml -f profiles/demo.coexist.yml up -d
 # ═══════════════════════════════════════════════════
 
 # Network: join the existing Traefik's Docker network.
-# Adjust EXISTING_NETWORK to match your setup.
 # Find it: docker inspect <traefik-container> --format '{{range $n, $_ := .NetworkSettings.Networks}}{{$n}}'
 networks:
   opensme-net:
-    name: ${EXISTING_NETWORK:-opencloud-compose_opencloud-net}
+    name: ${EXISTING_NETWORK:-traefik-web}
     external: true
 
 services:
@@ -50,7 +51,6 @@ services:
     networks: []
 
   # ── Portal ───────────────────────────────────
-  # Override labels: use 'https' entrypoint (not 'websecure')
   portal:
     ports: []
     networks: []
@@ -58,7 +58,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.opensme-portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
       - "traefik.http.routers.opensme-portal.tls=true"
-      - "traefik.http.routers.opensme-portal.entrypoints=https"
+      - "traefik.http.routers.opensme-portal.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-portal.loadbalancer.server.port=8080"
 
   # ── Keycloak ────────────────────────────────
@@ -68,7 +68,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.opensme-keycloak.rule=Host(`${KEYCLOAK_DOMAIN:-auth.opensme.org}`)"
       - "traefik.http.routers.opensme-keycloak.tls=true"
-      - "traefik.http.routers.opensme-keycloak.entrypoints=https"
+      - "traefik.http.routers.opensme-keycloak.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-keycloak.loadbalancer.server.port=8080"
 
   # ── LDAP ───────────────────────────────────
@@ -82,21 +82,5 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.opensme-opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
       - "traefik.http.routers.opensme-opencloud.tls=true"
-      - "traefik.http.routers.opensme-opencloud.entrypoints=https"
+      - "traefik.http.routers.opensme-opencloud.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-opencloud.loadbalancer.server.port=9200"
-
-  # ── MinIO ──────────────────────────────────
-  minio:
-    networks: []
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.opensme-minio.rule=Host(`minio.${OPENSME_DOMAIN:-opensme.org}`)"
-      - "traefik.http.routers.opensme-minio.tls=true"
-      - "traefik.http.routers.opensme-minio.entrypoints=https"
-      - "traefik.http.services.opensme-minio.loadbalancer.server.port=9000"
-
-  # ── MinIO Console ────────────────────────
-  # Use a dedicated router name to avoid conflicts with existing 'minio'
-  # (override the default from minio.yml which names it 'minio-console')
-  # NOTE: This router is defined in minio.yml; we override it here.
-    # (No additional override needed — the router name 'minio-console' is unique)
