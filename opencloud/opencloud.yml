@@ -44,6 +44,7 @@ services:
       OC_HTTP_CACHE_TTL: 3600
       OC_UPLOAD_MAX_SIZE: 10737418240
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    command: ["server"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200/health/ready"]
       interval: 30s
