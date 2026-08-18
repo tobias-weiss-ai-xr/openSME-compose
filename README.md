@@ -355,6 +355,110 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `scripts/demo.sh` | Launch minimal demo with random passwords |
 | `scripts/backup.sh` | Backup PostgreSQL + Traefik data |
 
+## Backup &amp; Restore
+
+### Backup
+
+```bash
+./scripts/backup.sh
+# → ./backups/postgres_20260818_120000.sql.gz
+# → ./backups/traefik_20260818_120000.tar.gz
+```
+
+For automated daily backups, add a cron entry:
+
+```bash
+0 3 * * * cd /opt/opensme && ./scripts/backup.sh >> /var/log/opensme-backup.log 2>&1
+```
+
+### Restore
+
+```bash
+# Restore PostgreSQL
+gunzip -c ./backups/postgres_20260818_120000.sql.gz | docker compose exec -T postgres psql -U opensme
+
+# Restore Traefik data
+docker compose run --rm -v "$(pwd)/backups:/backups" alpine \
+  tar xzf /backups/traefik_20260818_120000.tar.gz -C /var/lib/docker/volumes
+```
+
+## DNS Setup
+
+Each service needs an A record pointing to your server. For a single-IP deployment:
+
+```
+opensme.org.          IN A   <your-server-ip>
+portal.opensme.org.   IN A   <your-server-ip>
+auth.opensme.org.     IN A   <your-server-ip>
+cloud.opensme.org.    IN A   <your-server-ip>
+collabora.opensme.org. IN A  <your-server-ip>
+webmail.opensme.org.  IN A   <your-server-ip>
+mail.opensme.org.     IN A   <your-server-ip>
+```
+
+Or use a wildcard: `*.opensme.org. IN A <your-server-ip>`.
+
+## Security
+
+<details>
+<summary><b>Production checklist</b></summary>
+
+1. **Change all `CHANGEME_*` passwords** in `.env` — use `openssl rand -base64 24`
+2. **Set `TRAEFIK_ACME_ENABLED=true`** for automatic HTTPS via Let's Encrypt
+3. **Set a strong `TRAEFIK_USERS`** htpasswd: `htpasswd -nb admin 'YOUR_PASSWORD'`
+4. **Close unnecessary ports** — only 80, 443 should be public. PostgreSQL (5432),
+   Redis (6379), etc. must be on `opensme-net` only, never published.
+5. **Enable firewall** (UFW or equivalent):
+   ```bash
+   sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw enable
+   ```
+6. **Set up automated backups** (see above) and test restores regularly
+7. **Monitor resource usage** — set up alerts for disk space and memory
+8. **Keep images updated** — periodically `docker compose pull && docker compose up -d`
+
+</details>
+
+<details>
+<summary><b>OIDC / SAML configuration</b></summary>
+
+Keycloak is pre-configured with a `opensme` realm. To add client applications:
+
+1. Navigate to `https://auth.your-domain/auth/admin/`
+2. Log in with `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD`
+3. Create a client under the `opensme` realm
+4. Set the redirect URI to your application's callback URL
+
+OpenCloud is pre-configured as an OIDC client (`OC_OIDC_CLIENT_ID=opencloud`).
+To add custom apps, follow the [Keycloak OIDC guide](https://www.keycloak.org/docs/latest/securing_apps/).
+
+</details>
+
+## Upgrading
+
+```bash
+# Pull latest images
+docker compose pull
+
+# Apply updates with zero downtime (rolling restart)
+docker compose up -d
+
+# If database schema migration is needed:
+docker compose exec postgres psql -U opensme -c '\dt'
+```
+
+### Version pins
+
+Images are pinned to major versions for stability:
+
+| Component | Image | Version |
+|---|---|---|
+| PostgreSQL | `postgres:17-alpine` | 17.x |
+| Redis | `redis:7-alpine` | 7.x |
+| Keycloak | `quay.io/keycloak/keycloak:26.1` | 26.1.x |
+| OpenCloud | `opencloudeu/opencloud-rolling:6.0.0` | 6.0.x |
+| Collabora | `collabora/code:24.04` | 24.04.x |
+| Traefik | `traefik:v3.3` | 3.3.x |
+
 ## License
 
 **Free for organizations with up to 50 users** (Small tier — AGPL v3).
