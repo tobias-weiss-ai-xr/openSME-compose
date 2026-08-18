@@ -79,6 +79,10 @@ if [[ "$FORCE_ENV" == true ]] || [[ ! -f .env ]]; then
   # Generate random secrets
   pw() { openssl rand -base64 24 | tr -d '/+=' | head -c 32; }
 
+  # Generate Traefik dashboard password and hash
+  TRAEFIK_PASS=$(openssl rand -base64 16)
+  TRAEFIK_HASH=$(printf '%s' "$TRAEFIK_PASS" | openssl passwd -apr1 -stdin 2>/dev/null || printf 'admin:')
+
   cat > .env <<ENVEOF
 # openSME — Live Demo
 # Generated: $(date -Iseconds)
@@ -117,6 +121,7 @@ COLLABORA_URL=
 # ── Traefik ──
 TRAEFIK_ACME_EMAIL=${ACME_EMAIL}
 TRAEFIK_ACME_ENABLED=false
+TRAEFIK_USERS=${TRAEFIK_HASH}
 
 # ── Logging ──
 LOG_LEVEL=info
@@ -238,6 +243,7 @@ echo ""
 echo -e "  ${CYAN}Credentials:${NC}"
 echo -e "    Keycloak admin:  ${YELLOW}admin / ${ADMIN_PW}${NC}"
 echo -e "    OpenCloud admin: ${YELLOW}admin / ${OC_ADMIN}${NC}"
+echo -e "    Traefik dashboard: ${YELLOW}admin / ${TRAEFIK_PASS}${NC}"
 echo ""
 echo -e "  ${CYAN}Useful commands:${NC}"
 echo -e "    Logs:   docker compose logs -f"

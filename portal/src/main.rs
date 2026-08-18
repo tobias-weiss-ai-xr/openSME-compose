@@ -269,7 +269,7 @@ fn load_config() -> AppConfig {
         opensme_domain: load_env("OPENSME_DOMAIN", "opensme.org"),
         opencloud_url: load_env("OPENCLOUD_URL", "https://cloud.opensme.org"),
         mail_url: load_env("MAIL_URL", ""),
-        keycloak_url: load_env("KEYCLOAK_URL", "https://auth.opensme.org/auth"),
+        keycloak_url: load_env("KEYCLOAK_URL", "https://auth.opensme.org"),
         collabora_url: load_env("COLLABORA_URL", ""),
     }
 }

@@ -37,8 +37,8 @@ path = "/var/lib/stalwart/data"
 size = 4294967296
 
 [smtp]
-# TODO: Override via Docker env or templating. For now, set to your MAIL_DOMAIN.
-hostname = "mail.opensme.org"
+# Rendered from MAIL_DOMAIN env var at startup
+hostname = "${MAIL_DOMAIN:-mail.opensme.org}"
 port = 25
 tls-port = 465
 max-recipients = 100

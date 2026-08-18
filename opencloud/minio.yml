@@ -1,0 +1,48 @@
+# ── MinIO S3-compatible storage ─────────────────
+# Include via: COMPOSE_FILE=docker-compose.yml:opencloud/opencloud.yml:opencloud/minio.yml
+# Required for production OpenCloud (decomposeds3 storage driver).
+# Not needed for demo profiles (they override to STORAGE_USERS_DRIVER=ocis).
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: opensme-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OC_S3_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${OC_S3_SECRET_KEY:-CHANGEME_minio}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`minio.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.minio.tls=true"
+      - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.service=minio-api"
+      - "traefik.http.routers.minio-console.rule=Host(`minio-console.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.minio-console.tls=true"
+      - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+volumes:
+  minio-data:

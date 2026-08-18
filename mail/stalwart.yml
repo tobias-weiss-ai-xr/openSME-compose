@@ -1,6 +1,8 @@
 # ── Stalwart Mail Server overlay ───────────────
 # Include via: COMPOSE_FILE=docker-compose.yml:mail/stalwart.yml
-# Rust-based mail server: SMTP, IMAP, JMAP, CalDAV, CardDAV
+# Rust-based mail server: SMTP, IMAP, JMAP, CalDAV, CardDAV.
+#
+# Config is rendered from config.toml.template via envsubst at startup.
 
 services:
   stalwart:
@@ -15,12 +17,16 @@ services:
       - "993:993"
     environment:
       TZ: Europe/Berlin
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-mail.opensme.org}
       STALWART_PUBLIC_URL: https://${MAIL_DOMAIN:-mail.opensme.org}
       STALWART_RECOVERY_ADMIN: admin:${STALWART_ADMIN_PASSWORD:-}
     volumes:
       - stalwart-etc:/etc/stalwart
       - stalwart-data:/var/lib/stalwart
-      - ./mail/stalwart/config.toml:/etc/stalwart/config.toml:ro
+      - ./mail/stalwart/config.toml.template:/etc/stalwart/config.toml.template:ro
+      - ./mail/stalwart/stalwart-entrypoint.sh:/stalwart-entrypoint.sh:ro
+    entrypoint: ["/stalwart-entrypoint.sh"]
+    command: ["stalwart", "--config", "/etc/stalwart/config.toml"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8080'"]
       interval: 30s

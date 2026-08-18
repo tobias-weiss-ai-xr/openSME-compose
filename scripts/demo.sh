@@ -70,6 +70,10 @@ if [[ "$FORCE_ENV" == true ]] || [[ ! -f .env ]]; then
 
   pw() { openssl rand -base64 24; }
 
+  # Generate Traefik dashboard password and hash
+  TRAEFIK_PASS=$(pw)
+  TRAEFIK_HASH=$(printf '%s' "$TRAEFIK_PASS" | openssl passwd -apr1 -stdin 2>/dev/null || printf 'admin:')
+
   cat > .env <<ENVEOF
 # openSME — Local Demo Configuration
 OPENSME_DOMAIN=opensme.local
@@ -91,6 +95,9 @@ OC_ADMIN_PASSWORD=$(pw)
 OC_OIDC_SECRET=$(pw)
 OC_S3_SECRET_KEY=$(pw)
 COLLABORA_PASSWORD=$(pw)
+
+# Traefik dashboard
+TRAEFIK_USERS=${TRAEFIK_HASH}
 
 LOG_LEVEL=debug
 LOG_PRETTY=true
@@ -132,6 +139,10 @@ echo ""
 echo -e "  ${YELLOW}OpenCloud Admin:${NC}"
 echo -e "    User:     admin"
 echo -e "    Password: ${OC_ADMIN}"
+echo ""
+echo -e "  ${YELLOW}Traefik Dashboard (if enabled):${NC}"
+echo -e "    User:     admin"
+echo -e "    Password: ${TRAEFIK_PASS}"
 echo ""
 echo -e "${GREEN}───────────────────────────────────────────${NC}"
 echo ""

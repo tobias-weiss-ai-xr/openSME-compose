@@ -1,10 +1,13 @@
 # ── SOGo Groupware overlay ─────────────────────
 # Include via: COMPOSE_FILE=docker-compose.yml:mail/sogo.yml
-# Webmail, calendar, contacts (connects to Stalwart IMAP/SMTP)
+# Webmail, calendar, contacts (connects to Stalwart IMAP/SMTP).
+#
+# Config is rendered from sogo.conf.template via envsubst at startup.
+# Required env vars: SOGO_DB_PASSWORD, LDAP_ROOT_DN, LDAP_ADMIN_PASSWORD,
+#                    OPENSME_DOMAIN, TZ
 
 services:
   sogo:
-    # NOTE: salvoxia/sogo is a community image. Pin a specific tag in production.
     image: salvoxia/sogo:latest
     container_name: opensme-sogo
     restart: unless-stopped
@@ -12,10 +15,18 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./mail/sogo/sogo.conf:/etc/sogo/sogo.conf:ro
+      - ./mail/sogo/sogo.conf.template:/etc/sogo/sogo.conf.template:ro
+      - ./mail/sogo/sogo-entrypoint.sh:/sogo-entrypoint.sh:ro
+      - sogo-config:/etc/sogo
       - sogo-data:/srv
     environment:
-      TZ: Europe/Berlin
+      TZ: ${TZ:-Europe/Berlin}
+      SOGO_DB_PASSWORD: ${SOGO_DB_PASSWORD:-CHANGEME_sogo}
+      LDAP_ROOT_DN: ${LDAP_ROOT_DN:-dc=opensme,dc=org}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}
+      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
+    entrypoint: ["/sogo-entrypoint.sh"]
+    command: ["sogod"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:20000/SOGo"]
       interval: 30s
@@ -29,6 +40,7 @@ services:
       - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.org}`) && PathPrefix(`/SOGo`)"
       - "traefik.http.routers.sogo.tls=true"
       - "traefik.http.routers.sogo.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.sogo.entrypoints=websecure"
       - "traefik.http.services.sogo.loadbalancer.server.port=20000"
     deploy:
       resources:
@@ -40,4 +52,5 @@ services:
           memory: 512M
 
 volumes:
+  sogo-config:
   sogo-data:

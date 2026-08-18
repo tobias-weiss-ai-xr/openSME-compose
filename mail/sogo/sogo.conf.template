@@ -1,10 +1,9 @@
-// SOGo Groupware — production config for up to 500 users
+// SOGo Groupware — production config template for up to 500 users
 // Connects to Stalwart via IMAP/SMTP, PostgreSQL via PgBouncer.
 //
-// IMPORTANT: This is a template. In production, replace:
-//   CHANGEME_sogo       → actual PostgreSQL password (from .env SOGO_DB_PASSWORD)
-//   CHANGEME_ldap       → actual LDAP admin password (from .env LDAP_ADMIN_PASSWORD)
-//   dc=opensme,dc=org → match your LDAP_ROOT_DN
+// This file is processed by envsubst at container start.
+// Variables are substituted from Docker environment.
+// See mail/sogo/sogo-entrypoint.sh
 
 {
   // Server
@@ -15,13 +14,11 @@
   WOWorkersCount = 8;
 
   // Database via PgBouncer (transaction pooling)
-  // NOTE: Requires 'sogo' database to exist in PostgreSQL.
-  //       Create it: docker compose exec postgres psql -U opensme -c "CREATE DATABASE sogo;"
-  OCSFolderInfoURL = "postgresql://opensme:CHANGEME_sogo@pgbouncer:5432/sogo/sogo_folder_info";
-  OCSSessionsFolderURL = "postgresql://opensme:CHANGEME_sogo@pgbouncer:5432/sogo/sogo_sessions_folder";
-  OCSStoreURL = "postgresql://opensme:CHANGEME_sogo@pgbouncer:5432/sogo/sogo_store";
-  OCSACLsURL = "postgresql://opensme:CHANGEME_sogo@pgbouncer:5432/sogo/sogo_acl";
-  OCSLanguagesURL = "postgresql://opensme:CHANGEME_sogo@pgbouncer:5432/sogo/sogo_languages";
+  OCSFolderInfoURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_folder_info";
+  OCSSessionsFolderURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_sessions_folder";
+  OCSStoreURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_store";
+  OCSACLsURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo_acl";
+  OCSLanguagesURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_languages";
 
   // Authentication via LDAP
   SOGoUserSources = (
@@ -30,10 +27,10 @@
       CNFieldName = cn;
       UIDFieldName = uid;
       IDFieldName = uid;
-      bindDN = "cn=admin,dc=opensme,dc=org";
+      bindDN = "cn=admin,${LDAP_ROOT_DN}";
       bindFields = (uid, mail);
-      bindPassword = "CHANGEME_ldap";
-      baseDN = "dc=opensme,dc=org";
+      bindPassword = "${LDAP_ADMIN_PASSWORD}";
+      baseDN = "${LDAP_ROOT_DN}";
       canAuthenticate = YES;
       displayName = "openSME Users";
       hostname = "ldap";
@@ -48,7 +45,7 @@
   SOGoSentFolderName = Sent;
   SOGoTrashFolderName = Trash;
   SOGoJunkFolderName = Junk;
-  SOGoMailDomain = "opensme.org";
+  SOGoMailDomain = "${OPENSME_DOMAIN}";
   SOGoIMAPServer = "stalwart";
   SOGoSMTPServer = "stalwart";
   SOGoSMTPAuthenticationType = PLAIN;
@@ -63,7 +60,7 @@
   SOGoPendingMailDropBoxSizeLimit = 50;
 
   // General
-  SOGoTimeZone = "Europe/Berlin";
+  SOGoTimeZone = "${TZ:-Europe/Berlin}";
   SOGoDefaultUser = "user01";
   SOGoLanguage = German;
   SOGoAppointmentSendEMailNotifications = YES;
@@ -72,7 +69,4 @@
   SOGoEnablePublicAccess = NO;
   SOGoFreeBusyDefaultInterval = 600;
   SOGoFreeBusyPublishInterval = 60;
-
-  // Security
-  SOXHeaderEnabled = NO;
 }

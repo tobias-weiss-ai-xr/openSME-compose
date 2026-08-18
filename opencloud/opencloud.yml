@@ -17,15 +17,17 @@ services:
       - opencloud-config:/var/lib/opencloud
       - opencloud-data:/var/lib/opencloud/data
     environment:
-      OC_INSECURE: true
+      OC_INSECURE: ${OC_INSECURE:-true}
+      # ^ true is correct for Docker Compose — inter-service traffic
+      #   stays on the internal network (no TLS). Security boundary is Traefik.
       OC_LOG_LEVEL: ${LOG_LEVEL:-info}
       OC_LOG_PRETTY: ${LOG_PRETTY:-true}
       OC_ADMIN_USERNAME: ${OC_ADMIN_USERNAME:-admin}
       OC_ADMIN_PASSWORD: ${OC_ADMIN_PASSWORD:-CHANGEME_oc_admin}
       OC_DOMAIN: ${OPENCLOUD_DOMAIN:-cloud.opensme.org}
       OC_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}
-      OC_IDP_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}/auth
-      OC_OIDC_ISSUER: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}/auth/realms/opensme
+      OC_IDP_URL: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}
+      OC_OIDC_ISSUER: https://${KEYCLOAK_DOMAIN:-auth.opensme.org}/realms/opensme
       OC_OIDC_CLIENT_ID: opencloud
       OC_OIDC_CLIENT_SECRET: ${OC_OIDC_SECRET:-CHANGEME_oidc_secret}
       PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
