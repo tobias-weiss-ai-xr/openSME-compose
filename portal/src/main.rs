@@ -84,27 +84,31 @@ fn build_landing_page(config: &AppConfig) -> String {
         }}
         header {{
             text-align: center;
-            padding: 3rem 1rem 1rem;
+            padding: 5rem 2rem 2rem;
         }}
         header h1 {{
-            font-size: 2.5rem;
+            font-size: 3rem;
             font-weight: 700;
+            letter-spacing: -0.02em;
             background: linear-gradient(135deg, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            margin-bottom: 0.75rem;
         }}
         header p {{
             color: #94a3b8;
-            margin-top: 0.5rem;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
+            line-height: 1.6;
+            max-width: 480px;
+            margin: 0 auto;
         }}
         .grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            padding: 2rem;
-            max-width: 1200px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.75rem;
+            padding: 3rem 2rem;
+            max-width: 960px;
             margin: 0 auto;
             width: 100%;
             flex: 1;
@@ -112,36 +116,39 @@ fn build_landing_page(config: &AppConfig) -> String {
         .card {{
             background: rgba(30, 41, 59, 0.8);
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(148, 163, 184, 0.15);
-            border-radius: 1rem;
-            padding: 1.5rem;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 1.25rem;
+            padding: 2rem;
             text-decoration: none;
             color: inherit;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }}
         .card:hover {{
-            border-color: #60a5fa;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(96, 165, 250, 0.15);
+            border-color: rgba(96, 165, 250, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(96, 165, 250, 0.12);
+            background: rgba(30, 41, 59, 0.95);
         }}
         .card h2 {{
-            font-size: 1.25rem;
+            font-size: 1.3rem;
             font-weight: 600;
             color: #f1f5f9;
+            letter-spacing: -0.01em;
         }}
         .card p {{
             color: #94a3b8;
-            font-size: 0.9rem;
-            line-height: 1.5;
+            font-size: 0.95rem;
+            line-height: 1.65;
         }}
         footer {{
             text-align: center;
-            padding: 1.5rem;
+            padding: 2.5rem 2rem;
             color: #475569;
             font-size: 0.85rem;
+            letter-spacing: 0.01em;
         }}
     </style>
 </head>
