@@ -1,0 +1,163 @@
+# ═══════════════════════════════════════════════════════════════
+# specs/services.yml — Optional service overlays
+# ═══════════════════════════════════════════════════════════════
+# Each service is gated behind a Docker Compose profile.
+# Enable via: docker compose --profile <name> up -d
+
+services:
+  invoiceninja:
+    image: invoiceninja/invoiceninja:5
+    compose_file: services/invoice-ninja.yml
+    required: false
+    profiles: [invoice]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - invoiceninja-public:/var/www/app/public
+      - invoiceninja-storage:/var/www/app/storage
+    env:
+      - INVOICENINJA_DB_PASSWORD
+    traefik_labels: true
+    resource_limits:
+      memory: 192M
+
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    compose_file: services/paperless.yml
+    required: false
+    profiles: [paperless]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres, redis]
+    volumes:
+      - paperless-data:/usr/src/paperless/data
+      - paperless-media:/usr/src/paperless/media
+      - paperless-export:/usr/src/paperless/export
+    env:
+      - PAPERLESS_DB_PASSWORD
+      - PAPERLESS_SECRET_KEY
+    traefik_labels: true
+    resource_limits:
+      memory: 384M
+
+  paperless-gotenberg:
+    image: gotenberg/gotenberg:8
+    compose_file: services/paperless.yml
+    required: false
+    profiles: [paperless]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    traefik_labels: false
+    resource_limits:
+      memory: 96M
+
+  paperless-tika:
+    image: apache/tika-server-full:2.9
+    compose_file: services/paperless.yml
+    required: false
+    profiles: [tika]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    traefik_labels: false
+    resource_limits:
+      memory: 512M
+
+  cryptpad:
+    image: cryptpad/cryptpad:2025.9.0
+    compose_file: services/cryptpad.yml
+    required: false
+    profiles: [collab]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    volumes:
+      - cryptpad-data:/cryptpad/data
+      - cryptpad-blob:/cryptpad/blob
+    env:
+      - CRYPTPAD_ADMIN_EMAIL
+      - CPAD_SESSION_SECRET
+    traefik_labels: true
+    resource_limits:
+      memory: 256M
+
+  synapse:
+    image: element-hq/synapse:v1.144.0
+    compose_file: services/synapse.yml
+    required: false
+    profiles: [chat]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - synapse-data:/data
+    env:
+      - SYNAPSE_DB_PASSWORD
+      - SYNAPSE_OIDC_CLIENT_SECRET
+    traefik_labels: true
+    resource_limits:
+      memory: 384M
+
+  element-web:
+    image: elementio/element-web:v1.12.6
+    compose_file: services/element.yml
+    required: false
+    profiles: [element]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    traefik_labels: true
+    resource_limits:
+      memory: 48M
+
+  notes-backend:
+    image: lasuite/impress:1.14.0-backend
+    compose_file: services/notes.yml
+    required: false
+    profiles: [notes]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - notes-data:/data
+    env:
+      - NOTES_DB_PASSWORD
+      - NOTES_DJANGO_SECRET_KEY
+      - NOTES_OIDC_CLIENT_SECRET
+      - NOTES_COLLABORATION_SECRET
+    traefik_labels: false
+    resource_limits:
+      memory: 256M
+
+  notes-frontend:
+    image: lasuite/impress:1.14.0-frontend
+    compose_file: services/notes.yml
+    required: false
+    profiles: [notes]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [notes-backend]
+    traefik_labels: true
+    resource_limits:
+      memory: 64M
+
+  notes-y-provider:
+    image: lasuite/impress:1.14.0-y-provider
+    compose_file: services/notes.yml
+    required: false
+    profiles: [notes]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    env:
+      - NOTES_COLLABORATION_SECRET
+    traefik_labels: false
+    resource_limits:
+      memory: 64M

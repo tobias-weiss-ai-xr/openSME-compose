@@ -24,3 +24,4 @@ portal/target/
 # Logs
 logs/
 *.log
+__pycache__/

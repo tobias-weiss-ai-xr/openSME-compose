@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""
+tests/00-static/scan_secrets.py — Secret scanner for compose files.
+
+Scans all compose files and scripts for hardcoded secrets, passwords,
+API keys, and tokens. Only .env.example may contain CHANGEME_ placeholders.
+
+Usage:
+    python3 tests/00-static/scan_secrets.py [directory]
+
+Exit codes:
+    0 = no secrets found
+    1 = secrets found
+"""
+
+import sys
+import re
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from conftest import Result, ROOT
+
+
+# Patterns that indicate hardcoded secrets
+SECRET_PATTERNS = [
+    (r'password\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]+', "hardcoded password"),
+    (r'api[_-]?key\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]{16,}', "hardcoded API key"),
+    (r'secret\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]{16,}', "hardcoded secret"),
+    (r'token\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]{16,}', "hardcoded token"),
+    (r'BEGIN\s+(RSA|EC|OPENSSH|PRIVATE)\s+KEY', "private key"),
+    (r'-----BEGIN\s+PGP\s+MESSAGE-----', "PGP message"),
+]
+
+# CHANGEME_ values are OK in .env.example but NOT in compose files
+CHANGEME_PATTERN = re.compile(r'CHANGEME_[a-z_]+', re.IGNORECASE)
+
+# Files to scan
+SCAN_DIRS = ["docker-compose.yml", "idm/", "opencloud/", "mail/", "services/",
+             "monitoring/", "profiles/", "scripts/", "portal/"]
+SCAN_EXTS = {".yml", ".yaml", ".sh", ".py", ".env", ".env.example", ".env.demo"}
+
+
+def scan_file(filepath: Path) -> list[tuple[int, str, str]]:
+    """Scan a file for secrets. Returns list of (line_number, pattern_name, line)."""
+    findings = []
+    try:
+        with open(filepath, encoding="utf-8", errors="replace") as f:
+            for i, line in enumerate(f, 1):
+                # Skip comments
+                stripped = line.lstrip()
+                if stripped.startswith("#"):
+                    continue
+
+                # Check for CHANGEME_ in compose files (not .env.example)
+                # But skip CHANGEME_ when it's a default value: ${VAR:-CHANGEME_...}
+                if filepath.suffix in (".yml", ".yaml"):
+                    # Remove ${VAR:-CHANGEME_...} patterns before checking
+                    cleaned = re.sub(r'\$\{[^}]*:-CHANGEME_[^}]*\}', '', line)
+                    if CHANGEME_PATTERN.search(cleaned):
+                        findings.append((i, "CHANGEME in compose file", line.rstrip()))
+
+                # Check for secret patterns
+                for pattern, name in SECRET_PATTERNS:
+                    if re.search(pattern, line, re.IGNORECASE):
+                        # Exclude env var references like ${VAR}
+                        if "${" not in line and "CHANGEME" not in line:
+                            findings.append((i, name, line.rstrip()))
+    except (OSError, UnicodeDecodeError):
+        pass
+    return findings
+
+
+def main():
+    result = Result("secret-scan")
+    result.header("Layer 0: Secret scanning")
+
+    scan_root = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT
+
+    files_scanned = 0
+    total_findings = 0
+
+    for item in SCAN_DIRS:
+        path = scan_root / item
+        if path.is_file() and path.suffix in SCAN_EXTS:
+            findings = scan_file(path)
+            files_scanned += 1
+            if findings:
+                for line_no, name, line in findings:
+                    total_findings += 1
+                    # Only flag CHANGEME in compose files as error, not .env.example
+                    if "CHANGEME" in name and path.name == ".env.example":
+                        continue
+                    result.fail(f"{path.name}:{line_no} — {name}: {line.strip()}")
+            else:
+                result.ok(f"{path.name} clean")
+        elif path.is_dir():
+            for ext in SCAN_EXTS:
+                for fp in path.rglob(f"*{ext}"):
+                    if ".git" in fp.parts or "[REDACTED]" in fp.parts:
+                        continue
+                    findings = scan_file(fp)
+                    files_scanned += 1
+                    if findings:
+                        for line_no, name, line in findings:
+                            total_findings += 1
+                            if "CHANGEME" in name and fp.name == ".env.example":
+                                continue
+                            result.fail(f"{fp.relative_to(scan_root)}:{line_no} — {name}: {line.strip()}")
+                    else:
+                        result.ok(f"{fp.relative_to(scan_root)} clean")
+
+    # Scan .env.example separately (CHANGEME_ is OK here)
+    env_example = scan_root / ".env.example"
+    if env_example.exists():
+        files_scanned += 1
+        result.ok(f"{env_example.name} (CHANGEME_ placeholders OK)")
+
+    result.info(f"Scanned {files_scanned} files, {total_findings} findings")
+
+    return result.summary()
+
+
+if __name__ == "__main__":
+    sys.exit(0 if main() else 1)

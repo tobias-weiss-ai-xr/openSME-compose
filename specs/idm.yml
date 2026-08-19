@@ -1,0 +1,40 @@
+# ═══════════════════════════════════════════════════════════════
+# specs/idm.yml — Identity & Access Management overlays
+# ═══════════════════════════════════════════════════════════════
+# Zitadel (default) or Casdoor (lightweight alternative).
+# Only one should be active at a time.
+
+services:
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
+    compose_file: idm/zitadel.yml
+    required: false  # overlay — included via COMPOSE_FILE
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - zitadel-machinekey:/machinekey
+    env:
+      - ZITADEL_DOMAIN
+      - ZITADEL_ADMIN_EMAIL
+      - ZITADEL_ADMIN_PASSWORD
+    traefik_labels: true
+    resource_limits:
+      memory: 512M
+
+  casdoor:
+    image: casbin/casdoor:latest
+    compose_file: idm/casdoor.yml
+    required: false  # overlay — alternative to Zitadel
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - casdoor-data:/data
+    env:
+      - CASDOOR_DB_PASSWORD
+    traefik_labels: true
+    resource_limits:
+      memory: 256M

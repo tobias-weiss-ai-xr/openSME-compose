@@ -1,0 +1,110 @@
+# ═══════════════════════════════════════════════════════════════
+# contracts/security.yml — Security requirements
+# ═══════════════════════════════════════════════════════════════
+# Resource limits, no hardcoded secrets, image pinning, volume naming.
+
+name: resource-limits
+description: >
+  Every service must have deploy.resources.limits set (cpus + memory).
+  This prevents a single service from consuming all host resources.
+severity: warning
+
+rules:
+  - type: resource-limits-set
+    services:
+      - traefik
+      - postgres
+      - pgbouncer
+      - redis
+      - memcached
+      - portal
+      - zitadel
+      - casdoor
+      - opencloud
+      - collabora
+      - minio
+      - stalwart
+      - sogo
+      - invoiceninja
+      - paperless-ngx
+      - paperless-gotenberg
+      - paperless-tika
+      - cryptpad
+      - synapse
+      - element-web
+      - notes-backend
+      - notes-frontend
+      - notes-y-provider
+      - dev-agent
+      - predictive-agent
+      - ollama
+      - taskfleet
+
+---
+
+name: no-hardcoded-secrets
+description: >
+  Compose files must not contain CHANGEME_ values or plaintext passwords.
+  Secrets must come from .env (which is .gitignored). Only .env.example
+  may contain CHANGEME_ placeholders.
+severity: error
+
+rules:
+  - type: no-changeme-in-compose
+    compose_files:
+      - docker-compose.yml
+      - idm/zitadel.yml
+      - idm/casdoor.yml
+      - opencloud/opencloud.yml
+      - opencloud/minio.yml
+      - mail/stalwart.yml
+      - mail/sogo.yml
+      - services/invoice-ninja.yml
+      - services/paperless.yml
+      - services/cryptpad.yml
+      - services/synapse.yml
+      - services/element.yml
+      - services/notes.yml
+      - monitoring/dev-agent.yml
+      - monitoring/predictive-agent.yml
+      - monitoring/ollama.yml
+      - monitoring/taskfleet.yml
+      - profiles/soho.yml
+      - profiles/small.yml
+      - profiles/medium.yml
+      - profiles/demo.dev.yml
+      - profiles/demo.live.yml
+      - profiles/demo.coexist.yml
+      - profiles/system-traefik.yml
+
+---
+
+name: image-pinned
+description: >
+  All images must use an explicit tag (not :latest for production services).
+  Monitoring images may use :latest as they are under active development.
+severity: warning
+
+rules:
+  - type: image-has-tag
+    allow_latest:
+      - ghcr.io/tobias-weiss-ai-xr/dev-agent:latest
+      - ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest
+      - ghcr.io/tobias-weiss-ai-xr/taskfleet:latest
+      - ollama/ollama:latest
+      - casbin/casdoor:latest
+      - ghcr.io/zitadel/zitadel:latest
+      - minio/minio:latest
+      - ghcr.io/paperless-ngx/paperless-ngx:latest
+      - salvoxia/sogo:latest
+
+---
+
+name: volume-named
+description: >
+  All volumes must be named (not anonymous). Named volumes are
+  persistent and can be backed up. Anonymous volumes are ephemeral.
+severity: error
+
+rules:
+  - type: named-volumes-only

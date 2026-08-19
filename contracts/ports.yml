@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════════
+# contracts/ports.yml — Port exposure rules
+# ═══════════════════════════════════════════════════════════════
+# Only Traefik and mail (Stalwart) may expose host ports.
+# All other services must be internal-only (accessed via Traefik reverse proxy).
+
+name: port-exposure
+description: >
+  Internal services must not expose ports to the host. Only Traefik
+  (80/443) and Stalwart (25/587/993/4190) may bind host ports.
+  This prevents direct access to databases, caches, and app backends.
+severity: error
+
+rules:
+  - type: no-host-ports
+    services:
+      - postgres
+      - pgbouncer
+      - redis
+      - memcached
+      - portal
+      - zitadel
+      - casdoor
+      - opencloud
+      - collabora
+      - minio
+      - sogo
+      - invoiceninja
+      - paperless-ngx
+      - paperless-gotenberg
+      - paperless-tika
+      - cryptpad
+      - synapse
+      - element-web
+      - notes-backend
+      - notes-frontend
+      - notes-y-provider
+      - dev-agent
+      - predictive-agent
+      - ollama
+      - taskfleet
+
+  - type: allowed-host-ports
+    services:
+      traefik: [80, 443]
+      stalwart: [25, 465, 587, 993]

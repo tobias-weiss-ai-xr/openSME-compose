@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════
+# contracts/health.yml — Healthcheck requirements
+# ═══════════════════════════════════════════════════════════════
+# All long-running services must define a healthcheck so that
+# Docker (and Traefik's Docker provider) can detect unhealthy containers.
+
+name: healthcheck-required
+description: >
+  Every long-running service must define a healthcheck. Traefik's
+  Docker provider skips unhealthy containers, so missing healthchecks
+  cause silent routing failures. Exceptions: Traefik itself (no
+  built-in healthcheck), taskfleet (on-demand, not a daemon).
+severity: warning
+
+rules:
+  - type: healthcheck-defined
+    services:
+      - postgres
+      - pgbouncer
+      - redis
+      - memcached
+      - portal
+      - zitadel
+      - casdoor
+      - opencloud
+      - collabora
+      - minio
+      - stalwart
+      - sogo
+      - invoiceninja
+      - paperless-ngx
+      - paperless-gotenberg
+      - paperless-tika
+      - cryptpad
+      - synapse
+      - element-web
+      - notes-backend
+      - notes-frontend
+      - notes-y-provider
+      - dev-agent
+      - predictive-agent
+      - ollama
+
+  - type: healthcheck-exempt
+    services:
+      - traefik    # no built-in healthcheck (uses ping endpoint instead)
+      - taskfleet  # on-demand, not a daemon

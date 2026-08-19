@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════════
+# specs/monitoring.yml — Container health monitoring & AI agents
+# ═══════════════════════════════════════════════════════════════
+# Optional overlays. Include via COMPOSE_FILE.
+# dev-agent: reactive health monitor (Docker socket, LLM analysis)
+# predictive-agent: predictive health (Kalman/Markov/Bayes)
+# ollama: local LLM backend for agents
+# taskfleet: parallel LLM task orchestration (on-demand)
+
+services:
+  dev-agent:
+    image: ${DEV_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/dev-agent:latest}
+    compose_file: monitoring/dev-agent.yml
+    required: false
+    host_ports: []  # internal only (accessed via Docker network)
+    healthcheck: true
+    networks: [opensme-net]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - dev-agent-state:/state
+    env:
+      - OLLAMA_URL
+      - OLLAMA_MODEL
+      - RECONCILE_INTERVAL
+    traefik_labels: false
+    resource_limits:
+      memory: 512M
+
+  predictive-agent:
+    image: ${PREDICTIVE_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest}
+    compose_file: monitoring/predictive-agent.yml
+    required: false
+    host_ports: []  # internal only (accessed via Docker network)
+    healthcheck: true
+    networks: [opensme-net]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - predictive-agent-state:/state
+    env:
+      - OLLAMA_URL
+      - OLLAMA_MODEL
+      - PREDICTION_ENABLED
+      - PREDICTION_RISK_THRESHOLD
+    traefik_labels: false
+    resource_limits:
+      memory: 512M
+
+  ollama:
+    image: ollama/ollama:latest
+    compose_file: monitoring/ollama.yml
+    required: false
+    host_ports: []  # internal only (accessed via Docker network)
+    healthcheck: true
+    networks: [opensme-net]
+    volumes:
+      - ollama-models:/root/.ollama
+    env: []
+    traefik_labels: false
+    resource_limits:
+      memory: 4G
+
+  taskfleet:
+    image: ${TASKFLEET_IMAGE:-ghcr.io/tobias-weiss-ai-xr/taskfleet:latest}
+    compose_file: monitoring/taskfleet.yml
+    required: false
+    profiles: [taskfleet]
+    host_ports: []
+    healthcheck: false  # on-demand, not a daemon
+    networks: [opensme-net]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - taskfleet-state:/state
+    env:
+      - TF_REPO_DIR
+      - TF_MAX_PARALLEL
+    traefik_labels: false
+    resource_limits:
+      memory: 1G

@@ -22,6 +22,7 @@
 #   make down
 
 .PHONY: test test-all test-static lint compose-check env-check secret-scan \
+        specs contracts yaml-lint \
         container smoke integration e2e security \
         bootstrap clean help \
         up down status logs pull \
@@ -47,6 +48,7 @@ DOMAIN     ?= $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2
 COMPOSE    ?= docker compose
 TEST_ENV   ?= .env
 PYTHON     ?= python3
+TEST_RUNNER := $(PYTHON) tests/run.py
 
 # ---------------------------------------------------------------------------
 # Compose file selection by tier
@@ -125,7 +127,7 @@ pull:
 # ---------------------------------------------------------------------------
 # Layer 0 — Static Validation (no containers needed)
 # ---------------------------------------------------------------------------
-lint: compose-check env-check secret-scan
+lint: compose-check yaml-lint env-check secret-scan
 	@echo -e "$(GREEN)✅ All linting passed$(NC)"
 
 compose-check:
@@ -133,32 +135,45 @@ compose-check:
 	@$(FULL_COMPOSE) --env-file $(TEST_ENV) config --quiet 2>&1
 	@echo -e "$(GREEN)✓ compose config valid ($(PROFILE) profile)$(NC)"
 
+yaml-lint:
+	@echo -e "$(BLUE)── YAML syntax validation ──$(NC)"
+	@$(PYTHON) tests/00-static/yaml_lint.py 2>&1
+
 env-check:
 	@echo -e "$(BLUE)── env completeness ──$(NC)"
-	@$(PYTHON) scripts/check-env.py .env.example $(TEST_ENV) 2>&1 || \
-		echo -e "$(YELLOW)⚠ env check skipped (scripts/check-env.py not found)$(NC)"
+	@$(PYTHON) tests/00-static/check_env.py 2>&1
 
 secret-scan:
 	@echo -e "$(BLUE)── secret scanning ──$(NC)"
-	@if command -v trufflehog &>/dev/null; then \
-		trufflehog filesystem . 2>&1; \
-	else \
-		echo -e "$(YELLOW)⚠ trufflehog not installed, skipping$(NC)"; \
-	fi
-
-test-static: lint compose-check env-check secret-scan
+	@$(PYTHON) tests/00-static/scan_secrets.py 2>&1
 
 # ---------------------------------------------------------------------------
-# Layer 2+ — Require running stack
+# Layer 1 — Spec compliance (no containers needed)
+# ---------------------------------------------------------------------------
+specs:
+	@echo -e "$(BLUE)── spec compliance ──$(NC)"
+	@$(PYTHON) tests/01-specs/validate_specs.py 2>&1
+
+# ---------------------------------------------------------------------------
+# Layer 2 — Contract validation (no containers needed)
+# ---------------------------------------------------------------------------
+contracts:
+	@echo -e "$(BLUE)── contract validation ──$(NC)"
+	@$(PYTHON) tests/02-contracts/validate_contracts.py 2>&1
+
+test-static: lint specs contracts
+	@echo -e "$(GREEN)✅ Static layers (0-2) complete$(NC)"
+
+# ---------------------------------------------------------------------------
+# Layer 3+ — Require running stack
 # ---------------------------------------------------------------------------
 container:
-	@echo -e "$(BLUE)── layer 2: container health ──$(NC)"
+	@echo -e "$(BLUE)── layer 3: container health ──$(NC)"
 	@$(FULL_COMPOSE) ps --format 'table {{.Name}}\t{{.Status}}' 2>&1
 
 smoke:
 	@echo -e "$(BLUE)── layer 3: smoke tests ──$(NC)"
-	@bash scripts/smoke-test.sh $(DOMAIN) 2>&1 || \
-		echo -e "$(YELLOW)⚠ smoke tests skipped (scripts/smoke-test.sh not found)$(NC)"
+	@$(PYTHON) tests/03-smoke/run.py $(DOMAIN) 2>&1
 
 integration:
 	@echo -e "$(BLUE)── layer 4: integration ──$(NC)"
@@ -170,8 +185,7 @@ e2e:
 
 security:
 	@echo -e "$(BLUE)── layer 6: security audit ──$(NC)"
-	@bash scripts/security-audit.sh $(DOMAIN) 2>&1 || \
-		echo -e "$(YELLOW)⚠ security audit skipped (scripts/security-audit.sh not found)$(NC)"
+	@$(PYTHON) tests/06-security/audit.py 2>&1
 
 # ---------------------------------------------------------------------------
 # Combined test targets
@@ -185,6 +199,10 @@ test-all: test integration e2e security
 	@echo -e "$(GREEN)═══════════════════════════════════$(NC)"
 	@echo -e "$(GREEN) All test layers complete.$(NC)"
 	@echo -e "$(GREEN)═══════════════════════════════════$(NC)"
+
+# Full test runner (all layers via tests/run.py)
+test-run:
+	@$(TEST_RUNNER) --static --domain $(DOMAIN)
 
 # ---------------------------------------------------------------------------
 # Backup / Restore
@@ -213,12 +231,15 @@ restore-from:
 bootstrap:
 	@echo -e "$(BLUE)── bootstrapping ──$(NC)"
 	@cp -n .env.example .env 2>/dev/null || true
+	@pip install -r tests/requirements.txt 2>/dev/null || \
+		echo -e "$(YELLOW)⚠ pip install skipped (install pyyaml manually: pip install pyyaml)$(NC)"
 	@echo -e "$(GREEN)✅ Bootstrap complete$(NC)"
 	@echo -e "  Edit .env with your settings, then: make up PROFILE=soho"
 
 clean:
 	@rm -rf tests/05-e2e/test-results/ tests/05-e2e/playwright-report/
 	@rm -f /tmp/opensme-test-*.json
+	@echo -e "$(GREEN)✓ Test artifacts cleaned$(NC)"
 
 # ---------------------------------------------------------------------------
 # Help
@@ -255,15 +276,19 @@ help:
 	@echo "    make logs                Tail logs"
 	@echo "    make pull                Pull images"
 	@echo ""
-	@echo -e "  $(GREEN)Testing$(NC)"
+	@echo -e "  $(GREEN)Testing (Spec / Contract / Test scaffold)$(NC)"
+	@echo "    make lint                Layer 0: compose-check + yaml-lint + env-check + secret-scan"
+	@echo "    make specs               Layer 1: spec compliance (compose files match specs/)"
+	@echo "    make contracts           Layer 2: contract validation (env, ports, health, networks, security)"
+	@echo "    make test-static         Layers 0-2 (all static checks, no running stack)"
+	@echo "    make container           Layer 3: container health (requires stack)"
+	@echo "    make smoke               Layer 3: HTTP smoke tests (requires stack)"
+	@echo "    make integration         Layer 4: integration tests (not yet implemented)"
+	@echo "    make e2e                 Layer 5: e2e browser tests (not yet implemented)"
+	@echo "    make security            Layer 6: security audit (exposed ports, secrets, TLS)"
 	@echo "    make test                Layers 0-3 (static + container + smoke)"
 	@echo "    make test-all            Layers 0-6 (full suite)"
-	@echo "    make lint                Compose config + env check"
-	@echo "    make container           Layer 2 — container health"
-	@echo "    make smoke               Layer 3 — HTTP/SSL/port smoke"
-	@echo "    make integration         Layer 4 — integration tests"
-	@echo "    make e2e                 Layer 5 — e2e tests"
-	@echo "    make security            Layer 6 — security audit"
+	@echo "    make test-run            Full test runner (python3 tests/run.py --static)"
 	@echo ""
 	@echo -e "  $(GREEN)Backup / Restore$(NC)"
 	@echo "    make backup              Full backup (PG + Traefik + volumes)"
