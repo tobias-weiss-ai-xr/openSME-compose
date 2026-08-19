@@ -211,6 +211,77 @@ def call_ollama(prompt, model=None):
         return ""
 
 
+def call_openai(prompt, api_url=None, api_key=None, model=None):
+    """Call an OpenAI-compatible API (LiteLLM, vLLM, SAIA, TUD, OpenAI).
+
+    Works with any endpoint that implements POST /v1/chat/completions or
+    POST /chat/completions. This includes:
+    - LiteLLM proxy (http://localhost:4000/v1)
+    - Direct vLLM on AI1 (http://[REDACTED]:8000/v1)
+    - llama.cpp on [REDACTED] (http://localhost:8080/v1)
+    - SAIA, TUD, OpenAI cloud APIs
+    """
+    api_url = api_url or OPENAI_API_URL
+    api_key = api_key or OPENAI_API_KEY
+    model = model or OPENAI_MODEL
+    endpoint = f"{api_url.rstrip('/')}/chat/completions"
+    payload = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "temperature": 0,
+        "max_tokens": 256,
+    }).encode()
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        req = urllib.request.Request(endpoint, data=payload, headers=headers)
+        resp = urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT)
+        data = json.loads(resp.read())
+        choices = data.get("choices", [])
+        if choices:
+            return choices[0].get("message", {}).get("content", "").strip()
+        return ""
+    except Exception as e:
+        if LOG_VERBOSITY == "debug":
+            print(f"[DEBUG] OpenAI-compatible error: {e}", flush=True)
+        return ""
+
+
+def call_saia(prompt, model=None):
+    """Call SAIA LLM API (OpenAI-compatible)."""
+    return call_openai(prompt, api_url=SAIA_API_URL, api_key=SAIA_API_KEY, model=model or SAIA_MODEL)
+
+
+def call_tud(prompt, model=None):
+    """Call TUD LLM API (OpenAI-compatible)."""
+    return call_openai(prompt, api_url=TUD_API_URL, api_key=TUD_API_KEY, model=model or TUD_MODEL)
+
+
+def call_llm(prompt, model=None):
+    """Dispatch LLM call based on LLM_BACKEND env var.
+
+    Backends:
+    - ollama:  Local Ollama (OLLAMA_URL/api/generate)
+    - openai:  OpenAI-compatible (OPENAI_API_URL/chat/completions) — works with LiteLLM, vLLM, llama.cpp
+    - saia:    SAIA cloud API (OpenAI-compatible)
+    - tud:     TUD LLM service (OpenAI-compatible)
+    """
+    backend = LLM_BACKEND.lower()
+    if backend == "ollama":
+        return call_ollama(prompt, model)
+    elif backend == "openai":
+        return call_openai(prompt, model=model)
+    elif backend == "saia":
+        return call_saia(prompt, model)
+    elif backend == "tud":
+        return call_tud(prompt, model)
+    else:
+        # Default to ollama for unknown backends
+        return call_ollama(prompt, model)
+
+
 def build_analysis_prompt(container, logs, inspect_info):
     """Build the LLM prompt for root-cause analysis."""
     name = container.get("name", "unknown")
@@ -252,7 +323,7 @@ JSON:"""
 def analyze_container(container, logs, inspect_info):
     """Analyze an unhealthy container with LLM. Returns analysis dict or None."""
     prompt = build_analysis_prompt(container, logs, inspect_info)
-    analysis_text = call_ollama(prompt)
+    analysis_text = call_llm(prompt)
     if not analysis_text:
         return None
     try:
