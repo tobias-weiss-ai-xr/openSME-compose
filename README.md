@@ -49,11 +49,16 @@ That's a **95–99% cost reduction** while keeping full data sovereignty.
 
 | | |
 |---|---|
-| **IAM / SSO** | [Zitadel](https://zitadel.com/) — Go-native, no JVM, built-in user store |
+| **IAM / SSO** | [Zitadel](https://zitadel.com/) — Go-native, no JVM, built-in user store (or [Casdoor](https://casdoor.org/) — 128 MB lightweight alternative) |
 | **Files** | [OpenCloud](https://opencloud.eu/) — sync, share, collaborate |
 | **Office** | [Collabora](https://www.collaboraoffice.com/) — real-time document editing in the browser |
 | **Mail** | [Stalwart](https://stalw.art/) — modern Rust SMTP/IMAP server |
 | **Groupware** | [SOGo](https://www.sogo.nu/) — webmail, calendar, contacts |
+| **Invoicing** | [Invoice Ninja](https://invoiceninja.com/) — billing & invoicing (optional) |
+| **Documents** | [Paperless-ngx](https://docs.paperless-ngx.com/) — document management with OCR (optional) |
+| **Collaboration** | [CryptPad](https://cryptpad.org/) — collaborative docs (optional) |
+| **Chat** | [Synapse](https://matrix.org/) + [Element](https://element.io/) — Matrix messaging (optional) |
+| **Notes** | [Impress](https://lasuite.impress/) — collaborative note-taking (optional) |
 | **Database** | PostgreSQL 17 + PgBouncer connection pooling |
 | **Cache** | Redis 7 + Memcached 1.6 |
 | **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
@@ -166,8 +171,13 @@ cp .env.example .env
 ### 2. Start core services
 
 ```bash
-# Portal + Traefik + PostgreSQL + Redis + Memcached
-docker compose up -d
+# Using Makefile (recommended):
+make up PROFILE=soho      # 4c/8G — core only
+make up PROFILE=small     # 8c/24G — core + office + paperless
+make up PROFILE=medium    # 16c/48G — core + all services
+
+# Or using docker compose directly:
+docker compose up -d      # Portal + Traefik + PostgreSQL + Redis + Memcached
 ```
 
 ### 3. Add features (overlays)
@@ -180,6 +190,12 @@ docker compose up -d
 # Full stack (add mail + groupware)
 export COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml:mail/stalwart.yml:mail/sogo.yml"
 docker compose up -d
+
+# With optional services (profiles)
+docker compose --profile invoice --profile paperless up -d   # Invoicing + document management
+docker compose --profile chat --profile element up -d        # Matrix chat
+docker compose --profile collab up -d                       # CryptPad
+docker compose --profile notes up -d                        # Collaborative notes
 ```
 
 ### 4. Try the demo (minimal resources)
@@ -197,11 +213,12 @@ Requires **2 vCPU / 4 GB RAM** — perfect for evaluation.
 
 All tiers run the **same Compose stack** — scale vertically, no config changes.
 
-| Tier | Users | vCPU | RAM | Storage | Reference |
-|---|---|---|---|---|
-| **Small** | 1–50 | 4–8 | 16–32 GB | 100–250 GB NVMe | Hetzner CX22 / CX32 |
-| **Medium** | 50–500 | 12–16 | 48–64 GB | 500 GB–1 TB NVMe | Hetzner CX42 / CX62 |
-| **Enterprise** | 500+ | Individual | | Contact for sizing | 
+| Tier | Users | vCPU | RAM | Storage | Services | Reference |
+|---|---|---|---|---|---|---|
+| **SOHO** | 1–5 | 4 | 8 GB | 120 GB SSD | Core + Zitadel | Hetzner CX22 |
+| **Small** | 10–25 | 8 | 24 GB | 480 GB SSD | Core + Zitadel + OpenCloud + Paperless | Hetzner CX32 |
+| **Medium** | 40–60 | 16 | 48 GB | 960 GB SSD | Core + all services | Hetzner CX42 |
+| **Enterprise** | 500+ | Individual | | | Contact for sizing |  |
 
 ## Overlay System
 
@@ -210,11 +227,21 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | Overlay | Services | Domain | When to add |
 |---|---|---|---|
 | `docker-compose.yml` | Portal, Traefik, PostgreSQL, Redis, Memcached | `portal.*` | Always (core) |
-| `idm/zitadel.yml` | Zitadel (IAM/SSO) | `auth.*` | For SSO / IAM |
+| `idm/zitadel.yml` | Zitadel (IAM/SSO) | `auth.*` | For SSO / IAM (default) |
+| `idm/casdoor.yml` | Casdoor (lightweight IAM) | `auth.*` | Alternative IAM (128 MB) |
 | `opencloud/opencloud.yml` | OpenCloud + Collabora | `cloud.*`, `collabora.*` | For file sync & office |
 | `opencloud/minio.yml` | MinIO (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) |
 | `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
 | `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
+| `services/invoice-ninja.yml` | Invoice Ninja | `invoices.*` | For invoicing (`--profile invoice`) |
+| `services/paperless.yml` | Paperless-ngx + Gotenberg + Tika | `paperless.*` | For document management (`--profile paperless`) |
+| `services/cryptpad.yml` | CryptPad | `pad.*` | For collaborative docs (`--profile collab`) |
+| `services/synapse.yml` | Synapse (Matrix) | `matrix.*` | For chat (`--profile chat`) |
+| `services/element.yml` | Element-Web | `element.*` | For Matrix client (`--profile element`) |
+| `services/notes.yml` | Notes/Impress + Y-Provider | `notes.*` | For collaborative notes (`--profile notes`) |
+| `profiles/soho.yml` | (resource overrides) | — | SOHO tier (4c/8G) |
+| `profiles/small.yml` | (resource overrides) | — | Small tier (8c/24G) |
+| `profiles/medium.yml` | (resource overrides) | — | Medium tier (16c/48G) |
 | `profiles/demo.dev.yml` | (overrides) | — | For demo / dev (low resources) |
 | `profiles/demo.live.yml` | (overrides) | — | Public demo with Traefik |
 | `profiles/demo.coexist.yml` | (overrides) | — | Piggyback existing Traefik |
@@ -247,12 +274,15 @@ docker compose \
 
 ## Project Structure
 
-``
+```
 opensme-compose/
 ├── docker-compose.yml          # Core: Traefik, PostgreSQL, Redis, Memcached, Portal
 ├── .env.example                # All configuration variables
+├── Makefile                    # Test pyramid + tier-based deployment
 ├── idm/
 │   ├── zitadel.yml             # Overlay: Zitadel (IAM/SSO, replaces Keycloak + LDAP)
+│   ├── casdoor.yml             # Overlay: Casdoor (lightweight IAM, 128 MB)
+│   └── casdoor-config/         # Casdoor config template
 ├── opencloud/
 │   ├── opencloud.yml           # Overlay: OpenCloud + Collabora (files & office)
 │   ├── minio.yml              # Overlay: MinIO S3 storage
@@ -260,27 +290,41 @@ opensme-compose/
 ├── mail/
 │   ├── stalwart.yml            # Overlay: Stalwart mail server
 │   └── sogo.yml                # Overlay: SOGo groupware (webmail/calendar)
+├── services/                   # Optional service overlays
+│   ├── invoice-ninja.yml       # Overlay: Invoice Ninja (--profile invoice)
+│   ├── paperless.yml           # Overlay: Paperless-ngx + Gotenberg + Tika
+│   ├── cryptpad.yml            # Overlay: CryptPad (--profile collab)
+│   ├── synapse.yml             # Overlay: Synapse Matrix chat (--profile chat)
+│   ├── element.yml             # Overlay: Element-Web (--profile element)
+│   ├── notes.yml               # Overlay: Notes/Impress (--profile notes)
+│   ├── synapse-setup.sh        # Synapse homeserver.yaml generator
+│   └── cryptpad-config/        # CryptPad configuration
 ├── monitoring/
 │   ├── dev-agent.yml           # Overlay: Reactive container health (LLM analysis)
 │   ├── predictive-agent.yml    # Overlay: Predictive health (Kalman/Markov/Bayes)
 │   ├── ollama.yml              # Overlay: Local LLM backend for agents
 │   └── taskfleet.yml           # Overlay: Parallel LLM task orchestration
 ├── profiles/
+│   ├── soho.yml                # Tier: SOHO (4c/8G, core only)
+│   ├── small.yml               # Tier: Small (8c/24G, core + office + paperless)
+│   ├── medium.yml              # Tier: Medium (16c/48G, all services)
 │   ├── demo.dev.yml           # Profile: minimal resources for demo/dev
 │   ├── demo.live.yml          # Profile: public demo with Traefik
 │   └── demo.coexist.yml       # Profile: piggyback existing Traefik
 ├── portal/                     # Rust/Axum portal (service directory)
 │   ├── Cargo.toml
-   ├── Dockerfile
-   └── src/main.rs
+│   ├── Dockerfile
+│   └── src/main.rs
 ├── scripts/
 │   ├── start.sh               # Start stack (core + zitadel + opencloud)
 │   ├── stop.sh                # Stop all opensme containers
 │   ├── demo.sh                # One-command demo with random passwords
 │   ├── demo-live.sh           # Deploy to server with Let's Encrypt
-│   └── backup.sh              # Backup PostgreSQL + Traefik data
+│   ├── backup.sh               # Backup PostgreSQL + Traefik + volumes
+│   └── restore.sh              # Restore from backup
 ├── postgres-init/
-│   └── 00-create-databases.sql  # Auto-creates zitadel + sogo DBs on first start
+│   ├── 00-create-databases.sql # Auto-creates 7 databases on first start
+│   └── 01-create-users.sh      # Per-service database users
 └── docs/
     └── assets/
         └── teaser.svg
@@ -539,6 +583,41 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 > **⚠️ Change all `CHANGEME_*` passwords before production!**
 > Use `openssl rand -base64 24` to generate secure values.
 
+## Makefile
+
+The `Makefile` provides tier-based deployment and a test pyramid:
+
+```bash
+# Tier-based deployment
+make up PROFILE=soho      # 4c/8G — core only (6 containers)
+make up PROFILE=small     # 8c/24G — core + office + paperless (10 containers)
+make up PROFILE=medium    # 16c/48G — core + all services (14 containers)
+make up PROFILE=custom    # Use COMPOSE_FILE from env
+
+# All optional services
+make up-all               # Everything: invoice, paperless, chat, collab, element, notes
+
+# Operations
+make down                 # Stop stack
+make status               # Show container status
+make logs                 # Tail logs
+make pull                 # Pull images
+
+# Testing (7-layer pyramid)
+make lint                 # Layer 0: compose config + env check
+make container            # Layer 2: container health
+make smoke                # Layer 3: HTTP/SSL/port smoke
+make test                 # Layers 0-3
+make test-all             # Layers 0-6 (full suite)
+
+# Backup / Restore
+make backup               # Full backup (PG + Traefik + volumes)
+make backup-db            # PostgreSQL + Traefik only
+make backup-dry-run       # Preview backup
+make restore              # List available backups
+make restore-from BACKUP=<ts>  # Restore from backup
+```
+
 ## Scripts
 
 | Script | Description |
@@ -547,33 +626,56 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `scripts/stop.sh` | Stop all opensme containers |
 | `scripts/demo.sh` | Launch minimal demo with random passwords |
 | `scripts/demo-live.sh` | Deploy to server with Let's Encrypt |
-| `scripts/backup.sh` | Backup PostgreSQL + Traefik data |
+| `scripts/backup.sh` | Backup PostgreSQL + Traefik + volumes (`--volumes`, `--dry-run`, `--services`) |
+| `scripts/restore.sh` | Restore from backup (`--list`, `--pg-only`, `--volumes-only`) |
 
 ## Backup &amp; Restore
 
 ### Backup
 
 ```bash
+# Full backup (PostgreSQL + Traefik + Docker volumes)
+./scripts/backup.sh --volumes
+
+# PostgreSQL + Traefik only (no volumes)
 ./scripts/backup.sh
-# → ./backups/postgres_20260818_120000.sql.gz
-# → ./backups/taefik_20260818_120000.tar.gz
+
+# Specific volumes only
+./scripts/backup.sh --volumes --services opencloud-data,redis-data
+
+# Preview (dry run)
+./scripts/backup.sh --volumes --dry-run
 ```
 
-For automated daily backups, add a cron entry:
+Backups are stored in `./backups/` with timestamps:
+- `postgres_YYYYMMDD_HHMMSS.sql.gz` — PostgreSQL dump
+- `traefik_YYYYMMDD_HHMMSS.tar.gz` — Traefik ACME/SSL
+- `volumes_YYYYMMDD_HHMMSS.tar.gz` — Combined volume backup
 
+Retention: 7 days (automatic cleanup).
+
+For automated daily backups:
 ```bash
-0 3 * * * cd /opt/opensme && ./scripts/backup.sh >> /var/log/opensme-backup.log 2>&1
+0 3 * * * cd /opt/opensme && ./scripts/backup.sh --volumes >> /var/log/opensme-backup.log 2>&1
 ```
 
 ### Restore
 
 ```bash
-# Restore PostgreSQL
-gunzip -c ./backups/postgres_20260818_120000.sql.gz | docker compose exec -T postgres psql -U opensme
+# List available backups
+./scripts/restore.sh --list
 
-# Restore Traefik data
-docker compose run --rm -v "$(pwd)/backups:/backups" alpine \
-  tar xzf /backups/traefik_20260818_120000.tar.gz -C /var/lib/docker/volumes
+# Restore everything (PostgreSQL + volumes)
+./scripts/restore.sh 20250815_143022
+
+# PostgreSQL only
+./scripts/restore.sh 20250815_143022 --pg-only
+
+# Volumes only
+./scripts/restore.sh 20250815_143022 --volumes-only
+
+# Preview (dry run)
+./scripts/restore.sh 20250815_143022 --dry-run
 ```
 
 ## DNS Setup
