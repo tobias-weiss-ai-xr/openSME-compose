@@ -218,17 +218,31 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `profiles/demo.dev.yml` | (overrides) | — | For demo / dev (low resources) |
 | `profiles/demo.live.yml` | (overrides) | — | Public demo with Traefik |
 | `profiles/demo.coexist.yml` | (overrides) | — | Piggyback existing Traefik |
+| `monitoring/dev-agent.yml` | dev-agent | — | Reactive container health (LLM) |
+| `monitoring/predictive-agent.yml` | predictive-agent | — | Predictive health (Kalman/Markov) |
+| `monitoring/ollama.yml` | Ollama | — | Local LLM for agents |
+| `monitoring/taskfleet.yml` | taskfleet | — | Parallel LLM task orchestration |
 
 ### Docker Compose file order
 
 Files are merged left-to-right — **last file wins** for maps. Always order:
 
-``nbase → overlays → profile
+```
+base → overlays → profile
 ```
 
 Example:
-``ndocker compose \
-  -f docker-compose.yml \n  -f idm/zitadel.yml \n  -f opencloud/opencloud.yml \n  -f opencloud/minio.yml \n  -f mail/stalwart.yml \n  -f mail/sogo.yml \n  up -d
+```
+docker compose \
+  -f docker-compose.yml \
+  -f idm/zitadel.yml \
+  -f opencloud/opencloud.yml \
+  -f opencloud/minio.yml \
+  -f mail/stalwart.yml \
+  -f mail/sogo.yml \
+  -f monitoring/ollama.yml \
+  -f monitoring/dev-agent.yml \
+  up -d
 ```
 
 ## Project Structure
@@ -246,6 +260,11 @@ opensme-compose/
 ├── mail/
 │   ├── stalwart.yml            # Overlay: Stalwart mail server
 │   └── sogo.yml                # Overlay: SOGo groupware (webmail/calendar)
+├── monitoring/
+│   ├── dev-agent.yml           # Overlay: Reactive container health (LLM analysis)
+│   ├── predictive-agent.yml    # Overlay: Predictive health (Kalman/Markov/Bayes)
+│   ├── ollama.yml              # Overlay: Local LLM backend for agents
+│   └── taskfleet.yml           # Overlay: Parallel LLM task orchestration
 ├── profiles/
 │   ├── demo.dev.yml           # Profile: minimal resources for demo/dev
 │   ├── demo.live.yml          # Profile: public demo with Traefik
@@ -391,6 +410,116 @@ docker volume rm opensme_opencloud-config
 EXISTING_NETWORK=traefik-web docker compose ... up -d --force-recreate
 ```
 </details>
+
+## Monitoring &amp; AI Agents
+
+openSME includes optional overlays for container health monitoring
+and AI-assisted operations. These are **disabled by default** — add them
+via `COMPOSE_FILE` when needed.
+
+### Architecture
+
+```
+  Docker socket (read-only)
+       │
+       ▼
+  ┌─────────────┐   metrics   ┌─────────────────────┐
+  │ dev-agent    │◄───────────│  predictive-agent    │
+  │ (reactive)   │            │  (predictive)         │
+  │ :8081 health │            │  :8081 health         │
+  │ :8080 metrics│            │  :8080 metrics        │
+  └──────┬───────┘            └──────────┬───────────┘
+         │ LLM analysis                  │ LLM analysis
+         ▼                               ▼
+  ┌─────────────────────────────────────────┐
+  │  ollama (optional, local)               │
+  │  or external LLM (OLLAMA_URL env var)   │
+  └─────────────────────────────────────────┘
+
+  ┌─────────────┐
+  │ taskfleet    │  (separate concern: dev orchestration)
+  │ git worktrees│  Not a daemon — invoked on demand
+  └─────────────┘
+```
+
+### dev-agent — Reactive health monitor
+
+Watches containers via the Docker socket, detects unhealthy ones
+(CrashLoopBackOff, OOMKilled, Error), and sends context to an LLM for
+root-cause analysis and recommended actions.
+
+```bash
+export COMPOSE_FILE="docker-compose.yml:monitoring/dev-agent.yml"
+docker compose up -d
+```
+
+Endpoints: `:8081/healthz`, `:8081/ready`, `:8080/metrics`,
+`:8080/status`, `:8080/history`, `:8080/cache`
+
+### predictive-agent — Predictive health
+
+Uses Kalman filters (memory/CPU trends), Markov chains (state transitions),
+and Bayesian risk scoring to predict container failures **before** they
+happen. Triggers LLM analysis when risk exceeds `PREDICTION_RISK_THRESHOLD`.
+
+```bash
+export COMPOSE_FILE="docker-compose.yml:monitoring/predictive-agent.yml"
+docker compose up -d
+```
+
+Endpoints: `:8081/healthz`, `:8081/ready`, `:8080/metrics`,
+`:8080/predictions`, `:8080/state`, `:8080/reanalyze`
+
+### Ollama — Local LLM backend
+
+Both agents need an LLM for analysis. Include the Ollama overlay for a
+local instance (no external API calls):
+
+```bash
+export COMPOSE_FILE="docker-compose.yml:monitoring/ollama.yml:monitoring/dev-agent.yml:monitoring/predictive-agent.yml"
+docker compose up -d
+
+# Pull a model
+docker compose exec ollama ollama pull qwen3-30b-a3b:latest
+```
+
+CPU-only by default. For NVIDIA GPU, uncomment the GPU section in
+`monitoring/ollama.yml`.
+
+For an external LLM, skip the Ollama overlay and set `OLLAMA_URL` to your
+endpoint in `.env`.
+
+### taskfleet — Parallel LLM task orchestration
+
+Dispatches development tasks to LLM workers in isolated git worktrees.
+Not a daemon — invoked on demand:
+
+```bash
+# One dispatch round
+docker compose --profile taskfleet run --rm taskfleet --once
+
+# Show status board
+docker compose --profile taskfleet run --rm taskfleet --status
+
+# Dispatch a specific task
+docker compose --profile taskfleet run --rm taskfleet --task DA-06
+```
+
+Set `TF_REPO_DIR` to the repository you want tasks to operate on.
+
+### Monitoring configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `DEV_AGENT_IMAGE` | `ghcr.io/.../dev-agent:latest` | dev-agent container image |
+| `PREDICTIVE_AGENT_IMAGE` | `ghcr.io/.../predictive-agent:latest` | predictive-agent image |
+| `OLLAMA_URL` | `http://ollama:11434` | LLM endpoint for analysis |
+| `OLLAMA_MODEL` | `qwen3-30b-a3b:latest` | LLM model name |
+| `PREDICTION_ENABLED` | `true` | Enable predictive analysis |
+| `PREDICTION_RISK_THRESHOLD` | `0.5` | Risk score to trigger LLM analysis |
+| `RECONCILE_INTERVAL` | `60` | Seconds between health checks |
+| `TF_REPO_DIR` | `./` | Repo path for taskfleet workers |
+| `TF_MAX_PARALLEL` | `2` | Max concurrent taskfleet workers |
 
 ## Configuration
 

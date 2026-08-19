@@ -1,0 +1,82 @@
+# ── dev-agent overlay — Reactive container health monitor ─────
+# Watches containers via Docker socket, detects unhealthy ones,
+# sends context to an LLM for root-cause analysis.
+#
+# Include via:
+#   COMPOSE_FILE="docker-compose.yml:monitoring/dev-agent.yml"
+#
+# Requires:
+#   - Docker socket mounted (read-only)
+#   - LLM backend reachable at OLLAMA_URL (or enable monitoring/ollama.yml)
+#
+# Endpoints:
+#   :8081/healthz   Liveness probe
+#   :8081/ready     Readiness probe
+#   :8080/metrics   Prometheus metrics
+#   :8080/status    Operator status (JSON)
+#   :8080/history   Analysis history (JSON)
+#   :8080/cache     LLM analysis cache (JSON)
+
+services:
+  dev-agent:
+    image: ${DEV_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/dev-agent:latest}
+    container_name: opensme-dev-agent
+    restart: unless-stopped
+    volumes:
+      # Read-only Docker socket — agent inspects containers but cannot mutate
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Persistent state (analysis history, cache) across restarts
+      - dev-agent-state:/var/lib/opensme
+      # Read-only access to compose project for container discovery
+      - /var/lib/docker/volumes:/var/lib/docker/volumes:ro
+    environment:
+      OPERATOR_NAME: opensme-dev-agent
+      OPERATOR_NAMESPACE: opensme
+      OPERATOR_VERSION: "3.1.0"
+      OPERATOR_LOG_LEVEL: ${LOG_LEVEL:-info}
+      OPERATOR_WATCH_NAMESPACES: ${DEV_AGENT_WATCH_NAMESPACES:-opensme,default}
+      # LLM backend (ollama | saia | tud | openai)
+      LLM_BACKEND: ${DEV_AGENT_LLM_BACKEND:-ollama}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3-30b-a3b:latest}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-180}
+      SAIA_API_URL: ${SAIA_API_URL:-}
+      SAIA_API_KEY: ${SAIA_API_KEY:-}
+      SAIA_MODEL: ${SAIA_MODEL:-qwen3.5-35b-a3b}
+      TUD_API_URL: ${TUD_API_URL:-}
+      TUD_API_KEY: ${TUD_API_KEY:-}
+      TUD_MODEL: ${TUD_MODEL:-GLM-5.2-AWQ-INT4}
+      OPENAI_API_URL: ${OPENAI_API_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      # Reconcile loop
+      RECONCILE_INTERVAL: ${DEV_AGENT_RECONCILE_INTERVAL:-60}
+      ANALYSIS_TTL: ${DEV_AGENT_ANALYSIS_TTL:-300}
+      ANALYSIS_TTL_MAX: ${DEV_AGENT_ANALYSIS_TTL_MAX:-1200}
+      MAX_PODS_PER_CYCLE: ${DEV_AGENT_MAX_PODS_PER_CYCLE:-3}
+      LOG_VERBOSITY: ${LOG_LEVEL:-info}
+      HISTORY_FILE: /var/lib/opensme/analysis-history.json
+      HISTORY_MAX: ${DEV_AGENT_HISTORY_MAX:-100}
+      # HTTP
+      OPERATOR_METRICS_BIND_ADDRESS: "0.0.0.0:8080"
+      OPERATOR_HEALTH_PROBE_BIND_ADDRESS: "0.0.0.0:8081"
+      TZ: ${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+volumes:
+  dev-agent-state:

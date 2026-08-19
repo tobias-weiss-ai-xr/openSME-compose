@@ -1,0 +1,90 @@
+# ── predictive-agent overlay — Predictive container health ────
+# Kalman filter (memory/CPU trends), Markov chain (state transitions),
+# Bayesian risk scoring, time-to-failure prediction.
+#
+# Include via:
+#   COMPOSE_FILE="docker-compose.yml:monitoring/predictive-agent.yml"
+#
+# Requires:
+#   - Docker socket mounted (read-only)
+#   - LLM backend reachable at OLLAMA_URL (or enable monitoring/ollama.yml)
+#
+# Endpoints:
+#   :8081/healthz   Liveness probe
+#   :8081/ready     Readiness probe
+#   :8080/metrics   Prometheus metrics
+#   :8080/status    Operator status (JSON)
+#   :8080/predictions  Current risk predictions (JSON)
+#   :8080/state     Pod state model (JSON)
+#   :8080/history   Analysis history (JSON)
+#   :8080/cache     LLM analysis cache (JSON)
+#   :8080/reanalyze Trigger a reconcile cycle (POST or GET)
+
+services:
+  predictive-agent:
+    image: ${PREDICTIVE_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest}
+    container_name: opensme-predictive-agent
+    restart: unless-stopped
+    volumes:
+      # Read-only Docker socket — agent collects metrics but cannot mutate
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Persistent state (Kalman filters, Markov chain, predictions) across restarts
+      - predictive-agent-state:/var/lib/opensme
+    environment:
+      OPERATOR_NAME: opensme-predictive-agent
+      OPERATOR_NAMESPACE: opensme
+      OPERATOR_WATCH_NAMESPACES: ${PREDICTIVE_AGENT_WATCH_NAMESPACES:-opensme,default}
+      # LLM backend (ollama | saia | tud | openai)
+      LLM_BACKEND: ${PREDICTIVE_AGENT_LLM_BACKEND:-ollama}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3-30b-a3b:latest}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-180}
+      SAIA_API_URL: ${SAIA_API_URL:-}
+      SAIA_API_KEY: ${SAIA_API_KEY:-}
+      SAIA_MODEL: ${SAIA_MODEL:-qwen3.5-35b-a3b}
+      TUD_API_URL: ${TUD_API_URL:-}
+      TUD_API_KEY: ${TUD_API_KEY:-}
+      TUD_MODEL: ${TUD_MODEL:-GLM-5.2-AWQ-INT4}
+      OPENAI_API_URL: ${OPENAI_API_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      # Reconcile loop
+      RECONCILE_INTERVAL: ${PREDICTIVE_AGENT_RECONCILE_INTERVAL:-60}
+      ANALYSIS_TTL: ${PREDICTIVE_AGENT_ANALYSIS_TTL:-300}
+      ANALYSIS_TTL_MAX: ${PREDICTIVE_AGENT_ANALYSIS_TTL_MAX:-1200}
+      MAX_PODS_PER_CYCLE: ${PREDICTIVE_AGENT_MAX_PODS_PER_CYCLE:-3}
+      LOG_VERBOSITY: ${LOG_LEVEL:-info}
+      # Prediction
+      PREDICTION_ENABLED: ${PREDICTION_ENABLED:-true}
+      PREDICTION_RISK_THRESHOLD: ${PREDICTION_RISK_THRESHOLD:-0.5}
+      # Kalman filter tuning
+      KALMAN_PROCESS_NOISE: ${KALMAN_PROCESS_NOISE:-1.0}
+      KALMAN_MEASUREMENT_NOISE: ${KALMAN_MEASUREMENT_NOISE:-100.0}
+      # Persistence
+      STATE_MODEL_FILE: /var/lib/opensme/state-model.json
+      PREDICTIONS_FILE: /var/lib/opensme/predictions.json
+      HISTORY_FILE: /var/lib/opensme/analysis-history.json
+      HISTORY_MAX: ${PREDICTIVE_AGENT_HISTORY_MAX:-100}
+      # HTTP
+      OPERATOR_METRICS_BIND_ADDRESS: "0.0.0.0:8080"
+      OPERATOR_HEALTH_PROBE_BIND_ADDRESS: "0.0.0.0:8081"
+      TZ: ${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+volumes:
+  predictive-agent-state:

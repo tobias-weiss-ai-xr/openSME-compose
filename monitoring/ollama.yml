@@ -1,0 +1,63 @@
+# ── Ollama overlay — Local LLM backend for dev-agent & predictive-agent ──
+# Provides a local Ollama instance so both agents can run LLM analysis
+# without external API calls.
+#
+# Include via:
+#   COMPOSE_FILE="docker-compose.yml:monitoring/ollama.yml:monitoring/dev-agent.yml"
+#
+# The agents default to OLLAMA_URL=http://ollama:11434 (the service name below).
+#
+# CPU-only by default. For GPU acceleration, uncomment the deploy.resources
+# section and add the GPU runtime below.
+#
+# Models:
+#   docker compose exec ollama ollama pull qwen3-30b-a3b:latest
+#   docker compose exec ollama ollama pull llama3.2:3b
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: opensme-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
+      TZ: ${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - opensme-net
+    # ── CPU mode (default) ──────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    # ── GPU mode (uncomment for NVIDIA) ─────────
+    # Uncomment the following for GPU acceleration:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    #     limits:
+    #       memory: 8G
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+    # volumes:
+    #   - ollama-models:/root/.ollama
+
+volumes:
+  ollama-models:
