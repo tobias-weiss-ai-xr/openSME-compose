@@ -46,7 +46,7 @@ NC     := \033[0m
 PROFILE    ?= soho
 DOMAIN     ?= $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
 COMPOSE    ?= docker compose
-TEST_ENV   ?= .env
+TEST_ENV   ?= .env.example
 PYTHON     ?= python3
 TEST_RUNNER := $(PYTHON) tests/run.py
 
