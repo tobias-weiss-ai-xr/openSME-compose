@@ -53,13 +53,21 @@ def check_no_exposed_internal_ports(result, loader):
 
 
 def check_docker_socket_ro(result, loader):
-    """Docker socket mount must be read-only."""
+    """Docker socket mount must be read-only.
+
+    Exception: taskfleet needs read-write Docker socket because it runs
+    docker compose commands (creating worktrees, building, testing).
+    """
+    # Services allowed to mount Docker socket read-write
+    RW_EXCEPTIONS = {"taskfleet"}
     for svc_name, svc in loader.services.items():
         vols = svc["data"].get("volumes") or []
         for v in vols:
             if isinstance(v, str) and "/var/run/docker.sock" in v:
                 if ":ro" in v:
                     result.ok(f"{svc_name}: Docker socket mounted read-only")
+                elif svc_name in RW_EXCEPTIONS:
+                    result.ok(f"{svc_name}: Docker socket read-write (allowed: needs docker compose)")
                 else:
                     result.fail(f"{svc_name}: Docker socket mounted read-write (should be :ro)")
 
@@ -166,13 +174,21 @@ def check_no_changeme_in_env(result):
 
 
 def check_restart_policy(result, loader):
-    """All services should have restart: unless-stopped or restart: always."""
+    """All services should have restart: unless-stopped or restart: always.
+
+    Exception: taskfleet is on-demand (run via docker compose run),
+    so restart: no is correct.
+    """
+    # Services where restart: no is intentional
+    NO_RESTART_EXCEPTIONS = {"taskfleet"}
     for svc_name, svc in sorted(loader.services.items()):
         restart = svc["data"].get("restart")
         if restart in ("unless-stopped", "always"):
             result.ok(f"{svc_name}: restart={restart}")
         elif restart is None:
             result.warn(f"{svc_name}: no restart policy")
+        elif restart == "no" and svc_name in NO_RESTART_EXCEPTIONS:
+            result.ok(f"{svc_name}: restart=no (on-demand service)")
         else:
             result.warn(f"{svc_name}: restart={restart} (recommend unless-stopped)")
 
