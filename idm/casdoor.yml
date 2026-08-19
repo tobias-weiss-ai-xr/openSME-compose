@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Casdoor IAM (Lightweight Alternative to Zitadel)
+# ═══════════════════════════════════════════════════════════════
+# Casdoor: Go-based OIDC/OAuth2 SSO. ~128 MB RAM vs Zitadel's ~512 MB.
+# Use for small deployments where Zitadel's enterprise features are
+# not needed.
+#
+# Include via: COMPOSE_FILE=docker-compose.yml:idm/casdoor.yml
+# Do NOT include idm/zitadel.yml at the same time.
+#
+# First start: log in at https://auth.<domain>
+# Default: admin / <CASDOOR_ADMIN_PASSWORD>
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  casdoor:
+    image: casbin/casdoor:latest
+    container_name: opensme-casdoor
+    restart: unless-stopped
+    entrypoint: ["/bin/sh"]
+    command: ["-c", "envsubst < /opt/casdoor/conf/app.conf.template > /opt/casdoor/conf/app.conf && /opt/casdoor/casdoor"]
+    environment:
+      CASDOOR_DB_PASSWORD: ${CASDOOR_DB_PASSWORD:-CHANGEME_casdoor}
+      CASDOOR_ADMIN_PASSWORD: ${CASDOOR_ADMIN_PASSWORD:-CHANGEME_casdoor}
+    volumes:
+      - casdoor-data:/opt/casdoor/data
+      - ./idm/casdoor-config:/opt/casdoor/conf
+    networks:
+      - opensme-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.casdoor.rule=Host(`${CASDOOR_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.casdoor.tls=true"
+      - "traefik.http.routers.casdoor.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.casdoor.entrypoints=websecure"
+      - "traefik.http.services.casdoor.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+volumes:
+  casdoor-data:

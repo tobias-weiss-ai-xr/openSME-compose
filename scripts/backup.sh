@@ -1,37 +1,189 @@
 #!/usr/bin/env bash
-# ── openSME — Backup ───────────────────
-# Backs up PostgreSQL (all databases) and Traefik ACME/SSL data.
-# Persistent Docker volumes (opencloud-data, minio-data, etc.) can be
-# backed up via:
-#   docker run --rm -v <src_vol>:/data -v $(pwd)/backups:/backup \
-#     alpine tar czf /backup/vol_<timestamp>.tar.gz /data
+# ═══════════════════════════════════════════════════════════════
+# openSME — Enhanced Backup
+# ═══════════════════════════════════════════════════════════════
+# Backs up:
+#   1. PostgreSQL (all databases, via pg_dumpall)
+#   2. Traefik ACME/SSL data
+#   3. Named Docker volumes (optional)
+#
+# Usage:
+#   ./scripts/backup.sh                         # Full backup (PG + Traefik)
+#   ./scripts/backup.sh --volumes              # Also back up Docker volumes
+#   ./scripts/backup.sh --volumes --services opencloud,redis  # Specific volumes
+#   ./scripts/backup.sh --dry-run              # Preview what would be backed up
+#   ./scripts/backup.sh --no-stop              # Don't stop services (risk: inconsistent)
+#
+# Volume names (without project prefix):
+#   postgres-data, redis-data, opencloud-config, opencloud-data,
+#   stalwart-etc, stalwart-data, sogo-config, sogo-data,
+#   traefik-data, casdoor-data, zitadel-machinekey,
+#   cryptpad-data, cryptpad-blob, synapse-data, notes-data,
+#   minio-data, paperless-data, paperless-media, paperless-export,
+#   invoiceninja-public, invoiceninja-storage
+# ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
-# Read active compose file (default: core + zitadel + opencloud)
+# ── Config ────────────────────────────────────
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml}"
 export COMPOSE_FILE
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+DRY_RUN=false
+BACKUP_VOLUMES=false
+NO_STOP=false
+SERVICES=""
+
+# ── Known volumes ─────────────────────────────
+KNOWN_VOLUMES=(
+  postgres-data redis-data opencloud-config opencloud-data
+  stalwart-etc stalwart-data sogo-config sogo-data
+  traefik-data casdoor-data zitadel-machinekey
+  cryptpad-data cryptpad-blob synapse-data notes-data
+  minio-data paperless-data paperless-media paperless-export
+  invoiceninja-public invoiceninja-storage
+)
+
+# ── Parse arguments ───────────────────────────
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)    DRY_RUN=true; shift ;;
+    --volumes)    BACKUP_VOLUMES=true; shift ;;
+    --no-stop)    NO_STOP=true; shift ;;
+    --services)   shift; SERVICES="$1"; shift ;;
+    -h|--help)
+      echo "Usage: $0 [--volumes] [--services vol1,vol2,...] [--dry-run] [--no-stop]"
+      echo ""
+      echo "Options:"
+      echo "  --volumes           Also back up Docker volumes"
+      echo "  --services <list>   Comma-separated volume names (implies --volumes)"
+      echo "  --dry-run           Preview without making changes"
+      echo "  --no-stop           Don't stop services (risk: inconsistent backup)"
+      exit 0
+      ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+if [ -n "$SERVICES" ]; then
+  BACKUP_VOLUMES=true
+fi
+
 mkdir -p "$BACKUP_DIR"
 
-echo "📦 Backing up openSME to ${BACKUP_DIR}/"
+echo "📦 openSME Backup"
+echo "   Directory:  ${BACKUP_DIR}/"
+echo "   Timestamp:  ${TIMESTAMP}"
+echo "   PG dump:    yes"
+echo "   Traefik:    yes"
+echo "   Volumes:    $([ "$BACKUP_VOLUMES" = true ] && echo 'yes' || echo 'no')"
+[ -n "$SERVICES" ] && echo "   Services:   ${SERVICES}"
+echo ""
 
-# PostgreSQL dump
+# ── Determine volume list ─────────────────────
+if [ -n "$SERVICES" ]; then
+  SELECTED_VOLUMES=()
+  for vol in $(echo "$SERVICES" | tr ',' ' '); do
+    found=false
+    for v in "${KNOWN_VOLUMES[@]}"; do
+      if [ "$v" = "$vol" ]; then
+        SELECTED_VOLUMES+=("$vol")
+        found=true
+        break
+      fi
+    done
+    if [ "$found" = false ]; then
+      echo "⚠ Unknown volume: $vol (available: ${KNOWN_VOLUMES[*]})"
+      exit 1
+    fi
+  done
+elif [ "$BACKUP_VOLUMES" = true ]; then
+  SELECTED_VOLUMES=("${KNOWN_VOLUMES[@]}")
+fi
+
+# ── Dry run ───────────────────────────────────
+if [ "$DRY_RUN" = true ]; then
+  echo "DRY RUN — What would be backed up:"
+  echo "  PostgreSQL:  ${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz"
+  echo "  Traefik:     ${BACKUP_DIR}/traefik_${TIMESTAMP}.tar.gz"
+  if [ "$BACKUP_VOLUMES" = true ]; then
+    echo "  Volumes:"
+    for vol in "${SELECTED_VOLUMES[@]:-}"; do
+      echo "    - $vol"
+    done
+  fi
+  exit 0
+fi
+
+# ── Stop services for consistent backup ───────
+if [ "$NO_STOP" = false ]; then
+  echo "🛑 Stopping services for consistent backup..."
+  docker compose down --remove-orphans 2>/dev/null || true
+  sleep 5
+fi
+
+# ── PostgreSQL dump ───────────────────────────
 echo "   → PostgreSQL..."
-docker compose exec -T postgres pg_dumpall -U opensme \
-  | gzip > "${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz"
+docker compose run --rm --no-deps --entrypoint "" \
+  postgres pg_dumpall -U "${POSTGRES_USER:-opensme}" 2>/dev/null \
+  | gzip > "${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz" \
+  || echo "   ⚠ PostgreSQL backup skipped (not running)"
 
-# Traefik data (ACME certs, dynamic config)
-echo "   → Traefik (ACME certs + config)..."
+# ── Traefik ACME/SSL ──────────────────────────
+echo "   → Traefik (ACME certs)..."
 docker compose run --rm --no-deps --entrypoint "" \
   -v "$(pwd)/${BACKUP_DIR}:/backup" \
   traefik tar czf "/backup/traefik_${TIMESTAMP}.tar.gz" -C /etc/traefik . 2>/dev/null \
   || echo "   ⚠ Traefik backup skipped (not running or no volume)"
 
+# ── Volume backup ─────────────────────────────
+if [ "$BACKUP_VOLUMES" = true ]; then
+  PROJECT_NAME="${COMPOSE_PROJECT_NAME:-opensme-compose}"
+  PARTIAL_DIR="${BACKUP_DIR}/partial-${TIMESTAMP}"
+  mkdir -p "$PARTIAL_DIR"
+
+  for vol in "${SELECTED_VOLUMES[@]}"; do
+    FULL_VOL="${PROJECT_NAME}_${vol}"
+    echo "   → Volume: $vol..."
+    docker run --rm \
+      -v "${FULL_VOL}:/data" \
+      -v "$(pwd)/${PARTIAL_DIR}:/backups" \
+      alpine:3.20 \
+      tar czf "/backups/${vol}.tar.gz" -C /data . 2>/dev/null \
+      || echo "   ⚠ Volume $vol skipped (not found)"
+  done
+
+  # Combine volume backups
+  if [ -d "$PARTIAL_DIR" ] && ls "$PARTIAL_DIR"/*.tar.gz >/dev/null 2>&1; then
+    find "$PARTIAL_DIR" -name '*.tar.gz' | sort | while read -r part; do
+      cat "$part"
+    done > "${BACKUP_DIR}/volumes_${TIMESTAMP}.tar.gz"
+    rm -rf "$PARTIAL_DIR"
+  fi
+fi
+
+# ── Restart services ──────────────────────────
+if [ "$NO_STOP" = false ]; then
+  echo "🚀 Restarting services..."
+  docker compose up -d
+  sleep 10
+fi
+
+# ── Summary ───────────────────────────────────
 echo ""
-echo "✅ Backup complete: ${BACKUP_DIR}/"
-ls -lh "${BACKUP_DIR}/"*"_${TIMESTAMP}.*"
+echo "✅ Backup complete!"
+echo "   Directory: ${BACKUP_DIR}/"
+ls -lh "${BACKUP_DIR}/"*"_${TIMESTAMP}.*" 2>/dev/null || true
+
+# ── Retention (keep 7 days) ───────────────────
+find "$BACKUP_DIR" -name "backup-*.tar.gz" -type f -mtime +7 -delete 2>/dev/null || true
+find "$BACKUP_DIR" -name "*_*.sql.gz" -type f -mtime +7 -delete 2>/dev/null || true
+find "$BACKUP_DIR" -name "*_*.tar.gz" -type f -mtime +7 -delete 2>/dev/null || true
+echo "   Retention: Keeping last 7 days"
+
+# ── Log ───────────────────────────────────────
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Backup completed: ${TIMESTAMP}" >> "${BACKUP_DIR}/backup.log"

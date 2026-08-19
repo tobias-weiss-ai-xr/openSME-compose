@@ -1,0 +1,62 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Synapse (Matrix Chat Server)
+# ═══════════════════════════════════════════════════════════════
+# Decentralized messaging. OIDC login via Zitadel.
+# Config is generated at startup by services/synapse-setup.sh.
+#
+# Include via: COMPOSE_FILE=docker-compose.yml:services/synapse.yml
+# Or via profile: docker compose --profile chat up -d
+#
+# Requires: PostgreSQL (core), Zitadel (idm/zitadel.yml) for OIDC
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  synapse:
+    image: element-hq/synapse:v1.144.0
+    container_name: opensme-synapse
+    restart: unless-stopped
+    profiles: ["chat"]
+    environment:
+      DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
+      SYNAPSE_SERVER_NAME: "matrix.${OPENSME_DOMAIN:-opensme.org}"
+      SYNAPSE_REPORT_STATS: "no"
+      POSTGRES_USER: synapse_user
+      POSTGRES_PASSWORD: ${SYNAPSE_DB_PASSWORD:-CHANGEME_synapse}
+      POSTGRES_DB: synapse_db
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      SYNAPSE_OIDC_CLIENT_SECRET: ${SYNAPSE_OIDC_CLIENT_SECRET:-CHANGEME_synapse_oidc}
+    volumes:
+      - synapse-data:/data
+      - ./services/synapse-setup.sh:/entrypoint-setup.sh:ro
+    networks:
+      - opensme-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/sh"]
+    command: ["-c", "sh /entrypoint-setup.sh && exec /usr/local/bin/python -m synapse.app.homeserver --config-path /data/homeserver.yaml --daemonize=false"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matrix.rule=Host(`matrix.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.matrix.tls=true"
+      - "traefik.http.routers.matrix.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.matrix.entrypoints=websecure"
+      - "traefik.http.services.matrix.loadbalancer.server.port=8008"
+    healthcheck:
+      test: ["CMD", "curl", "-fS", "http://localhost:8008/_matrix/federation/v1/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
+        reservations:
+          cpus: "0.25"
+          memory: 64M
+
+volumes:
+  synapse-data:

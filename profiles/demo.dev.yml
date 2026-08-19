@@ -94,13 +94,8 @@ services:
           cpus: "0.1"
           memory: 64M
 
-  # ── Keycloak (minimal, direct PG, no pool) ───
+  # ── Zitadel (minimal, direct PG, no pool) ──
   zitadel:
-    environment:
-      
-      
-      
-      
     deploy:
       resources:
         limits:

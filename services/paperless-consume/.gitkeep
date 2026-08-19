@@ -1,0 +1,3 @@
+# Paperless-ngx consume directory
+# Place documents here for automatic ingestion.
+# Mounted read-only at /consume in the paperless-ngx container.

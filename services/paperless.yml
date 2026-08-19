@@ -1,0 +1,132 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Paperless-ngx + Gotenberg
+# ═══════════════════════════════════════════════════════════════
+# Document management with OCR. Gotenberg handles PDF conversion.
+# Include via: COMPOSE_FILE=docker-compose.yml:services/paperless.yml
+# Or via profile: docker compose --profile paperless up -d
+#
+# Requires: PostgreSQL (core), Redis (core)
+# Optional: Paperless-Tika for enhanced OCR (profile: tika)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: opensme-paperless
+    restart: unless-stopped
+    profiles: ["paperless"]
+    environment:
+      PAPERLESS_REDIS: redis://redis:6379/2
+      PAPERLESS_DBHOST: postgres
+      PAPERLESS_DBPORT: "5432"
+      PAPERLESS_DBNAME: paperless_db
+      PAPERLESS_DBUSER: paperless_user
+      PAPERLESS_DBPASS: ${PAPERLESS_DB_PASSWORD:-CHANGEME_paperless}
+      PAPERLESS_URL: https://paperless.${OPENSME_DOMAIN:-opensme.org}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:-CHANGEME_generate_64_chars}
+      PAPERLESS_TIME_ZONE: ${TZ:-Europe/Berlin}
+      PAPERLESS_OCR_LANGUAGE: deu+eng
+      PAPERLESS_OCR_MODE: tesseract
+      PAPERLESS_OCR_CLEAN: clean
+      PAPERLESS_THREADS: "1"
+      PAPERLESS_WEBSERVER_WORKERS: "1"
+      PAPERLESS_TASK_WORKERS: "1"
+      PAPERLESS_CONSUMER_POLLING: "30"
+      PAPERLESS_FILENAME_FORMAT: "{created_year}/{created_month}/{created_day}/{correspondent}/{title}"
+      PAPERLESS_CONVERT_MEMORY_LIMIT: 256
+      PAPERLESS_GOTENBERG_ENDPOINT: http://paperless-gotenberg:3000
+      # Uncomment to enable Tika (requires --profile tika)
+      # PAPERLESS_TIKA_ENDPOINT: http://paperless-tika:9998
+    volumes:
+      - paperless-data:/usr/src/paperless/data
+      - paperless-media:/usr/src/paperless/media
+      - paperless-export:/usr/src/paperless/export
+      - ./services/paperless-consume:/consume:ro
+    networks:
+      - opensme-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      paperless-gotenberg:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.paperless.rule=Host(`paperless.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.paperless.tls=true"
+      - "traefik.http.routers.paperless.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.paperless.entrypoints=websecure"
+      - "traefik.http.services.paperless.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
+        reservations:
+          cpus: "0.25"
+          memory: 64M
+
+  paperless-gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: opensme-gotenberg
+    restart: unless-stopped
+    profiles: ["paperless"]
+    command:
+      - "gotenberg"
+      - "--chromium-rpc-max-page-size=100"
+      - "--chromium-rpc-max-rpc-timeout=30s"
+    networks:
+      - opensme-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "-O", "/dev/null", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 96M
+        reservations:
+          cpus: "0.05"
+          memory: 16M
+
+  paperless-tika:
+    image: apache/tika-server-full:2.9
+    container_name: opensme-tika
+    restart: unless-stopped
+    profiles: ["tika"]
+    environment:
+      TIKA_MEMORY_LIMIT: 512m
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+    networks:
+      - opensme-net
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9998/tika || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+volumes:
+  paperless-data:
+  paperless-media:
+  paperless-export:

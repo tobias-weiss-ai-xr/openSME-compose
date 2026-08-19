@@ -1,0 +1,53 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — CryptPad (Collaborative Document Editing)
+# ═══════════════════════════════════════════════════════════════
+# Lightweight collaborative editor (pad, code, slide, poll, kanban).
+# Alternative to Collabora — lighter footprint, no OOXML support.
+#
+# Include via: COMPOSE_FILE=docker-compose.yml:services/cryptpad.yml
+# Or via profile: docker compose --profile collab up -d
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  cryptpad:
+    image: cryptpad/cryptpad:2025.9.0
+    container_name: opensme-cryptpad
+    restart: unless-stopped
+    profiles: ["collab"]
+    environment:
+      CPAD_HTTP_UNSAFE: "http://cryptpad:3000"
+      CPAD_HTTP_SAFE: "https://pad.${OPENSME_DOMAIN:-opensme.org}"
+      CPAD_MAIN_DOMAIN: "http://cryptpad:3000"
+      CPAD_SANDBOX_DOMAIN: "http://cryptpad:3000"
+      CPAD_ADMIN_EMAIL: ${CRYPTPAD_ADMIN_EMAIL:-admin@${OPENSME_DOMAIN:-opensme.org}}
+      CPAD_CONF: /cryptpad/config/config.js
+    volumes:
+      - cryptpad-data:/cryptpad/data
+      - cryptpad-blob:/cryptpad/blob
+      - ./services/cryptpad-config/config.js:/cryptpad/config/config.js:ro
+    networks:
+      - opensme-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pad.rule=Host(`pad.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.pad.tls=true"
+      - "traefik.http.routers.pad.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pad.entrypoints=websecure"
+      - "traefik.http.services.pad.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "-O", "/dev/null", "http://localhost:3000/"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+volumes:
+  cryptpad-data:
+  cryptpad-blob:

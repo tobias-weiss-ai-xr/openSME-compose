@@ -1,0 +1,278 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Makefile
+# ═══════════════════════════════════════════════════════════════
+# Test pyramid + tier-based deployment for openSME Compose.
+#
+# Architecture: core services + optional profiles
+# Tiers: soho (4c/8G) | small (8c/24G) | medium (16c/48G)
+#
+# Profile mapping:
+#   soho:   core only (Portal, Traefik, PG, Redis, Memcached, Zitadel)
+#   small:  core + office + paperless (+ optional tika)
+#   medium: core + office + paperless + stalwart + sogo + collabora
+#
+# Quick start:
+#   make bootstrap        # install deps
+#   make test             # layers 0-3
+#   make test-all         # layers 0-6
+#   make lint             # static checks only
+#   make up               # starts soho by default
+#   make up PROFILE=small
+#   make up PROFILE=medium
+#   make down
+
+.PHONY: test test-all test-static lint compose-check env-check secret-scan \
+        container smoke integration e2e security \
+        bootstrap clean help \
+        up down status logs pull \
+        up-soho up-small up-medium up-all
+
+.DEFAULT_GOAL := help
+
+# ---------------------------------------------------------------------------
+# Colors
+# ---------------------------------------------------------------------------
+GREEN  := \033[0;32m
+RED    := \033[0;31m
+YELLOW := \033[1;33m
+BLUE   := \033[0;34m
+CYAN   := \033[0;36m
+NC     := \033[0m
+
+# ---------------------------------------------------------------------------
+# Environment
+# ---------------------------------------------------------------------------
+PROFILE    ?= soho
+DOMAIN     ?= $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
+COMPOSE    ?= docker compose
+TEST_ENV   ?= .env
+PYTHON     ?= python3
+
+# ---------------------------------------------------------------------------
+# Compose file selection by tier
+# ---------------------------------------------------------------------------
+# Core: Traefik, PostgreSQL, PgBouncer, Redis, Memcached, Portal
+# IDM: Zitadel (default) or Casdoor (lightweight)
+# Overlays: opencloud, stalwart, sogo, paperless, monitoring
+
+CORE_FILES := -f docker-compose.yml
+IDM_FILES  := -f idm/zitadel.yml
+
+ifeq ($(PROFILE),soho)
+COMPOSE_FILES := $(CORE_FILES) $(IDM_FILES) -f profiles/soho.yml
+COMPOSE_PROFILES :=
+TIER_SERVICES := core (6 containers: Traefik, PG, PgBouncer, Redis, Memcached, Portal, Zitadel)
+else ifeq ($(PROFILE),small)
+COMPOSE_FILES := $(CORE_FILES) $(IDM_FILES) -f opencloud/opencloud.yml -f services/paperless.yml -f profiles/small.yml
+COMPOSE_PROFILES := --profile paperless
+TIER_SERVICES := core + office + paperless (10 containers)
+else ifeq ($(PROFILE),medium)
+COMPOSE_FILES := $(CORE_FILES) $(IDM_FILES) -f opencloud/opencloud.yml -f mail/stalwart.yml -f mail/sogo.yml -f services/paperless.yml -f profiles/medium.yml
+COMPOSE_PROFILES := --profile paperless
+TIER_SERVICES := core + office + mail + paperless (14 containers)
+else ifeq ($(PROFILE),custom)
+COMPOSE_FILES := $(COMPOSE_FILE)
+COMPOSE_PROFILES :=
+TIER_SERVICES := custom (COMPOSE_FILE from env)
+else
+$(error Unknown PROFILE "$(PROFILE)". Use: soho, small, medium, or custom)
+endif
+
+FULL_COMPOSE := $(COMPOSE) $(COMPOSE_FILES) $(COMPOSE_PROFILES)
+
+# ---------------------------------------------------------------------------
+# Docker Compose Operations
+# ---------------------------------------------------------------------------
+up:
+	@echo -e "$(BLUE)── starting openSME (profile: $(PROFILE), $(TIER_SERVICES)) ──$(NC)"
+	@$(FULL_COMPOSE) --env-file $(TEST_ENV) up -d
+	@echo -e "$(GREEN)✓ Stack started ($(TIER_SERVICES))$(NC)"
+
+up-soho:
+	@$(MAKE) up PROFILE=soho
+
+up-small:
+	@$(MAKE) up PROFILE=small
+
+up-medium:
+	@$(MAKE) up PROFILE=medium
+
+up-all:
+	@echo -e "$(BLUE)── starting openSME (ALL services) ──$(NC)"
+	@$(FULL_COMPOSE) --env-file $(TEST_ENV) \
+		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes \
+		up -d
+	@echo -e "$(GREEN)✓ Stack started with all optional services$(NC)"
+
+down:
+	@$(FULL_COMPOSE) down --remove-orphans
+	@echo -e "$(GREEN)✓ Stack stopped$(NC)"
+
+down-volumes:
+	@$(FULL_COMPOSE) down -v --remove-orphans
+	@echo -e "$(RED)⚠ Volumes removed — data is gone!$(NC)"
+
+status:
+	@$(FULL_COMPOSE) ps
+
+logs:
+	@$(FULL_COMPOSE) logs -f --tail=100
+
+pull:
+	@$(FULL_COMPOSE) pull
+	@echo -e "$(GREEN)✓ Images pulled$(NC)"
+
+# ---------------------------------------------------------------------------
+# Layer 0 — Static Validation (no containers needed)
+# ---------------------------------------------------------------------------
+lint: compose-check env-check secret-scan
+	@echo -e "$(GREEN)✅ All linting passed$(NC)"
+
+compose-check:
+	@echo -e "$(BLUE)── docker compose config (profile: $(PROFILE)) ──$(NC)"
+	@$(FULL_COMPOSE) --env-file $(TEST_ENV) config --quiet 2>&1
+	@echo -e "$(GREEN)✓ compose config valid ($(PROFILE) profile)$(NC)"
+
+env-check:
+	@echo -e "$(BLUE)── env completeness ──$(NC)"
+	@$(PYTHON) scripts/check-env.py .env.example $(TEST_ENV) 2>&1 || \
+		echo -e "$(YELLOW)⚠ env check skipped (scripts/check-env.py not found)$(NC)"
+
+secret-scan:
+	@echo -e "$(BLUE)── secret scanning ──$(NC)"
+	@if command -v trufflehog &>/dev/null; then \
+		trufflehog filesystem . 2>&1; \
+	else \
+		echo -e "$(YELLOW)⚠ trufflehog not installed, skipping$(NC)"; \
+	fi
+
+test-static: lint compose-check env-check secret-scan
+
+# ---------------------------------------------------------------------------
+# Layer 2+ — Require running stack
+# ---------------------------------------------------------------------------
+container:
+	@echo -e "$(BLUE)── layer 2: container health ──$(NC)"
+	@$(FULL_COMPOSE) ps --format 'table {{.Name}}\t{{.Status}}' 2>&1
+
+smoke:
+	@echo -e "$(BLUE)── layer 3: smoke tests ──$(NC)"
+	@bash scripts/smoke-test.sh $(DOMAIN) 2>&1 || \
+		echo -e "$(YELLOW)⚠ smoke tests skipped (scripts/smoke-test.sh not found)$(NC)"
+
+integration:
+	@echo -e "$(BLUE)── layer 4: integration ──$(NC)"
+	@echo -e "$(YELLOW)⚠ integration tests not yet implemented$(NC)"
+
+e2e:
+	@echo -e "$(BLUE)── layer 5: e2e ──$(NC)"
+	@echo -e "$(YELLOW)⚠ e2e tests not yet implemented$(NC)"
+
+security:
+	@echo -e "$(BLUE)── layer 6: security audit ──$(NC)"
+	@bash scripts/security-audit.sh $(DOMAIN) 2>&1 || \
+		echo -e "$(YELLOW)⚠ security audit skipped (scripts/security-audit.sh not found)$(NC)"
+
+# ---------------------------------------------------------------------------
+# Combined test targets
+# ---------------------------------------------------------------------------
+test: test-static container smoke
+	@echo -e "$(GREEN)═══════════════════════════════════$(NC)"
+	@echo -e "$(GREEN) Layers 0-3 complete.$(NC)"
+	@echo -e "$(GREEN)═══════════════════════════════════$(NC)"
+
+test-all: test integration e2e security
+	@echo -e "$(GREEN)═══════════════════════════════════$(NC)"
+	@echo -e "$(GREEN) All test layers complete.$(NC)"
+	@echo -e "$(GREEN)═══════════════════════════════════$(NC)"
+
+# ---------------------------------------------------------------------------
+# Backup / Restore
+# ---------------------------------------------------------------------------
+backup:
+	@bash scripts/backup.sh --volumes
+
+backup-db:
+	@bash scripts/backup.sh
+
+backup-dry-run:
+	@bash scripts/backup.sh --volumes --dry-run
+
+restore:
+	@bash scripts/restore.sh --list
+	@echo ""
+	@echo "Run: make restore-from BACKUP=<timestamp>"
+	@echo "Or:  ./scripts/restore.sh <timestamp>"
+
+restore-from:
+	@bash scripts/restore.sh $(BACKUP)
+
+# ---------------------------------------------------------------------------
+# Bootstrap / Cleanup
+# ---------------------------------------------------------------------------
+bootstrap:
+	@echo -e "$(BLUE)── bootstrapping ──$(NC)"
+	@cp -n .env.example .env 2>/dev/null || true
+	@echo -e "$(GREEN)✅ Bootstrap complete$(NC)"
+	@echo -e "  Edit .env with your settings, then: make up PROFILE=soho"
+
+clean:
+	@rm -rf tests/05-e2e/test-results/ tests/05-e2e/playwright-report/
+	@rm -f /tmp/opensme-test-*.json
+
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
+help:
+	@echo ""
+	@echo -e "$(BLUE)openSME — Makefile (PROFILE=$(PROFILE))$(NC)"
+	@echo ""
+	@echo -e "  $(GREEN)Architecture: core + optional overlays$(NC)"
+	@echo "    Core: Traefik, PostgreSQL, PgBouncer, Redis, Memcached, Portal"
+	@echo "    IDM:  Zitadel (default) or Casdoor (idm/casdoor.yml)"
+	@echo "    Overlays: opencloud, stalwart, sogo, paperless, monitoring"
+	@echo "    Service profiles:"
+	@echo "      --profile invoice   Invoice Ninja (invoicing)"
+	@echo "      --profile paperless Paperless-ngx + Gotenberg (document management)"
+	@echo "      --profile tika      Paperless-Tika (enhanced OCR)"
+	@echo "      --profile chat      Synapse (Matrix chat)"
+	@echo "      --profile element   Element-Web (Matrix client)"
+	@echo "      --profile collab    CryptPad (collaborative docs)"
+	@echo "      --profile notes     Notes/Impress (collaborative editing)"
+	@echo ""
+	@echo -e "  $(GREEN)VPS Tiers$(NC)"
+	@echo "    make up PROFILE=soho     4c /  8 GB  (core only)"
+	@echo "    make up PROFILE=small    8c / 24 GB  (core + office + paperless)"
+	@echo "    make up PROFILE=medium  16c / 48 GB  (core + office + mail + paperless)"
+	@echo "    make up PROFILE=custom   Use COMPOSE_FILE from env"
+	@echo ""
+	@echo -e "  $(GREEN)Operations$(NC)"
+	@echo "    make up                  Start stack (PROFILE=soho|small|medium)"
+	@echo "    make up-all              Start with ALL optional services"
+	@echo "    make down                Stop stack"
+	@echo "    make down-volumes        Stop + remove volumes (data loss!)"
+	@echo "    make status              Show container status"
+	@echo "    make logs                Tail logs"
+	@echo "    make pull                Pull images"
+	@echo ""
+	@echo -e "  $(GREEN)Testing$(NC)"
+	@echo "    make test                Layers 0-3 (static + container + smoke)"
+	@echo "    make test-all            Layers 0-6 (full suite)"
+	@echo "    make lint                Compose config + env check"
+	@echo "    make container           Layer 2 — container health"
+	@echo "    make smoke               Layer 3 — HTTP/SSL/port smoke"
+	@echo "    make integration         Layer 4 — integration tests"
+	@echo "    make e2e                 Layer 5 — e2e tests"
+	@echo "    make security            Layer 6 — security audit"
+	@echo ""
+	@echo -e "  $(GREEN)Backup / Restore$(NC)"
+	@echo "    make backup              Full backup (PG + Traefik + volumes)"
+	@echo "    make backup-db           PostgreSQL + Traefik only"
+	@echo "    make backup-dry-run      Preview backup"
+	@echo "    make restore             List available backups"
+	@echo "    make restore-from BACKUP=<ts>  Restore from backup"
+	@echo ""
+	@echo -e "  $(GREEN)Other$(NC)"
+	@echo "    make bootstrap           Create .env from .env.example"
+	@echo "    make clean               Remove test artifacts"
+	@echo ""

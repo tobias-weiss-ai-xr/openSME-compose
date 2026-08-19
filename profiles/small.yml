@@ -1,0 +1,125 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Small Tier (10-25 users, 8c/24G)
+# ═══════════════════════════════════════════════════════════════
+# Balanced resource profile for team SMEs.
+# Core + OpenCloud + Paperless (+ optional Tika for enhanced OCR).
+# Skips: Collabora (OpenCloud handles basic editing), Stalwart, SOGo.
+#
+# Use: COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml:services/paperless.yml:profiles/small.yml"
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  postgres:
+    command:
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "wal_buffers=8MB"
+      - "-c"
+      - "min_wal_size=512MB"
+      - "-c"
+      - "max_wal_size=2GB"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "1"
+          memory: 512M
+
+  pgbouncer:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  redis:
+    command:
+      - redis-server
+      - --save 300 100
+      - --appendonly yes
+      - --appendfsync everysec
+      - --maxmemory 1gb
+      - --maxmemory-policy allkeys-lru
+      - --loglevel notice
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  memcached:
+    command: memcached -m 512 -c 2048 -t 4
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  portal:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+  zitadel:
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  opencloud:
+    environment:
+      OC_ADD_RUN_SERVICES: "notifications"
+      STORAGE_USERS_DRIVER: decomposeds3
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+  collabora:
+    profiles:
+      - donotstart
+
+  stalwart:
+    profiles:
+      - donotstart
+
+  sogo:
+    profiles:
+      - donotstart

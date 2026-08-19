@@ -1,0 +1,134 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Notes/Impress (Collaborative Note-Taking)
+# ═══════════════════════════════════════════════════════════════
+# Structured collaborative document editing with Yjs collaboration.
+# Uses MinIO for S3 media storage.
+#
+# Include via: COMPOSE_FILE=docker-compose.yml:services/notes.yml
+# Or via profile: docker compose --profile notes up -d
+#
+# Requires: PostgreSQL (core), Redis (core), Zitadel (for OIDC)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  notes-backend:
+    image: lasuite/impress:1.14.0-backend
+    container_name: opensme-notes-backend
+    restart: unless-stopped
+    profiles: ["notes"]
+    environment:
+      DJANGO_SETTINGS_MODULE: impress.settings.Production
+      DJANGO_SECRET_KEY: ${NOTES_DJANGO_SECRET_KEY:-CHANGEME_notes}
+      ALLOWED_HOSTS: "notes.${OPENSME_DOMAIN:-opensme.org},notes-backend"
+      DATA_DIR: /data
+      DB_ENGINE: django.db.backends.postgresql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: notes_db
+      DB_USER: notes_user
+      DB_PASSWORD: ${NOTES_DB_PASSWORD:-CHANGEME_notes}
+      REDIS_URL: redis://redis:6379/1
+      OIDC_RP_CLIENT_ID: "opensme-notes"
+      OIDC_RP_CLIENT_SECRET: ${NOTES_OIDC_CLIENT_SECRET:-CHANGEME_notes_oidc}
+      OIDC_OP_JWKS_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/.well-known/openid-configuration/jwks"
+      OIDC_OP_AUTHORIZATION_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oauth/v2/authorize"
+      OIDC_OP_TOKEN_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oauth/v2/token"
+      OIDC_OP_USER_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oidc/v1/userinfo"
+      OIDC_RP_SCOPES: "openid profile email"
+      OIDC_CREATE_USER: "true"
+      OIDC_STORE_ID_TOKEN: "true"
+      LOGIN_REDIRECT_URL: "https://notes.${OPENSME_DOMAIN:-opensme.org}"
+      COLLABORATION_API_URL: "https://notes.${OPENSME_DOMAIN:-opensme.org}/collaboration/api/"
+      COLLABORATION_WS_URL: "wss://notes.${OPENSME_DOMAIN:-opensme.org}/collaboration/ws/"
+      COLLABORATION_SERVER_SECRET: ${NOTES_COLLABORATION_SECRET:-CHANGEME_notes_collab}
+      Y_PROVIDER_API_BASE_URL: http://notes-y-provider:1234
+      Y_PROVIDER_API_KEY: ${NOTES_COLLABORATION_SECRET:-CHANGEME_notes_collab}
+      AWS_S3_ENDPOINT_URL: "http://minio:9000"
+      AWS_S3_ACCESS_KEY_ID: ${OC_S3_ACCESS_KEY:-minio}
+      AWS_S3_SECRET_ACCESS_KEY: ${OC_S3_SECRET_KEY:-CHANGEME_minio}
+      AWS_STORAGE_BUCKET_NAME: notes-media
+    volumes:
+      - notes-data:/data
+    networks:
+      - opensme-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      notes-y-provider:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3010/api/v1.0/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.35"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+  notes-frontend:
+    image: lasuite/impress:1.14.0-frontend
+    container_name: opensme-notes-frontend
+    restart: unless-stopped
+    profiles: ["notes"]
+    environment:
+      NOTES_BACKEND_URL: http://notes-backend:3010
+      NOTES_Y_PROVIDER_URL: http://notes-y-provider:1234
+    networks:
+      - opensme-net
+    depends_on:
+      notes-backend:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notes.rule=Host(`notes.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.notes.tls=true"
+      - "traefik.http.routers.notes.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.notes.entrypoints=websecure"
+      - "traefik.http.services.notes.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "-O", "/dev/null", "http://localhost:80/"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 8M
+
+  notes-y-provider:
+    image: lasuite/impress-y-provider:v4.4.0
+    container_name: opensme-notes-y-provider
+    restart: unless-stopped
+    profiles: ["notes"]
+    environment:
+      Y_PROVIDER_API_KEY: ${NOTES_COLLABORATION_SECRET:-CHANGEME_notes_collab}
+    networks:
+      - opensme-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "-O", "/dev/null", "http://localhost:1234/"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 16M
+
+volumes:
+  notes-data:

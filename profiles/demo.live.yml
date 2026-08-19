@@ -84,10 +84,7 @@ services:
           cpus: "0.1"
           memory: 32M
 
-  # ── LDAP — skip for demo (Zitadel built-in user store) ──
-  ldap:
-    profiles:
-      - donotstart
+  # ── LDAP — not used (Zitadel has built-in user store) ──
 
   # ── OpenCloud (local storage, no S3/MinIO) ───
   opencloud:

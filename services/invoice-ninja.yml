@@ -1,0 +1,65 @@
+# ═══════════════════════════════════════════════════════════════
+# openSME — Invoice Ninja
+# ═══════════════════════════════════════════════════════════════
+# Invoicing and billing for SMEs.
+# Include via: COMPOSE_FILE=docker-compose.yml:services/invoice-ninja.yml
+# Or via profile: docker compose --profile invoice up -d
+#
+# Requires: PostgreSQL (core), Stalwart (for email notifications)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  invoiceninja:
+    image: invoiceninja/invoiceninja:5
+    container_name: opensme-invoiceninja
+    restart: unless-stopped
+    profiles: ["invoice"]
+    environment:
+      APP_URL: "https://invoices.${OPENSME_DOMAIN:-opensme.org}"
+      APP_ENV: production
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: invoiceninja_db
+      DB_USERNAME: invoiceninja_user
+      DB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-CHANGEME_invoiceninja}
+      DB_TYPE: pgsql
+      MAIL_MAILER: smtp
+      MAIL_HOST: stalwart
+      MAIL_PORT: "25"
+      MAIL_ENCRYPTION: ""
+      REQUIRE_CONFIRMATION: "false"
+      SET_UNCONFIRMED: "true"
+      SELF_UPDATE: "false"
+    volumes:
+      - invoiceninja-public:/var/www/app/public
+      - invoiceninja-storage:/var/www/app/storage
+    networks:
+      - opensme-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.invoices.rule=Host(`invoices.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.invoices.tls=true"
+      - "traefik.http.routers.invoices.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.invoices.entrypoints=websecure"
+      - "traefik.http.services.invoices.loadbalancer.server.port=9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 192M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+volumes:
+  invoiceninja-public:
+  invoiceninja-storage:

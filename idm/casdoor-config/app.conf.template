@@ -1,0 +1,22 @@
+appname = casdoor
+httpport = 8000
+runmode = prod
+copyRuntimeDataToOutput = false
+
+; ── Database — PostgreSQL (shared DB server) ──
+driverName = postgres
+dataSourceName = "postgres://casdoor_user:${CASDOOR_DB_PASSWORD}@postgres:5432/casdoor_db?sslmode=disable"
+dbName = casdoor_db
+tableNamePrefix =
+
+; ── Authentication ──
+verificationCodeTimeout = 10
+initScore = 2000
+
+; ── Static files ──
+staticBaseUrl = "https://cdn.casbin.org"
+isCloudIntranet = false
+
+; ── Session ──
+sessionMaxAge = 43200
+logPostOnlySameSite = false
