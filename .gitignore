@@ -21,7 +21,12 @@ portal/target/
 # Docker
 .docker/
 
+# Nix build artifacts
+result
+result-*
+
 # Logs
 logs/
 *.log
 __pycache__/
+result-*

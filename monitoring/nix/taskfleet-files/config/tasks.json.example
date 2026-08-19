@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "project": "example-project",
+    "plan": "path/to/plan.md"
+  },
+  "tasks": [
+    {
+      "id": "FC-1",
+      "engine": "foundation",
+      "title": "Create Path type with addressing primitives",
+      "deps": [],
+      "scope": ["src/path.rs"],
+      "accept": "cargo test -p my-crate path::",
+      "acceptance_prose": "Path and Range types compile and round-trip via serde",
+      "manual": false
+    },
+    {
+      "id": "FC-2",
+      "engine": "foundation",
+      "title": "Define ModelOp enum for mutations",
+      "deps": ["FC-1"],
+      "scope": ["src/op.rs", "src/lib.rs"],
+      "accept": "cargo test -p my-crate op::",
+      "acceptance_prose": "ModelOp enum with Insert/Delete/Replace/Format/Move variants",
+      "manual": false
+    },
+    {
+      "id": "DM-1",
+      "engine": "engine-a",
+      "title": "Implement basic mutation pipeline",
+      "deps": ["FC-2"],
+      "scope": ["src/engine/mutate.rs"],
+      "accept": "cargo test -p my-crate mutate::",
+      "acceptance_prose": "Insert and Delete ops apply correctly to test model",
+      "manual": false
+    }
+  ]
+}

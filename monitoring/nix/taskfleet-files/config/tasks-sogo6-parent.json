@@ -1,0 +1,32 @@
+{
+  "_meta": { "project": "SOGo6-dockerized" },
+  "tasks": [
+    {
+      "id": "SOGO6-B",
+      "title": "Document F1–F3 backend gaps as blocking issues + a status dashboard",
+      "deps": [],
+      "scope": [
+        "BACKEND-GAPS.md",
+        "docs/status-dashboard.md"
+      ],
+      "engine": "sogo6",
+      "model_tier": "standard",
+      "accept": "test -f BACKEND-GAPS.md && grep -qi 'F1' BACKEND-GAPS.md && test -f docs/status-dashboard.md && grep -qi 'F2' docs/status-dashboard.md",
+      "acceptance_prose": "BACKEND-GAPS.md is a blocking-issues document listing F1 (invite to event — calendar APIs 500/503), F2 (send attachment — upload endpoint 500), F3 (add contact to list — /addressbooks 500 'Could not load contacts') with root cause and the specific backend work required to unblock each. docs/status-dashboard.md is a single-page status board summarizing the full feature-story batch (F1–F6) with pass/fail/blocked status, root cause, and required actions.",
+      "description": "From the Playwright feature batch, stories F1–F3 fail because the data backends are non-functional (calendar/contacts/attachment-upload return 500/503/404; only core auth/profile/preferences/mailboxes work). Create BACKEND-GAPS.md documenting each as a blocking issue with root cause + required backend work, and docs/status-dashboard.md as a consolidated status board for all six feature stories (F1–F6), marking which are UI-OK vs backend-gap vs missing-feature (F4)."
+    },
+    {
+      "id": "SOGO6-C",
+      "title": "Extend the Calendar epic with Playwright user-story tests (Batch 6: calendar depth)",
+      "deps": [],
+      "scope": [
+        "tests/e2e/specs/calendar-depth.spec.ts"
+      ],
+      "engine": "sogo6",
+      "model_tier": "standard",
+      "accept": "test -f tests/e2e/specs/calendar-depth.spec.ts && grep -q 'test(' tests/e2e/specs/calendar-depth.spec.ts",
+      "acceptance_prose": "tests/e2e/specs/calendar-depth.spec.ts is a Playwright spec (runnable against https://sogo6.[REDACTED] with creds testuser@sogo6.[REDACTED] / password123) covering calendar-depth user stories: day/week/month view switch, Today + prev/next navigation, event reminder, recurring event, event color/category, free/busy lookup. Each story logs pass/fail and notes backend gaps (calendar APIs 500/503). It follows the existing tests/e2e conventions (helpers.ts, playwright.config.ts).",
+      "description": "Extend the existing Calendar epic (not yet covered in depth) with Playwright user-story tests. Cover: 124 day/week/month views, 125 Today+prev/next nav, 126 event reminder, 127 recurring event, 128 event color/category, 129 free/busy lookup. The spec must be self-contained, use the live site, and clearly separate UI-OK from backend-gap outcomes."
+    }
+  ]
+}

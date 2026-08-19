@@ -303,7 +303,15 @@ opensme-compose/
 │   ├── dev-agent.yml           # Overlay: Reactive container health (LLM analysis)
 │   ├── predictive-agent.yml    # Overlay: Predictive health (Kalman/Markov/Bayes)
 │   ├── ollama.yml              # Overlay: Local LLM backend for agents
-│   └── taskfleet.yml           # Overlay: Parallel LLM task orchestration
+│   ├── taskfleet.yml           # Overlay: Parallel LLM task orchestration
+│   └── nix/                    # Nix image build definitions (flake.nix + 3 images)
+│       ├── flake.nix            # Nix flake: `nix build .#dev-agent .#predictive-agent .#taskfleet`
+│       ├── dev-agent.nix        # dev-agent image (Python 3, Docker CLI)
+│       ├── predictive-agent.nix # predictive-agent image (Python 3, Docker CLI)
+│       ├── taskfleet.nix        # taskfleet image (bash, jq, git, Docker, Node.js)
+│       ├── dev-agent-files/     # dev-agent Python source + entrypoint/healthcheck
+│       ├── predictive-agent/    # predictive_agent Python package + Docker collector
+│       └── taskfleet-files/     # taskfleet orchestrator.sh, lib/, prompts/, config/
 ├── profiles/
 │   ├── soho.yml                # Tier: SOHO (4c/8G, core only)
 │   ├── small.yml               # Tier: Small (8c/24G, core + office + paperless)
@@ -564,6 +572,43 @@ Set `TF_REPO_DIR` to the repository you want tasks to operate on.
 | `RECONCILE_INTERVAL` | `60` | Seconds between health checks |
 | `TF_REPO_DIR` | `./` | Repo path for taskfleet workers |
 | `TF_MAX_PARALLEL` | `2` | Max concurrent taskfleet workers |
+
+### Building images with Nix
+
+All three monitoring images can be built reproducibly with Nix — no
+Dockerfile needed. The Nix definitions live in `monitoring/nix/` and use
+`dockerTools.buildLayeredImage` for reproducible, layer-cached builds.
+
+```bash
+# Build all three images
+cd monitoring/nix
+nix build .#dev-agent .#predictive-agent .#taskfleet
+
+# Or build individually
+nix-build dev-agent.nix -o result-dev-agent
+nix-build predictive-agent.nix -o result-predictive-agent
+nix-build taskfleet.nix -o result-taskfleet
+
+# Load into Docker
+docker load < result-dev-agent
+docker load < result-predictive-agent
+docker load < result-taskfleet
+
+# Tag for your registry
+docker tag dev-agent:latest-nix ghcr.io/tobias-weiss-ai-xr/dev-agent:latest
+docker tag predictive-agent:latest-nix ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest
+docker tag taskfleet:latest-nix ghcr.io/tobias-weiss-ai-xr/taskfleet:latest
+```
+
+The `flake.nix` provides `dev-agent`, `predictive-agent`, and `taskfleet`
+packages. A `devShell` with Nix, Docker, jq, git, Python, and curl is also
+available via `nix develop`.
+
+| Image | Size | Dependencies |
+|---|---|---|
+| `dev-agent` | ~950 MB | Python 3, curl, Docker CLI, bash |
+| `predictive-agent` | ~950 MB | Python 3, curl, Docker CLI, bash |
+| `taskfleet` | ~1.2 GB | bash, jq, git, curl, Docker CLI, Node.js 22 (for `pi` agent) |
 
 ## Configuration
 

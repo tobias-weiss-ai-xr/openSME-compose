@@ -1,0 +1,19 @@
+{
+  "_meta": { "project": "SOGo6-UI" },
+  "tasks": [
+    {
+      "id": "SOGO6-A",
+      "title": "Add S/MIME/PGP sign & encrypt toggle to the compose 'More Options' menu",
+      "deps": [],
+      "scope": [
+        "src/features/mails/components/compose/compose-toolbar.tsx",
+        "src/features/mails/components/compose/security-options.tsx"
+      ],
+      "engine": "sogo6",
+      "model_tier": "standard",
+      "accept": "ln -sfn /home/[REDACTED]/git/sogo/SOGo6-dockerized/sogo6-ui/node_modules node_modules 2>/dev/null; npx jest src/features/mails/components/compose/__tests__/compose-toolbar.test.tsx --silent",
+      "acceptance_prose": "The compose window's 'More Options' dropdown (currently only Read Receipt + Priority) gains a 'Sign message (PGP)' and an 'Encrypt message (PGP)' toggle, wired to the existing PGP key at /api/user/v1/pgp. A jest test in compose-toolbar.test.tsx asserts both menu items are present. Existing compose-toolbar tests still pass. Build with npm run build:webpack stays green.",
+      "description": "Feature gap found by Playwright story F4: compose has no per-message S/MIME/PGP sign/encrypt control even though PGP key management exists under Settings > Security. Add DropdownMenuCheckboxItem entries 'Sign message (PGP)' and 'Encrypt message (PGP)' to the compose-toolbar 'More Options' menu, dispatching to the existing pgp redux/endpoint. Add a jest test asserting their presence and keep the webpack build working."
+    }
+  ]
+}

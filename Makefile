@@ -26,7 +26,8 @@
         container smoke integration e2e security \
         bootstrap clean help \
         up down status logs pull \
-        up-soho up-small up-medium up-all
+        up-soho up-small up-medium up-all \
+        nix-build nix-load nix-images
 
 .DEFAULT_GOAL := help
 
@@ -205,6 +206,26 @@ test-run:
 	@$(TEST_RUNNER) --static --domain $(DOMAIN)
 
 # ---------------------------------------------------------------------------
+# Nix image builds (monitoring/nix/)
+# ---------------------------------------------------------------------------
+nix-build: nix-images
+
+nix-images:
+	@echo -e "$(BLUE)── building Nix monitoring images ──$(NC)"
+	cd monitoring/nix && nix build .#dev-agent .#predictive-agent .#taskfleet
+	@echo -e "$(GREEN)✅ Images built in monitoring/nix/result*$(NC)"
+
+nix-load: nix-images
+	@echo -e "$(BLUE)── loading Nix images into Docker ──$(NC)"
+	docker load < monitoring/nix/result-dev-agent
+	docker load < monitoring/nix/result-predictive-agent
+	docker load < monitoring/nix/result-taskfleet
+	docker tag dev-agent:latest-nix ghcr.io/tobias-weiss-ai-xr/dev-agent:latest
+	docker tag predictive-agent:latest-nix ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest
+	docker tag taskfleet:latest-nix ghcr.io/tobias-weiss-ai-xr/taskfleet:latest
+	@echo -e "$(GREEN)✅ Images loaded and tagged$(NC)"
+
+# ---------------------------------------------------------------------------
 # Backup / Restore
 # ---------------------------------------------------------------------------
 backup:
@@ -296,6 +317,10 @@ help:
 	@echo "    make backup-dry-run      Preview backup"
 	@echo "    make restore             List available backups"
 	@echo "    make restore-from BACKUP=<ts>  Restore from backup"
+	@echo ""
+	@echo -e "  $(GREEN)Monitoring images (Nix)$(NC)"
+	@echo "    make nix-build            Build dev-agent, predictive-agent, taskfleet images"
+	@echo "    make nix-load             Build + load into Docker + tag for registry"
 	@echo ""
 	@echo -e "  $(GREEN)Other$(NC)"
 	@echo "    make bootstrap           Create .env from .env.example"

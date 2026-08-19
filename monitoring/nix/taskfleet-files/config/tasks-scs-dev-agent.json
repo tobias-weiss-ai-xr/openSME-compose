@@ -1,0 +1,278 @@
+{
+  "_meta": {
+    "project": "dev-agent-v4.0",
+    "repo": "/home/[REDACTED]/git/dev-agent"
+  },
+  "tasks": [
+    {
+      "id": "TDD-01",
+      "title": "Write failing test for KalmanTrend class",
+      "deps": [],
+      "scope": ["tests/test_kalman.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_kalman.py -v",
+      "acceptance_prose": "Test fails with 'KalmanTrend not defined' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-02",
+      "title": "Implement KalmanTrend class (minimal to pass test)",
+      "deps": ["TDD-01"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_kalman.py -v",
+      "acceptance_prose": "Test passes, KalmanTrend.update() works",
+      "manual": false
+    },
+    {
+      "id": "TDD-03",
+      "title": "Write failing test for MarkovChain class",
+      "deps": [],
+      "scope": ["tests/test_markov.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_markov.py -v",
+      "acceptance_prose": "Test fails with 'MarkovChain not defined' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-04",
+      "title": "Implement MarkovChain class (minimal to pass test)",
+      "deps": ["TDD-03"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_markov.py -v",
+      "acceptance_prose": "Test passes, MarkovChain.record_transition() works",
+      "manual": false
+    },
+    {
+      "id": "TDD-05",
+      "title": "Write failing test for risk prediction",
+      "deps": [],
+      "scope": ["tests/test_risk.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_risk.py -v",
+      "acceptance_prose": "Test fails with 'calculate_risk not defined' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-06",
+      "title": "Implement risk prediction (minimal to pass test)",
+      "deps": ["TDD-05"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_risk.py -v",
+      "acceptance_prose": "Test passes, calculate_risk() returns expected score",
+      "manual": false
+    },
+    {
+      "id": "TDD-07",
+      "title": "Write failing test for metrics collection",
+      "deps": [],
+      "scope": ["tests/test_collector.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_collector.py -v",
+      "acceptance_prose": "Test fails with 'collect_top_metrics not defined' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-08",
+      "title": "Implement metrics collection (minimal to pass test)",
+      "deps": ["TDD-07"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_collector.py -v",
+      "acceptance_prose": "Test passes, collect_top_metrics() parses kubectl output",
+      "manual": false
+    },
+    {
+      "id": "TDD-09",
+      "title": "Write failing test for /predictions endpoint",
+      "deps": [],
+      "scope": ["tests/test_endpoints.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_endpoints.py::test_predictions -v",
+      "acceptance_prose": "Test fails with '404' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-10",
+      "title": "Implement /predictions endpoint (minimal to pass test)",
+      "deps": ["TDD-09"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_endpoints.py::test_predictions -v",
+      "acceptance_prose": "Test passes, /predictions returns JSON",
+      "manual": false
+    },
+    {
+      "id": "TDD-11",
+      "title": "Write failing test for /state endpoint",
+      "deps": [],
+      "scope": ["tests/test_endpoints.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_endpoints.py::test_state -v",
+      "acceptance_prose": "Test fails with '404' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-12",
+      "title": "Implement /state endpoint (minimal to pass test)",
+      "deps": ["TDD-11"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_endpoints.py::test_state -v",
+      "acceptance_prose": "Test passes, /state returns JSON",
+      "manual": false
+    },
+    {
+      "id": "TDD-13",
+      "title": "Write failing test for state persistence",
+      "deps": [],
+      "scope": ["tests/test_persistence.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_persistence.py -v",
+      "acceptance_prose": "Test fails with 'save_state_model not defined' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-14",
+      "title": "Implement state persistence (minimal to pass test)",
+      "deps": ["TDD-13"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_persistence.py -v",
+      "acceptance_prose": "Test passes, state model saved and loaded",
+      "manual": false
+    },
+    {
+      "id": "TDD-15",
+      "title": "Write failing test for enhanced LLM prompt",
+      "deps": [],
+      "scope": ["tests/test_llm.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_llm.py -v",
+      "acceptance_prose": "Test fails with 'prompt missing prediction fields' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-16",
+      "title": "Implement enhanced LLM prompt (minimal to pass test)",
+      "deps": ["TDD-15"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_llm.py -v",
+      "acceptance_prose": "Test passes, prompt includes prediction fields",
+      "manual": false
+    },
+    {
+      "id": "TDD-17",
+      "title": "Write failing test for RBAC metrics.k8s.io access",
+      "deps": [],
+      "scope": ["tests/test_rbac.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_rbac.py -v",
+      "acceptance_prose": "Test fails with 'metrics.k8s.io not in RBAC' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-18",
+      "title": "Update RBAC to include metrics.k8s.io access",
+      "deps": ["TDD-17"],
+      "scope": ["k8s/rbac.yaml"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_rbac.py -v",
+      "acceptance_prose": "Test passes, RBAC includes metrics.k8s.io",
+      "manual": false
+    },
+    {
+      "id": "TDD-19",
+      "title": "Write failing test for multiple LLM backends",
+      "deps": [],
+      "scope": ["tests/test_llm_backends.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_llm_backends.py -v",
+      "acceptance_prose": "Test fails with 'LLM_BACKEND not supported' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-20",
+      "title": "Implement multiple LLM backends (ollama, saia, openai)",
+      "deps": ["TDD-19"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_llm_backends.py -v",
+      "acceptance_prose": "Test passes, all backends work",
+      "manual": false
+    },
+    {
+      "id": "TDD-21",
+      "title": "Write failing test for graceful degradation (no metrics-server)",
+      "deps": [],
+      "scope": ["tests/test_graceful.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_graceful.py -v",
+      "acceptance_prose": "Test fails with 'metrics-server unavailable' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-22",
+      "title": "Implement graceful degradation (fallback to restart-only classification)",
+      "deps": ["TDD-21"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_graceful.py -v",
+      "acceptance_prose": "Test passes, fallback works without metrics-server",
+      "manual": false
+    },
+    {
+      "id": "TDD-23",
+      "title": "Write failing test for new metrics (predictions, state, etc.)",
+      "deps": [],
+      "scope": ["tests/test_metrics.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_metrics.py -v",
+      "acceptance_prose": "Test fails with 'new metrics not found' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-24",
+      "title": "Add new metrics to /metrics endpoint",
+      "deps": ["TDD-23"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_metrics.py -v",
+      "acceptance_prose": "Test passes, new metrics exposed",
+      "manual": false
+    },
+    {
+      "id": "TDD-25",
+      "title": "Write failing test for integration (full reconcile loop)",
+      "deps": [],
+      "scope": ["tests/test_integration.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_integration.py -v",
+      "acceptance_prose": "Test fails with 'integration test not implemented' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-26",
+      "title": "Implement integration test (mock k8s API)",
+      "deps": ["TDD-25"],
+      "scope": ["tests/test_integration.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_integration.py -v",
+      "acceptance_prose": "Test passes, full reconcile loop works",
+      "manual": false
+    },
+    {
+      "id": "TDD-27",
+      "title": "Write failing test for backward compatibility (v3.1 endpoints)",
+      "deps": [],
+      "scope": ["tests/test_compat.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_compat.py -v",
+      "acceptance_prose": "Test fails with 'v3.1 endpoints not working' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-28",
+      "title": "Ensure backward compatibility with v3.1 endpoints",
+      "deps": ["TDD-27"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_compat.py -v",
+      "acceptance_prose": "Test passes, all v3.1 endpoints work",
+      "manual": false
+    },
+    {
+      "id": "TDD-29",
+      "title": "Write failing test for performance (no regression)",
+      "deps": [],
+      "scope": ["tests/test_performance.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_performance.py -v",
+      "acceptance_prose": "Test fails with 'performance regression' or similar",
+      "manual": false
+    },
+    {
+      "id": "TDD-30",
+      "title": "Ensure no performance regression (optimize if needed)",
+      "deps": ["TDD-29"],
+      "scope": ["dev_agent.py"],
+      "accept": "cd /home/[REDACTED]/git/dev-agent && python -m pytest tests/test_performance.py -v",
+      "acceptance_prose": "Test passes, performance within limits",
+      "manual": false
+    }
+  ]
+}
