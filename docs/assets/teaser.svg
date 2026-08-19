@@ -108,5 +108,5 @@
   </g>
 
   <!-- Bottom tagline -->
-  <text x="180" y="340" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" fill="#475569">Traefik · Keycloak · OpenCloud · Collabora · Stalwart · SOGo · PostgreSQL · Redis</text>
+  <text x="180" y="340" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" fill="#475569">Traefik · Zitadel · OpenCloud · Collabora · Stalwart · SOGo · PostgreSQL · Redis</text>
 </svg>

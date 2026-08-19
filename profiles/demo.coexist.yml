@@ -60,7 +60,7 @@ services:
       - "traefik.http.routers.opensme-portal.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-portal.loadbalancer.server.port=8080"
 
-  # ── Keycloak ────────────────────────────────
+  # ── Zitadel ────────────────────────────────
   zitadel:
     networks: []
     labels:

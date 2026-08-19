@@ -3,7 +3,7 @@
 # openSME — Live Demo Deployer
 # ═══════════════════════════════════════════════════════════════
 # One-command deploy for home.opensme.org.
-# Starts: Portal, PostgreSQL, Redis, Memcached, Keycloak, OpenCloud.
+# Starts: Portal, PostgreSQL, Redis, Memcached, Zitadel, OpenCloud.
 # Skips:  PgBouncer, LDAP, Collabora, Stalwart, SOGo.
 #
 # Modes:
@@ -110,7 +110,7 @@ SOGO_DB_PASSWORD=$(pw)
 LDAP_ADMIN_PASSWORD=$(pw)
 LDAP_USER_PASSWORD=$(pw)
 
-# ── Keycloak ──
+# ── Zitadel ──
 ZITADEL_ADMIN=admin
 ZITADEL_ADMIN_PASSWORD=$(pw)
 
@@ -248,7 +248,7 @@ echo -e "    OpenCloud:  ${BLUE}https://${OPENCLOUD_DOMAIN}${NC}"
 echo -e "    Traefik:    ${BLUE}https://traefik.${OPENSME_DOMAIN}${NC}"
 echo ""
 echo -e "  ${CYAN}Credentials:${NC}"
-echo -e "    Keycloak admin:  ${YELLOW}admin / ${ADMIN_PW}${NC}"
+echo -e "    Zitadel admin:   ${YELLOW}admin / ${ADMIN_PW}${NC}"
 echo -e "    OpenCloud admin: ${YELLOW}admin / ${OC_ADMIN}${NC}"
 echo -e "    Traefik dashboard: ${YELLOW}admin / ${TRAEFIK_PASS_DISPLAY}${NC}"
 echo ""

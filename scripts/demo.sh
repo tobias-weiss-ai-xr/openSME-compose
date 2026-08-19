@@ -2,7 +2,7 @@
 # ── openSME — Demo Launcher ─────────────
 # One-command setup for demo / local development.
 # Requires: Docker + Docker Compose (v2).
-# Starts: Portal, PostgreSQL, Redis, Memcached, Keycloak (+LDAP), OpenCloud.
+# Starts: Portal, PostgreSQL, Redis, Memcached, Zitadel, OpenCloud.
 # Skips: PgBouncer, Collabora, Stalwart, SOGo (too heavy for demo).
 #
 # Usage:
@@ -10,7 +10,7 @@
 #   ./scripts/demo.sh --force-env        # regenerate .env with new passwords
 #
 # Services accessible at http://localhost:8080 (Portal only).
-# Keycloak and OpenCloud are routed through Traefik on localhost.
+# Zitadel and OpenCloud are routed through Traefik on localhost.
 # For a public demo with real HTTPS, see scripts/demo-live.sh.
 # ═══════════════════════════════════════════════
 
@@ -138,7 +138,7 @@ echo -e "${GREEN}═════════════════════
 echo ""
 echo -e "  Portal:       ${BLUE}http://localhost:8080${NC}"
 echo ""
-echo -e "  ${YELLOW}Keycloak Admin:${NC}"
+echo -e "  ${YELLOW}Zitadel Admin:${NC}"
 echo -e "    User:     admin"
 echo -e "    Password: ${ADMIN_PW}"
 echo ""

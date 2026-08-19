@@ -73,29 +73,29 @@ graph TB
     end
 
     subgraph Proxy ["Reverse Proxy"]
-        Traefik["Traefik v3\nbr/>:443 · Let's Encrypt"]
+        Traefik["Traefik v3<br/>:443 · Let's Encrypt"]
     end
 
     subgraph Core ["Core Services"]
-        Portal["Portal\n/>(Rust / Axum :8080)"]
+        Portal["Portal<br/>(Rust / Axum :8080)"]
     end
 
     subgraph IAM ["Identity"]
-        Zitadel["Zitadel\n/>Go-native IAM\n/>OIDC / SAML"]
+        Zitadel["Zitadel<br/>Go-native IAM<br/>OIDC / SAML"]
     end
 
     subgraph Files ["Files & Office"]
-        OpenCloud["OpenCloud\n/>File sync & share"]
-        Collabora["Collabora\n/>Online office"]
+        OpenCloud["OpenCloud<br/>File sync & share"]
+        Collabora["Collabora<br/>Online office"]
     end
 
     subgraph Mail ["Mail & Groupware"]
-        Stalwart["Stalwart\n/>SMTP / IMAP"]
-        SOGo["SOGo\n/>Webmail / Calendar"]
+        Stalwart["Stalwart<br/>SMTP / IMAP"]
+        SOGo["SOGo<br/>Webmail / Calendar"]
     end
 
     subgraph Data ["Data Layer"]
-        Postgres["PostgreSQL 17\n/>+ PgBouncer"]
+        Postgres["PostgreSQL 17<br/>+ PgBouncer"]
         Redis["Redis 7"]
         Memcached["Memcached 1.6"]
     end
@@ -403,7 +403,7 @@ If `POSTGRES_PASSWORD` was changed after first start, the existing volume
 keeps the old password. Remove the volume or update the password inside psql.
 </details>
 
-< details>
+<details>
 <summary><b>Zitadel first-start errors</b></summary>
 
 Zitadel requires a **master key file** (`idm/secrets/masterkey`) for encryption.
