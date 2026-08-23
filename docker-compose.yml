@@ -1,13 +1,11 @@
 # ── Global defaults ──────────────────────────────────
-# Inherited by every service in this file via: <<: *default-logging
-x-logging: &default-logging
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
   logging:
     driver: json-file
     options:
       max-size: "50m"
       max-file: "3"
-
-x-security: &svc-security
   init: true
   security_opt:
     - no-new-privileges:true
@@ -31,8 +29,7 @@ services:
   # system Traefik, use profiles/system-traefik.yml to disable this and
   # connect the portal to the host's traefik-web network instead.
   traefik:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: ${TRAEFIK_IMAGE:-traefik:v3.3}
     container_name: opensme-traefik
     profiles: ["standalone"]
@@ -103,8 +100,7 @@ services:
 
   # ── Database ─────────────────────────────────
   postgres:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
     container_name: opensme-postgres
     restart: unless-stopped
@@ -164,8 +160,7 @@ services:
 
   # ── Connection Pool (PgBouncer) ─────────────
   pgbouncer:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: bitnami/pgbouncer:1.23
     container_name: opensme-pgbouncer
     restart: unless-stopped
@@ -205,8 +200,7 @@ services:
 
   # ── Cache ────────────────────────────────────
   redis:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: ${REDIS_IMAGE:-redis:7-alpine}
     container_name: opensme-redis
     restart: unless-stopped
@@ -246,8 +240,7 @@ services:
           memory: 1G
 
   memcached:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: ${MEMCACHED_IMAGE:-memcached:1.6-alpine}
     container_name: opensme-memcached
     restart: unless-stopped
@@ -274,8 +267,7 @@ services:
 
   # ── Rust Portal ─────────────────────────────
   portal:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     read_only: true
     tmpfs:
       - /tmp

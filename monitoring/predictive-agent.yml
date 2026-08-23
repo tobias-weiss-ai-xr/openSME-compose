@@ -1,13 +1,11 @@
 # ── Global defaults ──────────────────────────────────
-# Inherited by every service in this file via: <<: *default-logging
-x-logging: &default-logging
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
   logging:
     driver: json-file
     options:
       max-size: "50m"
       max-file: "3"
-
-x-security: &svc-security
   init: true
   security_opt:
     - no-new-privileges:true
@@ -36,8 +34,7 @@ x-security: &svc-security
 
 services:
   predictive-agent:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: ${PREDICTIVE_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest}
     container_name: opensme-predictive-agent
     restart: unless-stopped

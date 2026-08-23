@@ -1,13 +1,11 @@
 # ── Global defaults ──────────────────────────────────
-# Inherited by every service in this file via: <<: *default-logging
-x-logging: &default-logging
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
   logging:
     driver: json-file
     options:
       max-size: "50m"
       max-file: "3"
-
-x-security: &svc-security
   init: true
   security_opt:
     - no-new-privileges:true
@@ -19,8 +17,7 @@ x-security: &svc-security
 
 services:
   minio:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: minio/minio:latest
     container_name: opensme-minio
     restart: unless-stopped
@@ -43,6 +40,14 @@ services:
       start_period: 30s
     networks:
       - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1.5G
+        reservations:
+          cpus: "0.5"
+          memory: 128M
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.minio.rule=Host(`minio.${OPENSME_DOMAIN:-opensme.org}`)"
@@ -56,14 +61,6 @@ services:
       - "traefik.http.routers.minio-console.entrypoints=websecure"
       - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
       - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 2G
-        reservations:
-          cpus: "0.5"
-          memory: 256M
 
 volumes:
   minio-data:

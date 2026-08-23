@@ -1,13 +1,11 @@
 # ── Global defaults ──────────────────────────────────
-# Inherited by every service in this file via: <<: *default-logging
-x-logging: &default-logging
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
   logging:
     driver: json-file
     options:
       max-size: "50m"
       max-file: "3"
-
-x-security: &svc-security
   init: true
   security_opt:
     - no-new-privileges:true
@@ -26,8 +24,7 @@ x-security: &svc-security
 
 services:
   notes-backend:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: lasuite/impress:1.14.0-backend
     container_name: opensme-notes-backend
     restart: unless-stopped
@@ -90,8 +87,7 @@ services:
           memory: 32M
 
   notes-frontend:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: lasuite/impress:1.14.0-frontend
     container_name: opensme-notes-frontend
     restart: unless-stopped
@@ -126,8 +122,7 @@ services:
           memory: 8M
 
   notes-y-provider:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: lasuite/impress-y-provider:v4.4.0
     container_name: opensme-notes-y-provider
     restart: unless-stopped

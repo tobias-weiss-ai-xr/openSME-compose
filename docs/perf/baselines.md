@@ -1,6 +1,6 @@
 # openSME — Resource Baselines
 
-_Generated 2026-08-23 16:18 UTC_ by `tests/00-static/check_perf.py --write-baselines`.
+_Generated 2026-08-23 17:56 UTC_ by `tests/00-static/check_perf.py --write-baselines`.
 
 Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **reservation** sums (what the scheduler guarantees); limits cap spikes. Profile-gated overlays are included per tier.
 
@@ -8,7 +8,7 @@ Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **rese
 |------|------|---------|---------------|--------------|--------|
 | soho | 4c/8G | 1.69G | 0.78G | ≤ 6G | ✓ |
 | small | 8c/24G | 7.78G | 3.33G | ≤ 20G | ✓ |
-| medium | 16c/48G | 24.91G | 7.98G | ≤ 40G | ✓ |
+| medium | 16c/48G | 25.41G | 8.10G | ≤ 40G | ✓ |
 
 ## Per-tier services
 
@@ -47,7 +47,7 @@ Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **rese
 | collabora | `collabora/code:24.04` | 2c/3G | 1c/1G |
 | invoiceninja | `invoiceninja/invoiceninja:5` | 0.25c/192M | 0.1c/32M |
 | memcached | `${MEMCACHED_IMAGE:-memcached:1.6-alpine}` | 1c/1.5G | 0.25c/192M |
-| minio | `minio/minio:latest` | 1c/1.5G | 0.5c/128M |
+| minio | `minio/minio:latest` | 2c/2G | 0.5c/256M |
 | notes-backend | `lasuite/impress:1.14.0-backend` | 0.35c/256M | 0.1c/32M |
 | notes-frontend | `lasuite/impress:1.14.0-frontend` | 0.10c/64M | 0.05c/8M |
 | notes-y-provider | `lasuite/impress-y-provider:v4.4.0` | 0.15c/64M | 0.05c/16M |

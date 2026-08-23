@@ -1,13 +1,11 @@
 # ── Global defaults ──────────────────────────────────
-# Inherited by every service in this file via: <<: *default-logging
-x-logging: &default-logging
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
   logging:
     driver: json-file
     options:
       max-size: "50m"
       max-file: "3"
-
-x-security: &svc-security
   init: true
   security_opt:
     - no-new-privileges:true
@@ -24,8 +22,7 @@ x-security: &svc-security
 
 services:
   cryptpad:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: cryptpad/cryptpad:2025.9.0
     container_name: opensme-cryptpad
     restart: unless-stopped

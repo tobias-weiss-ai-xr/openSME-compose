@@ -1,13 +1,11 @@
 # ── Global defaults ──────────────────────────────────
-# Inherited by every service in this file via: <<: *default-logging
-x-logging: &default-logging
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
   logging:
     driver: json-file
     options:
       max-size: "50m"
       max-file: "3"
-
-x-security: &svc-security
   init: true
   security_opt:
     - no-new-privileges:true
@@ -21,8 +19,7 @@ x-security: &svc-security
 
 services:
   opencloud:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: opencloudeu/opencloud-rolling:6.0.0
     container_name: opensme-opencloud
     restart: unless-stopped
@@ -91,8 +88,7 @@ services:
           memory: 2G
 
   collabora:
-    <<: *svc-security
-    <<: *default-logging
+    <<: *service-defaults
     image: collabora/code:24.04
     container_name: opensme-collabora
     restart: unless-stopped
