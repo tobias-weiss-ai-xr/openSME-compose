@@ -40,11 +40,11 @@
 
 ## 6. Benchmark layer
 
-- [ ] 6.1 Create tests/07-bench/ harness (docker stats sampler, container boot timer, JSON output)
-- [ ] 6.2 Add HTTP latency benchmark through Traefik for portal, opencloud and paperless endpoints
-- [ ] 6.3 Add make bench target tying the benchmark harness together
-- [ ] 6.4 Add CI static subset running budget assertions and config invariants
-- [ ] 6.5 Write the docs/perf/benchmark-run.md before/after evidence template
+- [x] 6.1 Create tests/07-bench/ harness (docker stats sampler, container boot timer, JSON output)
+- [x] 6.2 Add HTTP latency benchmark through Traefik for portal, opencloud and paperless endpoints
+- [x] 6.3 Add make bench target tying the benchmark harness together
+- [x] 6.4 Add CI static subset running budget assertions and config invariants
+- [x] 6.5 Write the docs/perf/benchmark-run.md before/after evidence template
 - [ ] 6.6 Run make bench on a live small-tier host to Verify before/after evidence (manual)
 
 ## 7. Documentation and archive
