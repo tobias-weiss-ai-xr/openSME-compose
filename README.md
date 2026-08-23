@@ -819,7 +819,7 @@ Larger deployments require a commercial license.
 | **Enterprise** | 500+ | 💰 Individual |
 
 See [LICENSE.md](LICENSE.md) for full terms. Commercial licenses available at
-[[REDACTED]](https://[REDACTED]) or [graphwiz.ai](https://graphwiz.ai).
+[graphwiz.ai](https://graphwiz.ai) or via [hello@opensme.org](mailto:hello@opensme.org).
 
 ## Credits
 
