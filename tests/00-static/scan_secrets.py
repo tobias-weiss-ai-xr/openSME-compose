@@ -21,12 +21,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from conftest import Result, ROOT
 
 
-# Patterns that indicate hardcoded secrets
+# Patterns that indicate hardcoded secrets.
+# Negative lookahead excludes placeholders (${VAR}, CHANGEME_) and reads from
+# config modules (config.X / os.environ.get / os.getenv) so variable *references*
+# are not mistaken for literal secrets.
+_REF = r'(?!CHANGEME|\$\{|(?:config|os|env)\.)'
 SECRET_PATTERNS = [
-    (r'password\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]+', "hardcoded password"),
-    (r'api[_-]?key\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]{16,}', "hardcoded API key"),
-    (r'secret\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]{16,}', "hardcoded secret"),
-    (r'token\s*[=:]\s*["\']?(?!CHANGEME|\$\{)[^"\'\s$]{16,}', "hardcoded token"),
+    (rf'password\s*[=:]\s*["\']?{_REF}[^"\'\s$]+', "hardcoded password"),
+    (rf'api[_-]?key\s*[=:]\s*["\']?{_REF}[^"\'\s$]{{16,}}', "hardcoded API key"),
+    (rf'secret\s*[=:]\s*["\']?{_REF}[^"\'\s$]{{16,}}', "hardcoded secret"),
+    (rf'token\s*[=:]\s*["\']?{_REF}[^"\'\s$]{{16,}}', "hardcoded token"),
     (r'BEGIN\s+(RSA|EC|OPENSSH|PRIVATE)\s+KEY', "private key"),
     (r'-----BEGIN\s+PGP\s+MESSAGE-----', "PGP message"),
 ]
