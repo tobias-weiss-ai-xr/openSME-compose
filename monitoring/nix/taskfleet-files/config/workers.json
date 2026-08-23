@@ -33,7 +33,7 @@
       "provider": "litellm",
       "model": "deepseek-v4-flash/local",
       "endpoint": "http://127.0.0.1:4000/v1",
-      "note": "Local DeepSeek V4 Flash via LiteLLM gateway (AI cluster / [REDACTED])",
+      "note": "Local DeepSeek V4 Flash via LiteLLM gateway",
       "enabled": true,
       "max_concurrent": 1
     }

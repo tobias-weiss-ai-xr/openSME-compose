@@ -31,6 +31,17 @@ SECRET_PATTERNS = [
     (r'-----BEGIN\s+PGP\s+MESSAGE-----', "PGP message"),
 ]
 
+# Internal network ranges that must never appear in a public repo.
+# RFC1918 private ranges + link-local. Hostname-specific guards are deliberately
+# NOT hardcoded here: naming internal hosts would re-introduce them into the
+# public repo. Supply those via a private, gitignored denylist if desired.
+INTERNAL_PATTERNS = [
+    (r'\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (10.0.0.0/8)"),
+    (r'\b172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (172.16.0.0/12)"),
+    (r'\b192\.168\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (192.168.0.0/16)"),
+    (r'\b169\.254\.\d{1,3}\.\d{1,3}\b', "link-local IPv4 (169.254.0.0/16)"),
+]
+
 # CHANGEME_ values are OK in .env.example but NOT in compose files
 CHANGEME_PATTERN = re.compile(r'CHANGEME_[a-z_]+', re.IGNORECASE)
 
@@ -65,6 +76,12 @@ def scan_file(filepath: Path) -> list[tuple[int, str, str]]:
                         # Exclude env var references like ${VAR}
                         if "${" not in line and "CHANGEME" not in line:
                             findings.append((i, name, line.rstrip()))
+
+                # Check for internal network ranges / hostnames (never ship)
+                for pattern, name in INTERNAL_PATTERNS:
+                    if re.search(pattern, line):
+                        findings.append((i, name, line.rstrip()))
+                        break
     except (OSError, UnicodeDecodeError):
         pass
     return findings
@@ -96,7 +113,7 @@ def main():
         elif path.is_dir():
             for ext in SCAN_EXTS:
                 for fp in path.rglob(f"*{ext}"):
-                    if ".git" in fp.parts or "[REDACTED]" in fp.parts:
+                    if ".git" in fp.parts:
                         continue
                     findings = scan_file(fp)
                     files_scanned += 1

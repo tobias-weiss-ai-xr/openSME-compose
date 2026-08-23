@@ -10,7 +10,7 @@
       ],
       "engine": "dev-agent",
       "model_tier": "deep",
-      "accept": "cd /home/[REDACTED]/git/predictive-agent && python3 -m pytest tests/test_main.py -v",
+      "accept": "cd /workspace/predictive-agent && python3 -m pytest tests/test_main.py -v",
       "acceptance_prose": "main.py implements a ReconcileLoop class that periodically collects kubectl metrics, updates StateModel with PodTracker/Kalman filters, runs Predictor for risk scoring, persists state via StateStore, and serves HTTP via server.py. reconcile() returns dict with predictions, state, timestamp. ReconcileLoop supports start()/stop() and interval. __main__.py entry point runs the loop. All tests in tests/test_main.py pass."
     },
     {
@@ -28,8 +28,8 @@
       ],
       "engine": "dev-agent",
       "model_tier": "fast",
-      "accept": "cd /home/[REDACTED]/git/predictive-agent && python3 -c \"import yaml; [yaml.safe_load(open(f)) for f in ['k8s/deployment.yaml','k8s/rbac.yaml','k8s/service.yaml','k8s/configmap.yaml','k8s/kustomization.yaml','k8s/namespace.yaml','k8s/pvc.yaml']]; print('All YAML valid')\"",
-      "acceptance_prose": "Create k8s/ directory with 7 YAML manifests: namespace.yaml (opensme-dev-agent), rbac.yaml (ServiceAccount, ClusterRole with get/list/watch on pods, pods/log, events, nodes, metrics.k8s.io, ClusterRoleBinding), deployment.yaml (image [REDACTED]/dev-agent:v8-nix, env vars for LLM_BACKEND, OLLAMA_URL, OLLAMA_MODEL, SAIA_API_URL, SAIA_API_KEY, TUD_API_URL, TUD_API_KEY, PREDICTION_ENABLED, RECONCILE_INTERVAL, HEALTH_PORT, METRICS_PORT, STATE_MODEL_FILE, PREDICTIONS_FILE, volumeMounts for /var/lib/opensme PVC, liveness/readiness probes on 8081, metrics port 8080), service.yaml (metrics + health services), configmap.yaml (v4.0 config with LLM backend settings), kustomization.yaml (references all resources, image tag v8-nix), pvc.yaml (5Gi PVC for state persistence). All YAML must be valid and parseable."
+      "accept": "cd /workspace/predictive-agent && python3 -c \"import yaml; [yaml.safe_load(open(f)) for f in ['k8s/deployment.yaml','k8s/rbac.yaml','k8s/service.yaml','k8s/configmap.yaml','k8s/kustomization.yaml','k8s/namespace.yaml','k8s/pvc.yaml']]; print('All YAML valid')\"",
+      "acceptance_prose": "Create k8s/ directory with 7 YAML manifests: namespace.yaml (opensme-dev-agent), rbac.yaml (ServiceAccount, ClusterRole with get/list/watch on pods, pods/log, events, nodes, metrics.k8s.io, ClusterRoleBinding), deployment.yaml (image localhost:5001/dev-agent:v8-nix, env vars for LLM_BACKEND, OLLAMA_URL, OLLAMA_MODEL, SAIA_API_URL, SAIA_API_KEY, TUD_API_URL, TUD_API_KEY, PREDICTION_ENABLED, RECONCILE_INTERVAL, HEALTH_PORT, METRICS_PORT, STATE_MODEL_FILE, PREDICTIONS_FILE, volumeMounts for /var/lib/opensme PVC, liveness/readiness probes on 8081, metrics port 8080), service.yaml (metrics + health services), configmap.yaml (v4.0 config with LLM backend settings), kustomization.yaml (references all resources, image tag v8-nix), pvc.yaml (5Gi PVC for state persistence). All YAML must be valid and parseable."
     },
     {
       "id": "DA-08",
@@ -42,7 +42,7 @@
       ],
       "engine": "dev-agent",
       "model_tier": "standard",
-      "accept": "cd /home/[REDACTED]/git/predictive-agent && test -f nix/predictive-agent.nix && test -f nix/predictive-agent-files/entrypoint.sh && test -f nix/predictive-agent-files/healthcheck.sh && grep -q \"buildLayeredImage\" nix/predictive-agent.nix && grep -q \"python3\" nix/predictive-agent.nix && grep -q \"kubectl\" nix/predictive-agent.nix && echo \"nix build OK\"",
+      "accept": "cd /workspace/predictive-agent && test -f nix/predictive-agent.nix && test -f nix/predictive-agent-files/entrypoint.sh && test -f nix/predictive-agent-files/healthcheck.sh && grep -q \"buildLayeredImage\" nix/predictive-agent.nix && grep -q \"python3\" nix/predictive-agent.nix && grep -q \"kubectl\" nix/predictive-agent.nix && echo \"nix build OK\"",
       "acceptance_prose": "Create nix/ directory with predictive-agent.nix (dockerTools.buildLayeredImage, tag v8-nix, contents: python3, curl, bash, kubectl, the predictive_agent package as a directory with all .py files, entrypoint.sh, healthcheck.sh). The nix file must copy the entire predictive_agent/ package (not a single file) since v4.0 is a multi-module package. entrypoint.sh creates /var/lib/opensme and runs python3 -m dev_agent. healthcheck.sh checks /healthz and /ready on port 8081. Env vars: OPERATOR_VERSION=4.0.0, LLM_BACKEND, OLLAMA_URL, OLLAMA_MODEL, etc. ExposedPorts 8080 and 8081."
     },
     {
@@ -54,7 +54,7 @@
       ],
       "engine": "dev-agent",
       "model_tier": "standard",
-      "accept": "cd /home/[REDACTED]/git/predictive-agent && python3 -m pytest tests/test_server.py -v",
+      "accept": "cd /workspace/predictive-agent && python3 -m pytest tests/test_server.py -v",
       "acceptance_prose": "Enhance server.py to wire up real data: /state returns actual pod states from StateModel (pods dict with per-pod state, markov_chain info, total_pods_tracked), /predictions returns actual predictions from Predictor (predictions list with risk_score, ttf, pod_key), /metrics returns Prometheus format with real gauge metrics (opensme_dev_agent_pods_tracked, opensme_dev_agent_predictions_count, opensme_dev_agent_risk_score), /status includes version, pod_count, predictions_count, /reanalyze triggers a reconcile cycle, /cache returns LLM analysis cache. Server should accept a state_model and predictor on startup and serve real data. All tests in tests/test_server.py pass."
     },
     {
@@ -66,7 +66,7 @@
       ],
       "engine": "dev-agent",
       "model_tier": "standard",
-      "accept": "cd /home/[REDACTED]/git/predictive-agent && python3 -m pytest tests/test_llm.py -v",
+      "accept": "cd /workspace/predictive-agent && python3 -m pytest tests/test_llm.py -v",
       "acceptance_prose": "Add analyze() method to LLMAnalyzer that makes actual HTTP requests: Ollama uses POST /api/chat with model and messages, SAIA/TUD/OpenAI use POST /chat/completions with Bearer auth. Handle response parsing (Ollama: response field, OpenAI-compatible: choices[0].message.content). Include timeout parameter (default 180s). Graceful error handling: on API failure, return fallback dict with analysis='LLM API error: ...'. All tests in tests/test_llm.py pass including the mocked analyze() tests."
     }
   ]

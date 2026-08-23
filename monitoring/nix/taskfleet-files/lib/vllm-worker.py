@@ -8,7 +8,7 @@ import urllib.request
 import urllib.error
 import time
 
-VLLM_BASE_URL = os.environ.get("VLLM_BASE_URL", "http://[REDACTED]:10801/v1")
+VLLM_BASE_URL = os.environ.get("VLLM_BASE_URL", "http://localhost:10801/v1")
 DEFAULT_MODEL = os.environ.get("VLLM_MODEL", "deepseek-v4-flash")
 DEFAULT_MAX_TOKENS = int(os.environ.get("VLLM_MAX_TOKENS", "16384"))
 

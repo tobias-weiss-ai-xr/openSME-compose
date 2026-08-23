@@ -217,8 +217,8 @@ def call_openai(prompt, api_url=None, api_key=None, model=None):
     Works with any endpoint that implements POST /v1/chat/completions or
     POST /chat/completions. This includes:
     - LiteLLM proxy (http://localhost:4000/v1)
-    - Direct vLLM on AI1 (http://[REDACTED]:8000/v1)
-    - llama.cpp on [REDACTED] (http://localhost:8080/v1)
+    - Local vLLM endpoint (http://localhost:8000/v1)
+    - Local llama.cpp endpoint (http://localhost:8080/v1)
     - SAIA, TUD, OpenAI cloud APIs
     """
     api_url = api_url or OPENAI_API_URL

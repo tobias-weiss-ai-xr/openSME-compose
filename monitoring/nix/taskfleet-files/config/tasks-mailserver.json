@@ -11,7 +11,7 @@
       "title": "Update runbook.md and PLANIO_WIKI.textile with the verified end-to-end mail flow",
       "deps": [],
       "scope": ["docs/runbook.md", "docs/PLANIO_WIKI.textile"],
-      "accept": "grep -qi 'dkimpy-milter' docs/runbook.md && grep -qi 'stalwart-cli' docs/runbook.md && grep -qi 'home.opensme.org' docs/runbook.md && grep -qiE 'DNS|Stalwart' docs/PLANIO_WIKI.textile",
+      "accept": "grep -qi 'dkimpy-milter' docs/runbook.md && grep -qi 'stalwart-cli' docs/runbook.md && grep -qi 'mail.opensme.org' docs/runbook.md && grep -qiE 'DNS|Stalwart' docs/PLANIO_WIKI.textile",
       "acceptance_prose": "runbook.md documents the working flow Postfix -> LDAP (openldap) -> dkimpy-milter (DKIM s1) -> Stalwart (JMAP), incl. stalwart-cli apply snippets and DNS record locations; PLANIO_WIKI.textile reflects current architecture",
       "manual": false
     },
@@ -42,7 +42,7 @@
       "deps": [],
       "scope": ["dockerfiles/dkimpy-milter/Dockerfile", "scripts/build-dkimpy-milter.sh"],
       "accept": "bash -n scripts/build-dkimpy-milter.sh && test -f dockerfiles/dkimpy-milter/Dockerfile && grep -qiE 'syslog|busybox|rsyslog' dockerfiles/dkimpy-milter/Dockerfile",
-      "acceptance_prose": "Multi-stage Dockerfile installs python + pymilter + dkimpy-milter and a syslog relay (/dev/log -> stdout) so kubectl logs shows signing events; build script pushes to [REDACTED] with docker.io/library/dkimpy-milter tag",
+      "acceptance_prose": "Multi-stage Dockerfile installs python + pymilter + dkimpy-milter and a syslog relay (/dev/log -> stdout) so kubectl logs shows signing events; build script pushes to localhost:5000 with docker.io/library/dkimpy-milter tag",
       "manual": false
     },
     {

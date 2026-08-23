@@ -1,5 +1,7 @@
-# Env
+# Env — ignore all real env files; keep only the tracked template
 .env
+.env.*
+!.env.example
 
 # TLS certs
 certs/
