@@ -31,6 +31,12 @@ services:
       - "min_wal_size=1GB"
       - "-c"
       - "max_wal_size=4GB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "bgwriter_lru_maxpages=200"
+      - "-c"
+      - "autovacuum_work_mem=256MB"
     deploy:
       resources:
         limits:
@@ -59,26 +65,28 @@ services:
       - --appendfsync everysec
       - --maxmemory 2gb
       - --maxmemory-policy allkeys-lru
+      - --lazyfree-lazy-eviction yes
+      - --lazyfree-lazy-expire yes
       - --loglevel notice
     deploy:
       resources:
         limits:
           cpus: "2"
-          memory: 4G
+          memory: 3G
         reservations:
           cpus: "0.5"
           memory: 1G
 
   memcached:
-    command: memcached -m 2048 -c 4096 -t 4
+    command: memcached -m 1280 -c 4096 -t 4
     deploy:
       resources:
         limits:
-          cpus: "2"
-          memory: 2G
+          cpus: "1"
+          memory: 1.5G
         reservations:
           cpus: "0.25"
-          memory: 256M
+          memory: 192M
 
   portal:
     deploy:
@@ -107,18 +115,18 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "4"
+          cpus: "3"
           memory: 4G
         reservations:
           cpus: "1"
-          memory: 2G
+          memory: 1.5G
 
   collabora:
     deploy:
       resources:
         limits:
-          cpus: "4"
-          memory: 4G
+          cpus: "2"
+          memory: 3G
         reservations:
           cpus: "1"
           memory: 1G
@@ -142,3 +150,13 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
+
+  minio:
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1.5G
+        reservations:
+          cpus: "0.5"
+          memory: 128M

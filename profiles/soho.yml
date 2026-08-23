@@ -31,6 +31,12 @@ services:
       - "min_wal_size=256MB"
       - "-c"
       - "max_wal_size=1GB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "bgwriter_lru_maxpages=100"
+      - "-c"
+      - "autovacuum_work_mem=64MB"
     deploy:
       resources:
         limits:
@@ -51,18 +57,20 @@ services:
       - --appendonly no
       - --maxmemory 128mb
       - --maxmemory-policy allkeys-lru
+      - --lazyfree-lazy-eviction yes
+      - --lazyfree-lazy-expire yes
       - --loglevel warning
     deploy:
       resources:
         limits:
           cpus: "0.25"
-          memory: 256M
+          memory: 192M
         reservations:
           cpus: "0.1"
-          memory: 128M
+          memory: 96M
 
   memcached:
-    command: memcached -m 128 -c 1024 -t 2
+    command: memcached -m 96 -c 1024 -t 2
     deploy:
       resources:
         limits:
@@ -70,7 +78,7 @@ services:
           memory: 128M
         reservations:
           cpus: "0.1"
-          memory: 64M
+          memory: 32M
 
   portal:
     deploy:

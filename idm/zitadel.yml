@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ── Zitadel (Identity & Access Management) ─────────
 # Include via: COMPOSE_FILE=docker-compose.yml:idm/zitadel.yml
 # Replaces Keycloak. Go-based, no JVM, built-in DB, ~100 MB RAM.
@@ -7,6 +21,8 @@
 
 services:
   zitadel:
+    <<: *svc-security
+    <<: *default-logging
     image: ghcr.io/zitadel/zitadel:latest
     container_name: opensme-zitadel
     restart: unless-stopped

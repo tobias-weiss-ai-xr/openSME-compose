@@ -220,6 +220,30 @@ All tiers run the **same Compose stack** — scale vertically, no config changes
 | **Medium** | 40–60 | 16 | 48 GB | 960 GB SSD | Core + all services | Hetzner CX42 |
 | **Enterprise** | 500+ | Individual | | | Contact for sizing |  |
 
+## Performance & Efficiency
+
+Sized, tuned and *enforced* for each tier — reservations-first budgeting,
+universal log caps and healthchecks, hardened defaults, and a live benchmark
+harness. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for tuning rationale
+and [docs/perf/](docs/perf/) for numbers, the per-tier “what may run” matrix
+and the benchmark protocol.
+
+```bash
+make perf-check                    # static budget + invariant gate (in CI)
+make bench                         # live memory + latency benchmark → docs/perf/
+make logs-size                     # per-container JSON log footprint
+make prune                         # docker system prune (keeps volumes, 72h)
+```
+
+| Tier | Σ reservations (vCPU / RAM) | Budget |
+|------|------------------------------|--------|
+| soho  | ~1.6c / ~0.8G  | 6G  |
+| small | ~4.3c / ~3.4G  | 20G |
+| medium| ~8.1c / ~8.0G  | 40G |
+
+CI fails on regressions: missing resource limits, no log rotation, no
+healthcheck, or a tier over its reservation budget (`tests/run.py --static`).
+
 ## Overlay System
 
 Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:

@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ── dev-agent overlay — Reactive container health monitor ─────
 # Watches containers via Docker socket, detects unhealthy ones,
 # sends context to an LLM for root-cause analysis.
@@ -19,6 +33,8 @@
 
 services:
   dev-agent:
+    <<: *svc-security
+    <<: *default-logging
     image: ${DEV_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/dev-agent:latest}
     container_name: opensme-dev-agent
     restart: unless-stopped

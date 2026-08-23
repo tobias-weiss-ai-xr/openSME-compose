@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ── taskfleet overlay — Parallel LLM task orchestration ───────
 # taskfleet dispatches development tasks to LLM workers running in
 # isolated git worktrees. It is NOT a long-running daemon — invoke it
@@ -33,6 +47,8 @@
 
 services:
   taskfleet:
+    <<: *svc-security
+    <<: *default-logging
     image: ${TASKFLEET_IMAGE:-ghcr.io/tobias-weiss-ai-xr/taskfleet:latest}
     container_name: opensme-taskfleet
     profiles: ["taskfleet"]

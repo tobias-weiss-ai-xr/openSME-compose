@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ═══════════════════════════════════════════════════════════════
 # openSME — Paperless-ngx + Gotenberg
 # ═══════════════════════════════════════════════════════════════
@@ -11,10 +25,15 @@
 
 services:
   paperless-ngx:
+    <<: *svc-security
+    <<: *default-logging
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
     container_name: opensme-paperless
     restart: unless-stopped
     profiles: ["paperless"]
+    stop_grace_period: 60s
+    tmpfs:
+      - /tmp
     environment:
       PAPERLESS_REDIS: redis://redis:6379/2
       PAPERLESS_DBHOST: postgres
@@ -74,10 +93,18 @@ services:
           memory: 64M
 
   paperless-gotenberg:
+    <<: *svc-security
+    <<: *default-logging
     image: gotenberg/gotenberg:8
     container_name: opensme-gotenberg
     restart: unless-stopped
     profiles: ["paperless"]
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp
     command:
       - "gotenberg"
       - "--chromium-rpc-max-page-size=100"
@@ -99,10 +126,15 @@ services:
           memory: 16M
 
   paperless-tika:
+    <<: *svc-security
+    <<: *default-logging
     image: apache/tika-server-full:2.9
     container_name: opensme-tika
     restart: unless-stopped
     profiles: ["tika"]
+    shm_size: 256M
+    tmpfs:
+      - /tmp
     environment:
       TIKA_MEMORY_LIMIT: 512m
       JAVA_TOOL_OPTIONS: >-

@@ -126,9 +126,34 @@ pull:
 	@echo -e "$(GREEN)✓ Images pulled$(NC)"
 
 # ---------------------------------------------------------------------------
+# Disk hygiene
+# ---------------------------------------------------------------------------
+prune:
+	@echo -e "$(BLUE)── pruning stale images/volumes/networks (age filter, keep 72h) ──$(NC)"
+	docker system prune --filter "until=72h" -f
+	@echo -e "$(GREEN)✓ Pruned images/build cache/networks older than 72h (volumes kept)$(NC)"
+
+logs-size:
+	@echo -e "$(BLUE)── per-container JSON log footprint ──$(NC)"
+	@docker ps -aq | while read c; do \
+		name=$$(docker inspect --format '{{.Name}}' "$$c" | tr -d /); \
+		size=$$(du -sh "/var/lib/docker/containers/$$c/$$c-json.log" 2>/dev/null | cut -f1); \
+		printf "%-32s %s\n" "$$name" "$${size:-0B}"; \
+	done
+	@echo -e "$(GREEN)✓ See docs/PERFORMANCE.md for log retention settings$(NC)"
+
+# ---------------------------------------------------------------------------
+# Benchmark (tests/07-bench) — optional live-host measurements
+# ---------------------------------------------------------------------------
+bench:
+	@echo -e "$(BLUE)── running benchmarks (docker stats sampling + HTTP latency) ──$(NC)"
+	@$(PYTHON) tests/07-bench/run_bench.py --out docs/perf/benchmark-run.md 2>&1
+	@echo -e "$(GREEN)✓ Benchmarks written to docs/perf/benchmark-run.md$(NC)"
+
+# ---------------------------------------------------------------------------
 # Layer 0 — Static Validation (no containers needed)
 # ---------------------------------------------------------------------------
-lint: compose-check yaml-lint env-check secret-scan
+lint: compose-check yaml-lint env-check secret-scan perf-check
 	@echo -e "$(GREEN)✅ All linting passed$(NC)"
 
 compose-check:
@@ -147,6 +172,10 @@ env-check:
 secret-scan:
 	@echo -e "$(BLUE)── secret scanning ──$(NC)"
 	@$(PYTHON) tests/00-static/scan_secrets.py 2>&1
+
+perf-check:
+	@echo -e "$(BLUE)── performance & budget invariants ──$(NC)"
+	@$(PYTHON) tests/00-static/check_perf.py 2>&1
 
 # ---------------------------------------------------------------------------
 # Layer 1 — Spec compliance (no containers needed)

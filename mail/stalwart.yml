@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ── Stalwart Mail Server overlay ───────────────
 # Include via: COMPOSE_FILE=docker-compose.yml:mail/stalwart.yml
 # Rust-based mail server: SMTP, IMAP, JMAP, CalDAV, CardDAV.
@@ -6,10 +20,20 @@
 
 services:
   stalwart:
-    image: stalwartlabs/stalwart:v0.16
+    <<: *svc-security
+    <<: *default-logging
+    image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.16}
     container_name: opensme-stalwart
     hostname: mail.${OPENSME_DOMAIN:-opensme.org}
     restart: unless-stopped
+    stop_grace_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     ports:
       - "25:25"
       - "465:465"

@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ═══════════════════════════════════════════════════════════════
 # openSME — Invoice Ninja
 # ═══════════════════════════════════════════════════════════════
@@ -10,6 +24,8 @@
 
 services:
   invoiceninja:
+    <<: *svc-security
+    <<: *default-logging
     image: invoiceninja/invoiceninja:5
     container_name: opensme-invoiceninja
     restart: unless-stopped
@@ -37,6 +53,8 @@ services:
       - opensme-net
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     labels:
       - "traefik.enable=true"

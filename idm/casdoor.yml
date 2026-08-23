@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ═══════════════════════════════════════════════════════════════
 # openSME — Casdoor IAM (Lightweight Alternative to Zitadel)
 # ═══════════════════════════════════════════════════════════════
@@ -14,6 +28,8 @@
 
 services:
   casdoor:
+    <<: *svc-security
+    <<: *default-logging
     image: casbin/casdoor:latest
     container_name: opensme-casdoor
     restart: unless-stopped

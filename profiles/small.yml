@@ -31,6 +31,12 @@ services:
       - "min_wal_size=512MB"
       - "-c"
       - "max_wal_size=2GB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "bgwriter_lru_maxpages=100"
+      - "-c"
+      - "autovacuum_work_mem=128MB"
     deploy:
       resources:
         limits:
@@ -41,6 +47,10 @@ services:
           memory: 512M
 
   pgbouncer:
+    environment:
+      PGBOUNCER_DEFAULT_POOL_SIZE: 15
+      PGBOUNCER_MAX_CLIENT_CONN: 100
+      PGBOUNCER_MAX_DB_CONNECTIONS: 30
     deploy:
       resources:
         limits:
@@ -58,26 +68,28 @@ services:
       - --appendfsync everysec
       - --maxmemory 1gb
       - --maxmemory-policy allkeys-lru
+      - --lazyfree-lazy-eviction yes
+      - --lazyfree-lazy-expire yes
       - --loglevel notice
     deploy:
       resources:
         limits:
           cpus: "1"
-          memory: 2G
+          memory: 1.5G
         reservations:
           cpus: "0.5"
-          memory: 1G
+          memory: 768M
 
   memcached:
-    command: memcached -m 512 -c 2048 -t 4
+    command: memcached -m 384 -c 2048 -t 4
     deploy:
       resources:
         limits:
           cpus: "1"
-          memory: 1G
+          memory: 512M
         reservations:
           cpus: "0.25"
-          memory: 256M
+          memory: 128M
 
   portal:
     deploy:

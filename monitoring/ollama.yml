@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ── Ollama overlay — Local LLM backend for dev-agent & predictive-agent ──
 # Provides a local Ollama instance so both agents can run LLM analysis
 # without external API calls.
@@ -16,6 +30,8 @@
 
 services:
   ollama:
+    <<: *svc-security
+    <<: *default-logging
     image: ollama/ollama:latest
     container_name: opensme-ollama
     restart: unless-stopped

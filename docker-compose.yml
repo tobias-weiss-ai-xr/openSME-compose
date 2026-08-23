@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ═══════════════════════════════════════════════════════════════
 # openSME — Core Services
 # ═══════════════════════════════════════════════════════════════
@@ -17,10 +31,20 @@ services:
   # system Traefik, use profiles/system-traefik.yml to disable this and
   # connect the portal to the host's traefik-web network instead.
   traefik:
-    image: traefik:v3.3
+    <<: *svc-security
+    <<: *default-logging
+    image: ${TRAEFIK_IMAGE:-traefik:v3.3}
     container_name: opensme-traefik
     profiles: ["standalone"]
     restart: unless-stopped
+    stop_grace_period: 30s
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
@@ -30,6 +54,7 @@ services:
       - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
       - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
       - "--entryPoints.websecure.http3=true"
+      - "--ping=true"
       - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.org}"
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
@@ -37,9 +62,18 @@ services:
       # Rate limiting for 500 users
       - "--entryPoints.websecure.rateLimit.average=100"
       - "--entryPoints.websecure.rateLimit.burst=200"
+      # gzip/brotli compression for web/secure entry points
+      - "--entryPoints.web.http.middlewares.compress@docker=compress"
+      - "--entryPoints.websecure.http.middlewares.compress@docker=compress"
     ports:
       - "80:80"
       - "443:443"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-data:/etc/traefik
@@ -53,6 +87,8 @@ services:
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.middlewares=auth"
+      # Compression middleware (file provider config in traefik-data)
+      - "traefik.http.middlewares.compress.compress=true"
       # NOTE: Set TRAEFIK_USERS to a valid htpasswd entry (htpasswd -nb user pass)
       #       Default placeholder will reject all requests — change before using.
       - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_USERS:-admin:$$apr1$$CHANGEME}"
@@ -67,9 +103,13 @@ services:
 
   # ── Database ─────────────────────────────────
   postgres:
-    image: postgres:17-alpine
+    <<: *svc-security
+    <<: *default-logging
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
     container_name: opensme-postgres
     restart: unless-stopped
+    stop_grace_period: 120s
+    shm_size: 256M
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
@@ -101,6 +141,10 @@ services:
       - "max_wal_size=4GB"
       - "-c"
       - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "bgwriter_lru_maxpages=200"
+      - "-c"
+      - "autovacuum_work_mem=256MB"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opensme"]
       interval: 10s
@@ -120,9 +164,15 @@ services:
 
   # ── Connection Pool (PgBouncer) ─────────────
   pgbouncer:
+    <<: *svc-security
+    <<: *default-logging
     image: bitnami/pgbouncer:1.23
     container_name: opensme-pgbouncer
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     environment:
       POSTGRESQL_HOST: postgres
       POSTGRESQL_PORT: 5432
@@ -155,9 +205,16 @@ services:
 
   # ── Cache ────────────────────────────────────
   redis:
-    image: redis:7-alpine
+    <<: *svc-security
+    <<: *default-logging
+    image: ${REDIS_IMAGE:-redis:7-alpine}
     container_name: opensme-redis
     restart: unless-stopped
+    stop_grace_period: 60s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     command:
       - redis-server
       - --save 300 100
@@ -166,6 +223,8 @@ services:
       - --appendfsync everysec
       - --maxmemory 2gb
       - --maxmemory-policy allkeys-lru
+      - --lazyfree-lazy-eviction yes
+      - --lazyfree-lazy-expire yes
       - --loglevel notice
     volumes:
       - redis-data:/data
@@ -187,9 +246,15 @@ services:
           memory: 1G
 
   memcached:
-    image: memcached:1.6-alpine
+    <<: *svc-security
+    <<: *default-logging
+    image: ${MEMCACHED_IMAGE:-memcached:1.6-alpine}
     container_name: opensme-memcached
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     command: memcached -m 2048 -c 4096 -t 4
     healthcheck:
       test: ["CMD", "memcached-tool", "localhost:11211", "stats"]
@@ -209,6 +274,15 @@ services:
 
   # ── Rust Portal ─────────────────────────────
   portal:
+    <<: *svc-security
+    <<: *default-logging
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     build:
       context: ./portal
       dockerfile: Dockerfile

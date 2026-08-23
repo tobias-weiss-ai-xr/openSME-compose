@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ── OpenCloud + Collabora overlay ──────────────
 # Include via: COMPOSE_FILE=docker-compose.yml:opencloud/opencloud.yml
 # Provides file sync/sharing + online office editing.
@@ -7,9 +21,15 @@
 
 services:
   opencloud:
+    <<: *svc-security
+    <<: *default-logging
     image: opencloudeu/opencloud-rolling:6.0.0
     container_name: opensme-opencloud
     restart: unless-stopped
+    stop_grace_period: 60s
+    shm_size: 256M
+    tmpfs:
+      - /tmp
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,9 +91,12 @@ services:
           memory: 2G
 
   collabora:
+    <<: *svc-security
+    <<: *default-logging
     image: collabora/code:24.04
     container_name: opensme-collabora
     restart: unless-stopped
+    shm_size: 512M
     environment:
       aliasgroup1: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}:443
       extra_params: >-

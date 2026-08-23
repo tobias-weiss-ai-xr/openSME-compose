@@ -48,6 +48,7 @@ LAYERS = {
             ("YAML lint", "tests/00-static/yaml_lint.py"),
             ("Env completeness", "tests/00-static/check_env.py"),
             ("Secret scan", "tests/00-static/scan_secrets.py"),
+            ("Perf & budgets", "tests/00-static/check_perf.py"),
         ],
         "requires_stack": False,
     },

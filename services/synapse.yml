@@ -1,3 +1,17 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *default-logging
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
+x-security: &svc-security
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 # ═══════════════════════════════════════════════════════════════
 # openSME — Synapse (Matrix Chat Server)
 # ═══════════════════════════════════════════════════════════════
@@ -12,6 +26,8 @@
 
 services:
   synapse:
+    <<: *svc-security
+    <<: *default-logging
     image: element-hq/synapse:v1.144.0
     container_name: opensme-synapse
     restart: unless-stopped
