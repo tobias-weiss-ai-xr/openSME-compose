@@ -6,14 +6,16 @@
 
 **Self-hosted digital workplace for small &amp; medium enterprises.**
 
-Docker Compose-based — from 5 to 500 users.
+Docker Compose-based — from 5 to 500 users. SSO-first: one login for files,
+mail, groupware, documents &amp; chat.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
+[![CI](https://github.com/tobias-weiss-ai-xr/opensme-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/opensme-compose/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/DockerCompose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose)
 [![Traefik](https://img.shields.io/badge/Reverse_Proxy-Traefik_v3-24a7c0?logo=traefikproxy&logoColor=white)](https://traefik.io/)
 [![Rust](https://img.shields.io/badge/Portal-Rust_Axum-ce422b?logo=rust&logoColor=white)](https://axum.rs/)
 
-[Quick Start](#quick-start) · [Architecture](#architecture) · [Overlays](#overlay-system) · [Configuration](#configuration) · [License](#license)
+[Quick Start](#quick-start) · [Hardware Tiers](#hardware-tiers) · [Overlays](#overlay-system) · [Performance](#performance--efficiency) · [Configuration](#configuration) · [Security](#security) · [Backup](#backup--restore) · [Documentation](#documentation) · [License](#license)
 
 </div>
 
@@ -36,6 +38,28 @@ Docker Compose-based — from 5 to 500 users.
 For 50 users on Google Workspace: **$300–$1,800/month**.
 With openSME on a Hetzner CX22 (~€15/mo): **€15/month total.**
 That's a **95–99% cost reduction** while keeping full data sovereignty.
+
+## Single Sign-On by default
+
+Every service behind the portal — files, mail, groupware, invoicing, documents,
+chat — authenticates through **one central identity provider**. SSO is the
+architecture default, not an optional bolt-on: the identity overlay ships
+first-class, and each service is wired to it where the application supports
+OIDC/SAML (portal, files, office, mail, groupware, notes and chat ship
+configured out of the box).
+
+- **One login, one user store** — no isolated accounts per service
+- **Zitadel** — Go-native, self-hosted IAM: OIDC + SAML, built-in user store,
+  ~100 MB idle RAM (lightweight [Casdoor](https://casdoor.org/) alternative,
+  ~128 MB)
+- **Modern protocols** — OIDC everywhere, machine-to-machine tokens for
+  service-to-service calls
+- **No separate LDAP server** — the user store is built in
+
+```bash
+# Add SSO to the core stack
+COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml" docker compose up -d
+```
 
 ### Who is this for?
 
@@ -151,7 +175,7 @@ halving the service count for the IAM layer.
 | **OS** | Linux (Docker required) | Ubuntu 22.04+ / Debian 12+ |
 | **Docker** | 24.0+ | 25.0+ |
 | **Docker Compose** | v2.20+ | v2.29+ |
-| **RAM** | 4 GB (demo) | 16 GB (Small) — 64 GB (Medium) |
+| **RAM** | 4 GB (demo) | 8 GB (SOHO) · 24 GB (Small) · 48 GB (Medium) |
 | **CPU** | 2 vCPU (demo) | 4–16 vCPU |
 | **Disk** | 20 GB SSD | 100 GB–1 TB NVMe |
 | **Domain** | One A record | Wildcard or per-service A records |
@@ -587,8 +611,8 @@ Set `TF_REPO_DIR` to the repository you want tasks to operate on.
 
 | Variable | Default | Description |
 |---|---|---|
-| `DEV_AGENT_IMAGE` | `ghcr.io/.../dev-agent:latest` | dev-agent container image |
-| `PREDICTIVE_AGENT_IMAGE` | `ghcr.io/.../predictive-agent:latest` | predictive-agent image |
+| `DEV_AGENT_IMAGE` | `ghcr.io/tobias-weiss-ai-xr/dev-agent:latest` | dev-agent container image |
+| `PREDICTIVE_AGENT_IMAGE` | `ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest` | predictive-agent image |
 | `OLLAMA_URL` | `http://ollama:11434` | LLM endpoint for analysis |
 | `OLLAMA_MODEL` | `qwen3-30b-a3b:latest` | LLM model name |
 | `PREDICTION_ENABLED` | `true` | Enable predictive analysis |
@@ -640,14 +664,16 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENSME_DOMAIN` | `opensme.org` | Root domain for all services |
+| `OPENSME_DOMAIN` | `opensme.org` | Root domain shared by all services |
+| `PORTAL_DOMAIN` | `portal.opensme.org` | Portal hostname |
+| `ZITADEL_DOMAIN` | `auth.opensme.org` | SSO hostname |
 | `POSTGRES_PASSWORD` | `CHANGEME_*` | PostgreSQL superuser password |
 | `ZITADEL_ADMIN_PASSWORD` | `CHANGEME_*` | Zitadel admin password |
 | `ZITADEL_ADMIN_EMAIL` | `admin@...` | Zitadel admin email |
 | `OC_ADMIN_PASSWORD` | `CHANGEME_*` | OpenCloud admin password |
+| `OC_OIDC_SECRET` | `CHANGEME_*` | OpenCloud ↔ Zitadel OIDC client secret |
 | `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt registration email |
 | `TRAEFIK_USERS` | `admin:$$apr1$$...` | Traefik dashboard basic-auth (htpasswd) |
-| `OPENSME_TIER` | `starter` | Resource profile: `starter` \| `business` \| `enterprise` |
 
 > **⚠️ Change all `CHANGEME_*` passwords before production!**
 > Use `openssl rand -base64 24` to generate secure values.
@@ -673,7 +699,7 @@ make logs                 # Tail logs
 make pull                 # Pull images
 
 # Testing (7-layer pyramid)
-make lint                 # Layer 0: compose config + env check
+make lint                 # Layer 0: YAML, env, secrets, compose config, perf gate
 make container            # Layer 2: container health
 make smoke                # Layer 3: HTTP/SSL/port smoke
 make test                 # Layers 0-3
@@ -833,12 +859,12 @@ Images are pinned to major versions for stability:
 
 ## License
 
-**Free for organizations with up to 50 users** (Small tier — AGPL v3).
-Larger deployments require a commercial license.
+**Free for organizations with up to 50 users** (AGPL v3). Larger
+deployments require a commercial license.
 
 | Tier | Users | License |
 |---|---|---|
-| **Small** | 1–50 | ✅ Free (AGPL v3) |
+| **Community** | ≤ 50 | ✅ Free (AGPL v3) |
 | **Medium** | 50–500 | 💰 Commercial |
 | **Enterprise** | 500+ | 💰 Individual |
 
@@ -857,6 +883,13 @@ Built with:
 - [Stalwart](https://stalw.art/) — Modern mail server (Rust)
 - [SOGo](https://www.sogo.nu/) — Groupware &amp; webmail
 - [PostgreSQL](https://www.postgresql.org/) — Relational database
+
+## Documentation
+
+- [Performance &amp; efficiency](docs/PERFORMANCE.md) — per-tier tuning, budgets, benchmark protocol
+- [Perf baselines](docs/perf/baselines.md) — measured resource numbers per tier
+- [Roadmap](docs/ROADMAP.md) — current scope, in-flight work, backlog
+- [Validation](docs/VALIDATION.md) — test layers, CI gates, release checklist
 
 <div align="center">
 

@@ -6,7 +6,7 @@ You have been assigned **exactly one task**. Do it well, verify it, commit it.
 ## Context
 
 The openSME-Nix project generates Kubernetes manifests as Nix expressions.
-The SCS K3s cluster (3 bare-metal nodes at University of Marburg) runs openSME services.
+The target cluster runs openSME services on a dedicated three-node setup.
 All manifests are in `platform/kubernetes/scs/` and follow an established pattern.
 
 ## Reference files (READ FIRST — these define the API and patterns)
