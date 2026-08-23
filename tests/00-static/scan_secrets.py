@@ -40,10 +40,10 @@ SECRET_PATTERNS = [
 # NOT hardcoded here: naming internal hosts would re-introduce them into the
 # public repo. Supply those via a private, gitignored denylist if desired.
 INTERNAL_PATTERNS = [
-    (r'\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (10.0.0.0/8)"),
-    (r'\b172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (172.16.0.0/12)"),
-    (r'\b192\.168\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (192.168.0.0/16)"),
-    (r'\b169\.254\.\d{1,3}\.\d{1,3}\b', "link-local IPv4 (169.254.0.0/16)"),
+    (r'\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (RFC1918 10/8)"),
+    (r'\b172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (RFC1918 172.16-31/12)"),
+    (r'\b192\.168\.\d{1,3}\.\d{1,3}\b', "internal IPv4 (RFC1918 192.168/16)"),
+    (r'\b169\.254\.\d{1,3}\.\d{1,3}\b', "link-local IPv4 (169.254/16)"),
 ]
 
 # CHANGEME_ values are OK in .env.example but NOT in compose files
@@ -52,7 +52,9 @@ CHANGEME_PATTERN = re.compile(r'CHANGEME_[a-z_]+', re.IGNORECASE)
 # Files to scan
 SCAN_DIRS = ["docker-compose.yml", "idm/", "opencloud/", "mail/", "services/",
              "monitoring/", "profiles/", "scripts/", "portal/"]
-SCAN_EXTS = {".yml", ".yaml", ".sh", ".py", ".env", ".env.example", ".env.demo"}
+# Note: .md is included because markdown docs are where hostnames/IPs (e.g.
+# comparison notes, deployment plans) most often leak — see COMPARISON.md.
+SCAN_EXTS = {".yml", ".yaml", ".sh", ".py", ".md", ".env", ".env.example", ".env.demo"}
 
 
 def scan_file(filepath: Path) -> list[tuple[int, str, str]]:

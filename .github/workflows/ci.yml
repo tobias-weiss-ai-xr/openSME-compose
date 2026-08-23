@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Static validation + secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+
+      - name: Secret scan (Layer 0)
+        # Hardcoded secrets / passwords / API keys, plus RFC1918 & link-local
+        # IPs that must never ship to this public repo. Exit 1 on any hit.
+        run: python3 tests/00-static/scan_secrets.py
+
+      - name: Full static suite (Layers 0-2)
+        # YAML lint, .env completeness, secret scan, spec compliance,
+        # contract validation. No running stack required.
+        run: python3 tests/run.py --static
+
+  leak-scan:
+    name: Generic internal-ref scan (defense in depth)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan working tree for private-network refs
+        # Defense-in-depth layer: catches private-network IPs and host
+        # filesystem paths in ANY tracked file (including .md, which the
+        # secret scanner also now covers). Deliberately uses NO named internal
+        # hostnames so this file can never re-leak them.
+        shell: bash
+        run: |
+          set -u
+          FAIL=0
+          while IFS= read -r -d '' f; do
+            # RFC1918 10/8 — full dotted-quad only (avoids numeric literals)
+            if grep -E '\b10\.([0-9]{1,3}\.){2}[0-9]{1,3}\b' "$f" 2>/dev/null; then
+              echo "::error::RFC1918 10/8 IP in $f"; FAIL=1
+            fi
+            # RFC1918 192.168/16, 172.16-31/12, link-local 169.254/16
+            if grep -E '\b192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|169\.254\.' "$f" 2>/dev/null; then
+              echo "::error::private/link-local IPv4 in $f"; FAIL=1
+            fi
+            # Host filesystem paths (require a component after the username so
+            # container home dirs like /home/opensme are not flagged)
+            if grep -E '(/home|/Users|/srv)/[a-zA-Z0-9_.-]+/' "$f" 2>/dev/null; then
+              echo "::error::host filesystem path in $f"; FAIL=1
+            fi
+          done < <(git ls-files -z)
+          exit $FAIL
