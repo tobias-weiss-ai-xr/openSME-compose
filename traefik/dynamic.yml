@@ -1,0 +1,8 @@
+# openSME — Traefik dynamic config (file provider, mounted read-only)
+# Rate limiting for the web entrypoints (average 100 req/s, burst 200).
+http:
+  middlewares:
+    ratelimit:
+      rateLimit:
+        average: 100
+        burst: 200

@@ -57,11 +57,12 @@ services:
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
       - "--api.dashboard=true"
       # Rate limiting for 500 users
-      - "--entryPoints.websecure.rateLimit.average=100"
-      - "--entryPoints.websecure.rateLimit.burst=200"
-      # gzip/brotli compression for web/secure entry points
+      # gzip/brotli compression + rate limiting (file provider)
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
       - "--entryPoints.web.http.middlewares.compress@docker=compress"
       - "--entryPoints.websecure.http.middlewares.compress@docker=compress"
+      - "--entryPoints.web.http.middlewares.ratelimit@file=ratelimit@file"
+      - "--entryPoints.websecure.http.middlewares.ratelimit@file=ratelimit@file"
     ports:
       - "80:80"
       - "443:443"
@@ -73,6 +74,7 @@ services:
       start_period: 10s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - traefik-data:/etc/traefik
     networks:
       - opensme-net
@@ -164,16 +166,13 @@ services:
     image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:1.23.0}
     container_name: opensme-pgbouncer
     restart: unless-stopped
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     environment:
       POSTGRESQL_HOST: postgres
       POSTGRESQL_PORT: 5432
       POSTGRESQL_USERNAME: opensme
       POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
       POSTGRESQL_DATABASE: opensme
+      PGPASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
       PGBOUNCER_POOL_MODE: transaction
       PGBOUNCER_DEFAULT_POOL_SIZE: 25
       PGBOUNCER_MAX_CLIENT_CONN: 200
@@ -183,7 +182,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U opensme"]
+      test: ["CMD-SHELL", "psql -h 127.0.0.1 -p 6432 -U opensme -d opensme -w -c \"SELECT 1\" >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -205,10 +204,6 @@ services:
     container_name: opensme-redis
     restart: unless-stopped
     stop_grace_period: 60s
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     command:
       - redis-server
       - --save 300 100
@@ -244,13 +239,9 @@ services:
     image: ${MEMCACHED_IMAGE:-memcached:1.6-alpine}
     container_name: opensme-memcached
     restart: unless-stopped
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     command: memcached -m 2048 -c 4096 -t 4
     healthcheck:
-      test: ["CMD", "memcached-tool", "localhost:11211", "stats"]
+      test: ["CMD", "nc", "-z", "localhost", "11211"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -292,7 +283,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:8080/health || exit 1"]
+      test: ["CMD", "/busybox", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3

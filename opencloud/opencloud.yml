@@ -62,7 +62,7 @@ services:
       OC_UPLOAD_MAX_SIZE: 10737418240
     user: "0:0"
     entrypoint: ["/bin/sh"]
-    command: ["/entrypoint.sh", "server"]
+    command: ["server"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200/health/ready"]
       interval: 30s
@@ -92,6 +92,8 @@ services:
     image: ${COLLABORA_IMAGE:-collabora/code:24.04.13.3.1}
     container_name: opensme-collabora
     restart: unless-stopped
+    # CODE sets file capabilities at runtime — no-new-privileges blocks it
+    security_opt: []
     shm_size: 512M
     environment:
       aliasgroup1: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}:443

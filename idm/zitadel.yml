@@ -23,6 +23,8 @@ services:
     image: ghcr.io/zitadel/zitadel:latest
     container_name: opensme-zitadel
     restart: unless-stopped
+    # init DB migrations/setup, then serve
+    command: start --init
     depends_on:
       postgres:
         condition: service_healthy

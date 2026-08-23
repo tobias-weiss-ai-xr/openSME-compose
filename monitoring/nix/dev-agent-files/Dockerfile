@@ -4,9 +4,14 @@
 # mitigated by the compose overlay: :ro mount, init:true, no-new-privileges.
 FROM python:3.12-slim
 
+ARG DOCKER_VERSION=26.1.4
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz \
+    | tar -xz -C /tmp \
+ && mv /tmp/docker/docker /usr/local/bin/docker \
+ && rm -rf /tmp/docker
 
 WORKDIR /opt/dev-agent
 COPY dev_agent.py entrypoint.sh healthcheck.sh /opt/dev-agent/

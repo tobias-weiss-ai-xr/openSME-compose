@@ -95,16 +95,10 @@ services:
     container_name: opensme-gotenberg
     restart: unless-stopped
     profiles: ["paperless"]
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     tmpfs:
       - /tmp
     command:
       - "gotenberg"
-      - "--chromium-rpc-max-page-size=100"
-      - "--chromium-rpc-max-rpc-timeout=30s"
     networks:
       - opensme-net
     healthcheck:
