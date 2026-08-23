@@ -33,6 +33,11 @@ services:
   dev-agent:
     <<: *service-defaults
     image: ${DEV_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/dev-agent:latest}
+    # Reproducible local fallback: build from the in-repo sources when the
+    # image cannot be pulled (offline / no registry access). Docker uses the
+    # image name for the build tag.
+    build:
+      context: ./monitoring/nix/dev-agent-files
     container_name: opensme-dev-agent
     restart: unless-stopped
     volumes:
