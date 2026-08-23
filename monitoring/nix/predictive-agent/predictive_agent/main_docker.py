@@ -95,8 +95,8 @@ def _should_watch_container(name: str) -> bool:
     """Check if a container should be watched based on WATCH_NAMESPACES.
 
     In Docker mode, 'namespaces' map to container name prefixes.
-    E.g., WATCH_NAMESPACES=opensme,opensme matches containers starting
-    with 'opensme-' or 'opensme-'.
+    E.g., WATCH_NAMESPACES=opensme matches containers starting
+    with 'opensme-'.
     """
     if not config.WATCH_NAMESPACES or config.WATCH_NAMESPACES == [""]:
         return True

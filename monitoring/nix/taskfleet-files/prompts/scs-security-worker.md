@@ -67,7 +67,7 @@ re-run. **Never commit code that fails the acceptance gate.**
 6. **K8s manifest format**: Each resource is a plain Nix attrset. The scs/default.nix
    converts them to JSON/YAML via `builtins.toJSON`. Resources MUST be valid K8s manifests.
 7. **Namespace**: Security operators go in their own namespace (e.g., `trivy-system`,
-   `kyverno`, `falco`). Don't put them in `opensme` or `opensme`.
+   `kyverno`, `falco`). Don't put them in `opensme`.
 8. **RBAC**: Operators need ClusterRole + ClusterRoleBinding with appropriate permissions.
    Follow least-privilege — only grant what the operator actually needs.
 9. **ZKI IT-Grundschutz**: These manifests support ZKI checkpoints P0-CONT-001 (Cosign),
