@@ -88,12 +88,18 @@ services:
           memory: 2G
 
   collabora:
-    <<: *service-defaults
+    # No `<<: *service-defaults`: CODE cannot run under no-new-privileges
+    # (it Elevates through file capabilities at runtime). Enumerate the other
+    # defaults explicitly instead.
     image: ${COLLABORA_IMAGE:-collabora/code:24.04.13.3.1}
     container_name: opensme-collabora
     restart: unless-stopped
-    # CODE sets file capabilities at runtime — no-new-privileges blocks it
-    security_opt: []
+    init: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     shm_size: 512M
     environment:
       aliasgroup1: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}:443
