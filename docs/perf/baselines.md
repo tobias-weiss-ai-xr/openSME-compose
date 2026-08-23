@@ -32,8 +32,8 @@ Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **rese
 | opencloud | `opencloudeu/opencloud-rolling:6.0.0` | 2c/2G | 1c/1G |
 | paperless-gotenberg | `gotenberg/gotenberg:8` | 0.10c/96M | 0.05c/16M |
 | paperless-ngx | `ghcr.io/paperless-ngx/paperless-ngx:latest` | 0.50c/384M | 0.25c/64M |
-| paperless-tika | `apache/tika-server-full:2.9` | 0.50c/512M | 0.25c/128M |
-| pgbouncer | `bitnami/pgbouncer:1.23` | 0.5c/256M | 0.1c/64M |
+| paperless-tika | `apache/tika:latest` | 0.50c/512M | 0.25c/128M |
+| pgbouncer | `bitnamilegacy/pgbouncer:1.23.0` | 0.5c/256M | 0.1c/64M |
 | portal | `(build)` | 0.5c/128M | 0.1c/32M |
 | postgres | `${POSTGRES_IMAGE:-postgres:17-alpine}` | 2c/1G | 1c/512M |
 | redis | `${REDIS_IMAGE:-redis:7-alpine}` | 1c/1.5G | 0.5c/768M |
@@ -44,7 +44,7 @@ Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **rese
 
 | Service | Image | Limits | Reservations |
 |---------|-------|--------|--------------|
-| collabora | `collabora/code:24.04` | 2c/3G | 1c/1G |
+| collabora | `collabora/code:24.04.13.3.1` | 2c/3G | 1c/1G |
 | invoiceninja | `invoiceninja/invoiceninja:5` | 0.25c/192M | 0.1c/32M |
 | memcached | `${MEMCACHED_IMAGE:-memcached:1.6-alpine}` | 1c/1.5G | 0.25c/192M |
 | minio | `minio/minio:latest` | 2c/2G | 0.5c/256M |
@@ -54,8 +54,8 @@ Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **rese
 | opencloud | `opencloudeu/opencloud-rolling:6.0.0` | 3c/4G | 1c/1.5G |
 | paperless-gotenberg | `gotenberg/gotenberg:8` | 0.10c/96M | 0.05c/16M |
 | paperless-ngx | `ghcr.io/paperless-ngx/paperless-ngx:latest` | 0.50c/384M | 0.25c/64M |
-| paperless-tika | `apache/tika-server-full:2.9` | 0.50c/512M | 0.25c/128M |
-| pgbouncer | `bitnami/pgbouncer:1.23` | 1c/512M | 0.25c/128M |
+| paperless-tika | `apache/tika:latest` | 0.50c/512M | 0.25c/128M |
+| pgbouncer | `bitnamilegacy/pgbouncer:1.23.0` | 1c/512M | 0.25c/128M |
 | portal | `(build)` | 1c/256M | 0.25c/64M |
 | postgres | `${POSTGRES_IMAGE:-postgres:17-alpine}` | 4c/4G | 1c/2G |
 | redis | `${REDIS_IMAGE:-redis:7-alpine}` | 2c/3G | 0.5c/1G |

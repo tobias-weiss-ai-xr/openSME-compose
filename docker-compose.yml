@@ -161,7 +161,7 @@ services:
   # ── Connection Pool (PgBouncer) ─────────────
   pgbouncer:
     <<: *service-defaults
-    image: bitnami/pgbouncer:1.23
+    image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:1.23.0}
     container_name: opensme-pgbouncer
     restart: unless-stopped
     cap_drop:

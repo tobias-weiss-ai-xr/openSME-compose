@@ -56,7 +56,7 @@ services:
       memory: 96M
 
   paperless-tika:
-    image: apache/tika-server-full:2.9
+    image: ${TIKA_IMAGE:-apache/tika:latest}
     compose_file: services/paperless.yml
     required: false
     profiles: [tika]

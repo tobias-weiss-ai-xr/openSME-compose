@@ -37,7 +37,7 @@ services:
       memory: 4G
 
   pgbouncer:
-    image: bitnami/pgbouncer:1.23
+    image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:1.23.0}
     compose_file: docker-compose.yml
     required: true
     host_ports: []

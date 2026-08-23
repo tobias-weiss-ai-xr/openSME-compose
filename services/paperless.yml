@@ -123,7 +123,7 @@ services:
 
   paperless-tika:
     <<: *service-defaults
-    image: apache/tika-server-full:2.9
+    image: ${TIKA_IMAGE:-apache/tika:latest}
     container_name: opensme-tika
     restart: unless-stopped
     profiles: ["tika"]

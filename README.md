@@ -854,7 +854,7 @@ Images are pinned to major versions for stability:
 | Redis | `redis:7-alpine` | 7.x |
 | Zitadel | `ghcr.io/zitadel/zitadel:latest` | (rolling) |
 | OpenCloud | `opencloudeu/opencloud-rolling:6.0.0` | 6.0.x |
-| Collabora | `collabora/code:24.04` | 24.04.x |
+| Collabora | `collabora/code:24.04.13.3.1` | 24.04.x |
 | Traefik | `traefik:v3.3` | 3.3.x |
 
 ## License
