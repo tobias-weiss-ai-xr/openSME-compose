@@ -24,8 +24,9 @@ services:
     container_name: opensme-zitadel
     restart: unless-stopped
     # init DB migrations/setup, then serve
-    # v4 requires an explicit schema setup before start; chain both (setup is idempotent)
-    command: ["sh", "-c", "zitadel setup --masterkeyFile /secrets/masterkey && exec zitadel start --masterkeyFile /secrets/masterkey"]
+    # v4 requires `zitadel setup` before `start` (run by the ansible role or
+    # `docker compose run` once). The image is distroless — no shell here.
+    command: ["start", "--masterkeyFile", "/secrets/masterkey"]
     depends_on:
       postgres:
         condition: service_healthy

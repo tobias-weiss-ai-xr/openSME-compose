@@ -1,6 +1,7 @@
 #!/bin/sh
 # ── SOGo entrypoint ────────────────────────────
-# Renders sogo.conf.template with env vars, then starts SOGo.
+# Renders sogo.conf.template with env vars, then starts SOGo as the image's
+# dedicated sogo uid (999) — SOGo refuses to run as root.
 # Uses sed instead of envsubst for maximum image compatibility.
 set -e
 
@@ -21,4 +22,13 @@ else
   echo "[sogo-entrypoint] No template found, using existing $OUTPUT"
 fi
 
-exec "$@"
+# Drop privileges like the upstream sogod.sh does (uid/gid 999).
+SOGO_UID=${SOGO_UID:-999}
+chown -R "$SOGO_UID:$SOGO_UID" /etc/sogo 2>/dev/null || true
+chown -R "$SOGO_UID:$SOGO_UID" /srv 2>/dev/null || true
+mkdir -p /var/run/sogo
+chown "$SOGO_UID:$SOGO_UID" /var/run/sogo 2>/dev/null || true
+
+exec setpriv --reuid="$SOGO_UID" --regid="$SOGO_UID" --init-groups \
+  /usr/local/sbin/sogod -WOUseWatchDog YES -WOPort "127.0.0.1:20000" \
+  -WOPidFile /var/run/sogo/sogo.pid

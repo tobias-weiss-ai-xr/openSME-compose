@@ -52,6 +52,7 @@ services:
       - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
       - "--entryPoints.websecure.http3=true"
       - "--ping=true"
+      - "--ping.entryPoint=web"
       - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.org}"
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
@@ -67,7 +68,7 @@ services:
       - "80:80"
       - "443:443"
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck"]
+      test: ["CMD", "traefik", "healthcheck", "--ping.entryPoint=web"]
       interval: 30s
       timeout: 5s
       retries: 3
