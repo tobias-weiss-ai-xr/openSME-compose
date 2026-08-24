@@ -20,13 +20,13 @@ x-service-defaults: &service-defaults
 services:
   zitadel:
     <<: *service-defaults
-    image: ghcr.io/zitadel/zitadel:latest
+    image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:v3.4.15}
     container_name: opensme-zitadel
     restart: unless-stopped
-    # init DB migrations/setup, then serve
-    # v4 requires `zitadel setup` before `start` (run by the ansible role or
-    # `docker compose run` once). The image is distroless — no shell here.
-    command: ["start", "--masterkeyFile", "/secrets/masterkey"]
+    # Fresh installs need `zitadel init` + `zitadel setup` once before `start`
+    # (run headlessly by the ansible role / `docker compose run`). The image is
+    # distroless — no shell here. TLS is terminated by Traefik (--tlsMode external).
+    command: ["start", "--masterkeyFile", "/secrets/masterkey", "--tlsMode", "external"]
     depends_on:
       postgres:
         condition: service_healthy

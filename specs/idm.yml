@@ -6,7 +6,7 @@
 
 services:
   zitadel:
-    image: ghcr.io/zitadel/zitadel:latest
+    image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:v3.4.15}
     compose_file: idm/zitadel.yml
     required: false  # overlay — included via COMPOSE_FILE
     host_ports: []
@@ -16,6 +16,7 @@ services:
     volumes:
       - zitadel-machinekey:/machinekey
     env:
+      - ZITADEL_IMAGE
       - ZITADEL_DOMAIN
       - ZITADEL_ADMIN_EMAIL
       - ZITADEL_ADMIN_PASSWORD
