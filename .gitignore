@@ -32,3 +32,5 @@ logs/
 *.log
 __pycache__/
 result-*
+# Zitadel masterkey (provisioned at deploy time)
+idm/secrets/masterkey

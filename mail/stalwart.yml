@@ -19,7 +19,7 @@ x-service-defaults: &service-defaults
 services:
   stalwart:
     <<: *service-defaults
-    image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.16}
+    image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.15.0}
     container_name: opensme-stalwart
     hostname: mail.${OPENSME_DOMAIN:-opensme.org}
     restart: unless-stopped
@@ -29,21 +29,21 @@ services:
         condition: service_healthy
     ports:
       - "25:25"
-      - "465:465"
+      - "143:143"
       - "587:587"
-      - "993:993"
+      # 465/993 implicit-TLS listeners need certificates; TLS is terminated by Traefik
     environment:
       TZ: Europe/Berlin
       MAIL_DOMAIN: ${MAIL_DOMAIN:-mail.opensme.org}
       STALWART_PUBLIC_URL: https://${MAIL_DOMAIN:-mail.opensme.org}
-      STALWART_RECOVERY_ADMIN: admin:${STALWART_ADMIN_PASSWORD:-}
+      STALWART_ADMIN_PASSWORD: ${STALWART_ADMIN_PASSWORD:-CHANGEME_stalwart_admin}
     volumes:
-      - stalwart-etc:/etc/stalwart
+      - stalwart-etc:/opt/stalwart/etc
       - stalwart-data:/var/lib/stalwart
       - ./mail/stalwart/config.toml.template:/etc/stalwart/config.toml.template:ro
       - ./mail/stalwart/stalwart-entrypoint.sh:/stalwart-entrypoint.sh:ro
     entrypoint: ["/stalwart-entrypoint.sh"]
-    command: ["stalwart", "--config", "/etc/stalwart/config.toml"]
+    command: ["stalwart", "--config", "/opt/stalwart/etc/config.toml"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8080'"]
       interval: 30s

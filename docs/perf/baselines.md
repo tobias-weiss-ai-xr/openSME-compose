@@ -60,7 +60,7 @@ Merged `docker compose` models (pure-YAML, no engine needed). Budgets are **rese
 | postgres | `${POSTGRES_IMAGE:-postgres:17-alpine}` | 4c/4G | 1c/2G |
 | redis | `${REDIS_IMAGE:-redis:7-alpine}` | 2c/3G | 0.5c/1G |
 | sogo | `${SOGO_IMAGE:-salvoxia/sogo:latest}` | 2c/2G | 0.5c/512M |
-| stalwart | `${STALWART_IMAGE:-stalwartlabs/stalwart:v0.16}` | 2c/2G | 0.5c/512M |
+| stalwart | `${STALWART_IMAGE:-stalwartlabs/stalwart:v0.15.0}` | 2c/2G | 0.5c/512M |
 | synapse | `element-hq/synapse:v1.144.0` | 0.50c/384M | 0.25c/64M |
 | traefik | `${TRAEFIK_IMAGE:-traefik:v3.3}` | 1c/256M | 0.25c/128M |
 | zitadel | `ghcr.io/zitadel/zitadel:latest` | 2c/1G | 1c/512M |

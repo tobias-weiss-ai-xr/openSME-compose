@@ -1,68 +1,55 @@
-# Stalwart Mail Server — production config for up to 500 users
-# Full config is persisted to stalwart-etc volume on first start.
-# NOTE: TLS certificate paths are for Traefik-provided certs or must be
-#       provisioned separately. Set acme.enable=true in production for
-#       auto-provisioned certs, or mount certs into the stalwart-etc volume.
+# Stalwart Mail Server (v0.15.x) — full v0.15 config schema, rendered by
+# mail/stalwart/stalwart-entrypoint.sh from env:
+#   MAIL_DOMAIN              -> mail hostname (informational)
+#   STALWART_ADMIN_PASSWORD  -> initial admin password (fallback-admin)
+#   STALWART_PUBLIC_URL      -> public WebUI/JMAP URL (optional)
+# Listeners are plain (Traefik terminates TLS for web; mail is internal).
+# Store lives on the stalwart-data volume (RocksDB).
 
-[session]
-threads = 8
+[server]
+hostname = "${MAIL_DOMAIN:-mail.opensme.org}"
 
-[report]
-type = "log"
-log = "info"
+[server.listener.smtp]
+bind = "[::]:25"
+protocol = "smtp"
 
-[queue]
-outbound = true
-inbound = true
-max-retries = 5
-retry-after = ["5m", "15m", "1h", "4h", "12h"]
+[server.listener.submission]
+bind = "[::]:587"
+protocol = "smtp"
+
+[server.listener.imap]
+bind = "[::]:143"
+protocol = "imap"
+
+[server.listener.http]
+protocol = "http"
+bind = "[::]:8080"
 
 [storage]
-data = "/var/lib/stalwart/data"
-blob = "disk"
-blob.disk = "/var/lib/stalwart/blobs"
-lookup = "internal"
-fts = "internal"
-fts.index_dir = "/var/lib/stalwart/fts"
+data = "rocksdb"
+fts = "rocksdb"
+blob = "rocksdb"
+lookup = "rocksdb"
+directory = "internal"
 
-[tls]
-# Certs are auto-provisioned by Stalwart's built-in ACME or mounted manually.
-# For first-time setup, comment out certificate/private-key to skip TLS.
-# enable = true
-# certificate = "/etc/stalwart/certs/cert.pem"
-# private-key = "/etc/stalwart/certs/key.pem"
-
-[lmdb]
+[store.rocksdb]
+type = "rocksdb"
 path = "/var/lib/stalwart/data"
-size = 4294967296
+compression = "lz4"
 
-[smtp]
-# Rendered from MAIL_DOMAIN env var at startup
-hostname = "${MAIL_DOMAIN:-mail.opensme.org}"
-port = 25
-tls-port = 465
-max-recipients = 100
-max-message-size = 26214400
-max-concurrent-connections = 50
-rate-limit = "100/1m"
+[directory.internal]
+type = "internal"
+store = "rocksdb"
 
-[imap]
+[tracer.log]
+type = "log"
+level = "info"
+path = "/var/lib/stalwart/logs"
+prefix = "stalwart.log"
+rotate = "daily"
+ansi = false
 enable = true
-port = 143
-tls-port = 993
-max-concurrent-connections = 200
-rate-limit = "500/1m"
 
-[jmap]
-enable = true
-port = 8080
-max-concurrent-requests = 100
-rate-limit = "200/1m"
-
-[acme]
-# Enable in production for auto-provisioned TLS certs
-enable = false
-
-[authentication]
-fallback-admin = "admin"
-rate-limit = "30/1m"
+[authentication.fallback-admin]
+user = "admin"
+secret = "${STALWART_ADMIN_PASSWORD:-CHANGEME_stalwart_admin}"

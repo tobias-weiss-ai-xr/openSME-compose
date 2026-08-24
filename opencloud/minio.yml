@@ -59,6 +59,7 @@ services:
       - "traefik.http.routers.minio-console.tls=true"
       - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
       - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.routers.minio-console.service=minio-console"
       - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
       - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
 

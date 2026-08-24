@@ -61,7 +61,9 @@ services:
       OC_HTTP_CACHE_TTL: 3600
       OC_UPLOAD_MAX_SIZE: 10737418240
     user: "0:0"
-    entrypoint: ["/bin/sh"]
+    # mounted opencloud-entrypoint.sh generates config on first run,
+    # then execs the opencloud binary (image ENTRYPOINT is /usr/bin/opencloud)
+    entrypoint: ["/entrypoint.sh"]
     command: ["server"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200/health/ready"]

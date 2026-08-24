@@ -4,14 +4,14 @@
 
 services:
   stalwart:
-    image: stalwartlabs/stalwart:v0.16
+    image: stalwartlabs/stalwart:v0.15.0
     compose_file: mail/stalwart.yml
     required: false
-    host_ports: [25, 465, 587, 993]  # SMTP, SMTPS, Submission, IMAPS
+    host_ports: [25, 143, 587]  # SMTP, IMAP, Submission (TLS terminated by Traefik)
     healthcheck: true
     networks: [opensme-net]
     volumes:
-      - stalwart-etc:/etc/stalwart
+      - stalwart-etc:/opt/stalwart/etc
       - stalwart-data:/var/lib/stalwart
     env:
       - STALWART_ADMIN_PASSWORD

@@ -24,13 +24,13 @@ services:
     container_name: opensme-zitadel
     restart: unless-stopped
     # init DB migrations/setup, then serve
-    command: start --init
+    # v4 requires an explicit schema setup before start; chain both (setup is idempotent)
+    command: ["sh", "-c", "zitadel setup --masterkeyFile /secrets/masterkey && exec zitadel start --masterkeyFile /secrets/masterkey"]
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       # ── Database ──
-      ZITADEL_MASTERKEYFROMFILE: /masterkey
       # ── External DB (Postgres 17 in docker-compose.yml) ──
       ZITADEL_DATABASE_POSTGRES_HOST: postgres
       ZITADEL_DATABASE_POSTGRES_PORT: 5432
@@ -58,10 +58,10 @@ services:
       # ── Security ──
       ZITADEL_DEFAULTINSTANCE_PASSWORD_COMPLEXITY_POLICY: 0
     volumes:
-      - ./idm/secrets:/masterkey:ro
+      - ./idm/secrets:/secrets:ro
       - zitadel-machinekey:/machinekey
     healthcheck:
-      test: ["CMD", "/zitadel", "ready"]
+      test: ["CMD", "/app/zitadel", "ready"]
       interval: 10s
       timeout: 5s
       retries: 5

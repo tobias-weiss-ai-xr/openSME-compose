@@ -43,4 +43,4 @@ rules:
   - type: allowed-host-ports
     services:
       traefik: [80, 443]
-      stalwart: [25, 465, 587, 993]
+      stalwart: [25, 143, 587]
