@@ -13,5 +13,8 @@ export * from './engine/trust.js';
 export * from './engine/verify.js';
 export * from './engine/groups.js';
 export * from './engine/worktree.js';
+// Loop exports named explicitly to avoid clashing default executors
+// (defaultAgentExec / defaultGitExec) already exported by agent/worktree.
+export { runLoop, runRound, summarize, pickWorker, scopeAdherence, buildPrompt, retryCount, } from './engine/loop.js';
 export * from './dispatch/agent.js';
 export { run, parseArgs, HELP } from './cli.js';

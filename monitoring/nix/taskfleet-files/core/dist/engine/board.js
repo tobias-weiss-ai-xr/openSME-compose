@@ -1,6 +1,12 @@
-/** A task is "ready" iff status===ready AND all deps are done. */
+/**
+ * A task is "ready" iff it is not in an explicit non-ready state AND all deps
+ * are done. An unseen task (no ledger event yet) defaults to ready — the
+ * scheduler drives initial work from tasks.json, and the ledger is seeded with
+ * task:created events at loop start.
+ */
 export function isReady(task, status, allIds) {
-    if (status.get(task.id) !== 'ready')
+    const s = status.get(task.id);
+    if (s !== undefined && s !== 'ready')
         return false;
     for (const dep of task.deps) {
         // Unknown dep id is treated as not-done (defensive: malformed config).
@@ -19,6 +25,21 @@ export function readyTaskIds(tasks, board) {
 }
 export function statusOf(board, id) {
     return board.status.get(id);
+}
+/**
+ * Status map covering every task id. Tasks with no ledger event yet default to
+ * `ready`, so counts/status reflect the full tasks.json even before seeding.
+ */
+export function expandStatus(tasks, board) {
+    const m = new Map(board.status);
+    for (const t of tasks)
+        if (!m.has(t.id))
+            m.set(t.id, 'ready');
+    return m;
+}
+/** Counts over the full task list (unseen tasks counted as ready). */
+export function countsFor(tasks, board) {
+    return counts({ status: expandStatus(tasks, board), events: board.events });
 }
 export function counts(board) {
     const c = {

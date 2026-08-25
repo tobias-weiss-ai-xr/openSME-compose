@@ -3,19 +3,21 @@
  *
  * Container-ready: config defaults come from TF_CONFIG_DIR (set in the Nix
  * image + compose), the ledger path from TF_STATE_DIR, and `--version` is
- * available. Native commands (--help/--status/--dry-run) are implemented here;
- * `--once`/run currently bridges to the legacy bash orchestrator
- * (/opt/taskfleet/orchestrator.sh) so production keeps working until the
- * native dispatch loop lands. The bridge is removed once the loop exists.
+ * available. Native commands (--help/--status/--dry-run/--version) and the
+ * dispatch loop (--once/--loop/--poll) run in TypeScript. `--legacy` bridges to
+ * the legacy bash orchestrator (/opt/taskfleet/orchestrator.sh) as an escape
+ * hatch during rollout.
  */
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Ledger } from './engine/ledger.js';
-import { counts } from './engine/board.js';
+import { countsFor } from './engine/board.js';
 import { selectReady } from './engine/scheduler.js';
-import { loadTasksJson } from './config.js';
+import { loadTasksJson, loadWorkersJson } from './config.js';
+import { runLoop, summarize, } from './engine/loop.js';
 // Runtime version from package.json (dist/cli.js → ../package.json).
 const here = dirname(fileURLToPath(import.meta.url));
 let VERSION = '2.0.0';
@@ -38,6 +40,8 @@ export function parseArgs(argv) {
             : 'state/ledger.ndjson',
         dryRun: false,
         once: false,
+        loop: false,
+        legacy: false,
         status: false,
         version: false,
         help: false,
@@ -61,6 +65,15 @@ export function parseArgs(argv) {
                 break;
             case '--once':
                 o.once = true;
+                break;
+            case '--loop':
+                o.loop = true;
+                break;
+            case '--legacy':
+                o.legacy = true;
+                break;
+            case '--poll':
+                o.poll = Number(argv[++i]) || 0;
                 break;
             case '--tasks':
                 o.tasks = argv[++i];
@@ -88,27 +101,31 @@ Usage:
   taskfleet --version
   taskfleet --status
   taskfleet --dry-run [--tasks FILE] [--workers FILE] [--ledger FILE]
-  taskfleet --once            (bridges to legacy orchestrator until native loop lands)
+  taskfleet [--once|--loop] [--tasks FILE] [--workers FILE] [--ledger FILE]
+  taskfleet --poll N            (run to completion, sleep N sec, repeat)
+  taskfleet --legacy [ARGS]     (delegate to legacy bash orchestrator)
 
 Options:
   --tasks FILE     tasks.json path        (default: $TF_CONFIG_DIR/tasks.json or config/tasks.json)
   --workers FILE   workers.json path      (default: $TF_CONFIG_DIR/workers.json or config/workers.json)
   --ledger FILE    NDJSON event log path  (default: $TF_STATE_DIR/ledger.ndjson)
+  --task ID        dispatch only this task
   --dry-run        show dispatch plan, change nothing
   --status         print status board and exit
-  --once           dispatch one round then exit
+  --once           run the native loop to completion, then exit
+  --loop           alias for --once
+  --poll N         repeat the loop every N seconds
+  --legacy         bridge to /opt/taskfleet/orchestrator.sh
   --version        print version and exit
 `;
-/** Transitional: hand a run request to the legacy bash orchestrator. */
+/** Escape hatch: hand a run request to the legacy bash orchestrator. */
 function bridgeToLegacy(argv) {
     if (!existsSync(LEGACY_ORCHESTRATOR)) {
-        process.stderr.write(`[taskfleet] legacy orchestrator not found at ${LEGACY_ORCHESTRATOR}; ` +
-            `native dispatch loop not yet implemented.\n`);
+        process.stderr.write(`[taskfleet] legacy orchestrator not found at ${LEGACY_ORCHESTRATOR}.\n`);
         return 1;
     }
-    // Invoke via `bash` (on PATH) rather than relying on the script's
-    // #!/usr/bin/env shebang — /usr/bin/env is absent from the Nix image.
     try {
+        // /usr/bin/env is absent in the Nix image; invoke bash via PATH.
         execFileSync('bash', [LEGACY_ORCHESTRATOR, ...argv], { stdio: 'inherit' });
         return 0;
     }
@@ -116,6 +133,9 @@ function bridgeToLegacy(argv) {
         const code = err.status;
         return typeof code === 'number' ? code : 1;
     }
+}
+function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
 }
 export async function run(argv) {
     const o = parseArgs(argv);
@@ -127,7 +147,10 @@ export async function run(argv) {
         process.stdout.write(`${VERSION}\n`);
         return 0;
     }
-    // Native commands need the tasks file.
+    if (o.legacy) {
+        return bridgeToLegacy(argv);
+    }
+    // Native status / dry-run need the tasks file.
     if (o.status || o.dryRun) {
         if (!existsSync(o.tasks)) {
             process.stderr.write(`tasks file not found: ${o.tasks}\n`);
@@ -136,7 +159,7 @@ export async function run(argv) {
         const tasks = loadTasksJson(o.tasks).tasks;
         const board = await new Ledger(o.ledger).replay();
         if (o.status) {
-            const c = counts(board);
+            const c = countsFor(tasks, board);
             process.stdout.write(`taskfleet status — ${tasks.length} tasks\n` +
                 Object.entries(c)
                     .map(([k, v]) => `  ${k}: ${v}`)
@@ -144,7 +167,6 @@ export async function run(argv) {
                 '\n');
             return 0;
         }
-        // dry-run
         const running = new Set([...board.status.entries()]
             .filter(([, s]) => s === 'running' || s === 'verifying')
             .map(([id]) => id));
@@ -154,8 +176,34 @@ export async function run(argv) {
             '\n');
         return 0;
     }
-    // --once / --task / --worker / --poll / default → legacy bridge (transitional)
-    return bridgeToLegacy(argv);
+    // Native dispatch loop (the v2 engine).
+    if (!existsSync(o.tasks)) {
+        process.stderr.write(`tasks file not found: ${o.tasks}\n`);
+        return 2;
+    }
+    const tasks = loadTasksJson(o.tasks).tasks;
+    const workers = existsSync(o.workers) ? loadWorkersJson(o.workers) : [];
+    const repoDir = process.env.TF_REPO_DIR ?? '/repo';
+    const ledger = new Ledger(o.ledger);
+    const ctx = {
+        tasks,
+        workers,
+        ledger,
+        repoDir,
+        maxParallel: Number(process.env.TF_MAX_PARALLEL ?? 2),
+        requireReview: process.env.TF_REQUIRE_REVIEW === '1',
+        onlyTask: o.task,
+    };
+    if (o.poll && o.poll > 0) {
+        for (;;) {
+            const results = await runLoop(ctx, { rounds: 0 });
+            process.stdout.write(summarize(results) + '\n');
+            await sleep(o.poll * 1000);
+        }
+    }
+    const results = await runLoop(ctx, { rounds: 0 });
+    process.stdout.write(summarize(results) + '\n');
+    return 0;
 }
 // Execute when run as the bin (not when imported by tests).
 // Symlink-safe: /opt/taskfleet-core is a symlink into the nix store, so

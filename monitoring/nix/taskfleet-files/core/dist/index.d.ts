@@ -13,6 +13,7 @@ export * from './engine/trust.js';
 export * from './engine/verify.js';
 export * from './engine/groups.js';
 export * from './engine/worktree.js';
+export { runLoop, runRound, summarize, pickWorker, scopeAdherence, buildPrompt, retryCount, type DispatchContext, type RoundOutcome, } from './engine/loop.js';
 export * from './dispatch/agent.js';
 export { run, parseArgs, HELP } from './cli.js';
 export type { CliOptions } from './cli.js';
