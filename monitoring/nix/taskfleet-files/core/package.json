@@ -1,0 +1,35 @@
+{
+  "name": "@earendil-works/taskfleet",
+  "version": "2.0.0",
+  "description": "Governed, adaptive orchestration of LLM agents on isolated git worktrees — event-sourced npm core.",
+  "type": "module",
+  "bin": {
+    "taskfleet": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "config"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "fast-check": "^3.22.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.0"
+  },
+  "license": "MIT"
+}

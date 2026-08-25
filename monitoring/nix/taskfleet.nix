@@ -1,57 +1,68 @@
 # SPDX-License-Identifier: Apache-2.0
 # taskfleet — Parallel LLM task orchestration (Nix Docker image)
 #
-# taskfleet dispatches development tasks to LLM workers running in isolated
-# git worktrees. It is NOT a long-running daemon — invoke it on demand via
-# `docker compose run --rm taskfleet --once`.
+# taskfleet v2 packages the TypeScript npm core (@earendil-works/taskfleet)
+# alongside the legacy bash orchestrator. The container ENTRYPOINT is the npm
+# `taskfleet` bin; native commands (--help/--status/--dry-run/--version) run in
+# TypeScript, and --once currently bridges to /opt/taskfleet/orchestrator.sh
+# until the native dispatch loop lands.
 #
-# Dependencies: bash, jq, git, curl, docker (for worktree builds), pi (coding agent)
+# Dependencies: bash, jq, git, curl, docker (for worktree builds), nodejs_22,
+#               the pi coding agent (provided at runtime via PATH).
 #
 # Build:
-#   nix-build monitoring/nix/taskfleet.nix -o result-taskfleet
-#   docker load < result-taskfleet
+#   nix build .#taskfleet && docker load < result-taskfleet
 #   docker tag taskfleet:latest-nix ghcr.io/tobias-weiss-ai-xr/taskfleet:latest
 #
 # Usage:
 #   docker compose --profile taskfleet run --rm taskfleet --once
 #   docker compose --profile taskfleet run --rm taskfleet --status
-#   docker compose --profile taskfleet run --rm taskfleet --task DA-06
+#   docker compose --profile taskfleet run --rm taskfleet --version
 
 { pkgs ? import <nixpkgs> { system = "x86_64-linux"; } }:
 
 let
-  # Copy the entire taskfleet repo into the image
+  # --- Legacy bash orchestrator (bridge target for --once) -------------------
   taskfleetSrc = pkgs.runCommand "taskfleet-src" {} ''
     mkdir -p $out/opt/taskfleet
-    # Copy orchestrator and lib
     cp ${./taskfleet-files}/orchestrator.sh $out/opt/taskfleet/orchestrator.sh
     chmod +x $out/opt/taskfleet/orchestrator.sh
-    # Copy lib directory
     mkdir -p $out/opt/taskfleet/lib
     for f in ${./taskfleet-files}/lib/*.sh; do
       cp "$f" $out/opt/taskfleet/lib/
     done
-    # Copy prompts
     mkdir -p $out/opt/taskfleet/prompts
     for f in ${./taskfleet-files}/prompts/*.md; do
       cp "$f" $out/opt/taskfleet/prompts/ 2>/dev/null || true
     done
-    # Copy config templates
     mkdir -p $out/opt/taskfleet/config
     for f in ${./taskfleet-files}/config/*.json ${./taskfleet-files}/config/*.json.example; do
       cp "$f" $out/opt/taskfleet/config/ 2>/dev/null || true
     done
   '';
 
-  entrypointSh = pkgs.writeText "entrypoint.sh" ''
-    #!/usr/bin/env bash
+  # --- npm core (TypeScript, dist + prebuilt node_modules) -------------------
+  taskfleetCore = pkgs.runCommand "taskfleet-core" {} ''
+    mkdir -p $out/opt/taskfleet-core
+    cp -r ${./taskfleet-files/core/dist} $out/opt/taskfleet-core/dist
+    cp ${./taskfleet-files/core/package.json} $out/opt/taskfleet-core/package.json
+    cp ${./taskfleet-files/core/package-lock.json} $out/opt/taskfleet-core/package-lock.json
+    cp -r ${./taskfleet-files/core/node_modules} $out/opt/taskfleet-core/node_modules
+  '';
+
+  # --- bin: /usr/bin/taskfleet -> node dist/cli.js ----------------------------
+  taskfleetBin = pkgs.runCommand "taskfleet-bin" {} ''
+    mkdir -p $out/usr/bin
+    cat > $out/usr/bin/taskfleet <<'EOF'
+    #!/${pkgs.bash}/bin/bash
     set -euo pipefail
-    echo "[INFO] === taskfleet starting ==="
+    echo "[INFO] === taskfleet v2 starting ==="
     echo "[INFO] TF_REPO_DIR: ''${TF_REPO_DIR:-/repo}"
-    echo "[INFO] TF_MAX_PARALLEL: ''${TF_MAX_PARALLEL:-2}"
     echo "[INFO] TF_STATE_DIR: ''${TF_STATE_DIR:-/var/lib/taskfleet}"
     mkdir -p "''${TF_STATE_DIR:-/var/lib/taskfleet}" "''${TF_LOG_DIR:-/var/lib/taskfleet/logs}"
-    exec /opt/taskfleet/orchestrator.sh "$@"
+    exec ${pkgs.nodejs_22}/bin/node /opt/taskfleet-core/dist/cli.js "$@"
+    EOF
+    chmod +x $out/usr/bin/taskfleet
   '';
 
   etcFiles = pkgs.runCommand "taskfleet-etc" {} ''
@@ -80,22 +91,17 @@ pkgs.dockerTools.buildLayeredImage {
     procps
     cacert
     docker
-    # pi coding agent (npm package) — nodejs includes npm
     nodejs_22
     taskfleetSrc
+    taskfleetCore
+    taskfleetBin
     etcFiles
   ];
-
-  # Create a wrapper script that installs pi globally
-  # (pi is an npm package: @earendil-works/pi-coding-agent)
 
   config = {
     User = "0:0";
     WorkingDir = "/repo";
-    Entrypoint = [
-      "${pkgs.bash}/bin/bash"
-      "${entrypointSh}"
-    ];
+    Entrypoint = [ "/usr/bin/taskfleet" ];
     Cmd = [];
     Env = [
       "TF_REPO_DIR=/repo"

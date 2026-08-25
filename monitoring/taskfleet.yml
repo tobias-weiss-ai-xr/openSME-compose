@@ -50,7 +50,9 @@ services:
     container_name: opensme-taskfleet
     profiles: ["taskfleet"]
     restart: "no"
-    entrypoint: ["/opt/taskfleet/orchestrator.sh"]
+    # v2: npm `taskfleet` bin (native --help/--status/--dry-run/--version;
+    # --once bridges to /opt/taskfleet/orchestrator.sh until native loop lands)
+    entrypoint: ["/usr/bin/taskfleet"]
     volumes:
       # The repo to operate on (read-write — workers create worktrees)
       - ${TF_REPO_DIR:-./}:/repo
