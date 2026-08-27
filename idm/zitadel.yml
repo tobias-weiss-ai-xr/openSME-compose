@@ -45,7 +45,11 @@ services:
       # ── External domain ──
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-auth.opensme.org}
       ZITADEL_EXTERNALPORT: 443
-      ZITADEL_EXTERNALSECURE: true
+      # tlsMode external: Traefik terminates TLS and forwards plain HTTP to
+      # zitadel:8080. Keep ExternalSecure=false so 'zitadel ready' probes
+      # http://localhost:8080 (not https, which the server does not speak).
+      # Public https URLs are derived from Traefik's X-Forwarded-Proto header.
+      ZITADEL_EXTERNALSECURE: false
       # ── First admin ──
       ZITADEL_FIRSTINSTANCE_ORGID: opensme
       ZITADEL_FIRSTINSTANCE_ORGNAME: openSME

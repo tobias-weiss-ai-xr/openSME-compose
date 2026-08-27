@@ -14,11 +14,11 @@
   WOWorkersCount = 8;
 
   // Database via PgBouncer (transaction pooling)
-  OCSFolderInfoURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_folder_info";
-  OCSSessionsFolderURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_sessions_folder";
-  OCSStoreURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_store";
-  OCSACLsURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo_acl";
-  OCSLanguagesURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@pgbouncer:5432/sogo/sogo_languages";
+  OCSFolderInfoURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@postgres:5432/sogo/sogo_folder_info";
+  OCSSessionsFolderURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@postgres:5432/sogo/sogo_sessions_folder";
+  OCSStoreURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@postgres:5432/sogo/sogo_store";
+  OCSACLsURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@postgres:5432/sogo_acl";
+  OCSLanguagesURL = "postgresql://opensme:${SOGO_DB_PASSWORD}@postgres:5432/sogo/sogo_languages";
 
   // Authentication via LDAP
   SOGoUserSources = (
