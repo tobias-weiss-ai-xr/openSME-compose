@@ -14,8 +14,11 @@ x-service-defaults: &service-defaults
 # Include via: COMPOSE_FILE=docker-compose.yml:opencloud/opencloud.yml
 # Provides file sync/sharing + online office editing.
 #
-# NOTE: Production uses decomposeds3 storage — a MinIO service must be
-#       added separately, or override STORAGE_USERS_DRIVER=ocis for local storage.
+# Storage backend: openCloud's built-in `ocis` (local POSIX filesystem,
+# files live in the opencloud-data volume). This avoids the MinIO/S3
+# decomposeds3 driver, whose env-var mapping is fragile across versions.
+# If you want S3 object storage instead, point OC_STORAGE_USERS_DRIVER at
+# `decomposeds3` and supply the OC_STORAGE_USERS_DECOMPOSEDS3_* vars.
 
 services:
   opencloud:
@@ -50,16 +53,8 @@ services:
       OC_OIDC_CLIENT_ID: ${OC_OIDC_CLIENT_ID:-opencloud}
       OC_OIDC_CLIENT_SECRET: ${OC_OIDC_SECRET:-CHANGEME_oidc_secret}
       PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
-      OC_STORAGE_USERS_DRIVER: decomposeds3
-      # openCloud 6.x env var prefix is OC_STORAGE_USERS_DECOMPOSEDS3_*
-      # (the bare DECOMPOSEDS3_* / OC_STORAGE_S3_* forms are NOT recognised).
-      OC_STORAGE_USERS_DECOMPOSEDS3_ENDPOINT: ${OC_S3_ENDPOINT:-http://minio:9000}
-      OC_STORAGE_USERS_DECOMPOSEDS3_REGION: ${OC_S3_REGION:-us-east-1}
-      OC_STORAGE_USERS_DECOMPOSEDS3_BUCKET: ${OC_S3_BUCKET:-opencloud}
-      OC_STORAGE_USERS_DECOMPOSEDS3_ACCESS_KEY: ${OC_S3_ACCESS_KEY:-minio}
-      OC_STORAGE_USERS_DECOMPOSEDS3_SECRET_KEY: ${OC_S3_SECRET_KEY:-CHANGEME_minio}
-      OC_STORAGE_USERS_DECOMPOSEDS3_ROOT: /
-      OC_STORAGE_USERS_DECOMPOSEDS3_LAYERS: spaces
+      # Local POSIX filesystem backend (no MinIO/S3 required).
+      OC_STORAGE_USERS_DRIVER: ocis
       OC_ADD_RUN_SERVICES: notifications,antivirus
       # Performance tuning
       OC_PERMISSIONS_SSH_KEY_AGE_MAX: 0

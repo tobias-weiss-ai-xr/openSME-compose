@@ -111,7 +111,6 @@ services:
   opencloud:
     environment:
       OC_ADD_RUN_SERVICES: "notifications,antivirus"
-      STORAGE_USERS_DRIVER: decomposeds3
     deploy:
       resources:
         limits:
