@@ -57,10 +57,12 @@ services:
       OC_STORAGE_USERS_DRIVER: ocis
       OC_ADD_RUN_SERVICES: notifications
       # openCloud 6.0.0 has a startup data race ("concurrent map iteration and
-      # map write") that fires on high-core hosts when many services register
-      # concurrently. Capping GOMAXPROCS serialises goroutine startup and
-      # avoids the fatal panic. 2 is enough for a files/collab workload.
-      GOMAXPROCS: "2"
+      # map write"/"concurrent map read and map write") that fires on multi-core
+      # hosts when many services register concurrently during startup. The only
+      # reliable workaround is GOMAXPROCS=1 (fully serialises goroutines). This
+      # is single-threaded and slower, but stable; revisit when a patched
+      # 6.0.x is available.
+      GOMAXPROCS: "1"
       # SMTP (password-reset / share notifications) — relay via Stalwart.
       # NOTE: openCloud 6.0.0 binds these WITHOUT the OC_ prefix
       # (struct tag env:"NOTIFICATIONS_SMTP_SENDER"), so the bare names are
