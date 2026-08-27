@@ -1,15 +1,19 @@
 #!/bin/sh
 # ── SOGo entrypoint ────────────────────────────
-# Renders sogo.conf.template with env vars, then starts SOGo as the image's
-# dedicated sogo uid (999) — SOGo refuses to run as root.
+# Renders sogo.conf.template with env vars into the persistent config location
+# the image expects (/srv/etc/sogo.conf on the sogo-data volume). The image's
+# /sogod.sh then copies that to /etc/sogo/sogo.conf and drops privileges via
+# `su sogo` (SOGo refuses to run as root). We delegate startup to the image's
+# /start.sh so cron/memcached/apache2/sogod all start as designed.
 # Uses sed instead of envsubst for maximum image compatibility.
 set -e
 
 TEMPLATE=/sogo.conf.template
-OUTPUT=/etc/sogo/sogo.conf
+OUTPUT=/srv/etc/sogo.conf
 
 if [ -f "$TEMPLATE" ]; then
   echo "[sogo-entrypoint] Rendering $TEMPLATE → $OUTPUT"
+  mkdir -p "$(dirname "$OUTPUT")"
   sed \
     -e "s|\${SOGO_DB_PASSWORD}|${SOGO_DB_PASSWORD:-CHANGEME_sogo}|g" \
     -e "s|\${LDAP_ROOT_DN}|${LDAP_ROOT_DN:-dc=opensme,dc=org}|g" \
@@ -17,18 +21,11 @@ if [ -f "$TEMPLATE" ]; then
     -e "s|\${OPENSME_DOMAIN}|${OPENSME_DOMAIN:-opensme.org}|g" \
     -e "s|\${TZ}|${TZ:-Europe/Berlin}|g" \
     "$TEMPLATE" > "$OUTPUT"
+  chown sogo:sogo "$OUTPUT"
   echo "[sogo-entrypoint] Done."
 else
   echo "[sogo-entrypoint] No template found, using existing $OUTPUT"
 fi
 
-# Drop privileges like the upstream sogod.sh does (uid/gid 999).
-SOGO_UID=${SOGO_UID:-999}
-chown -R "$SOGO_UID:$SOGO_UID" /etc/sogo 2>/dev/null || true
-chown -R "$SOGO_UID:$SOGO_UID" /srv 2>/dev/null || true
-mkdir -p /var/run/sogo
-chown "$SOGO_UID:$SOGO_UID" /var/run/sogo 2>/dev/null || true
-
-exec setpriv --reuid="$SOGO_UID" --regid="$SOGO_UID" --init-groups \
-  /usr/local/sbin/sogod -WOUseWatchDog YES -WOPort "127.0.0.1:20000" \
-  -WOPidFile /var/run/sogo/sogo.pid
+# Delegate to the image's start script (drops to sogo user via su for sogod).
+exec sh -c "/start.sh && tail -f /var/log/sogo/sogo.log"

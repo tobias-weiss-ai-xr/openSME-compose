@@ -34,3 +34,5 @@ __pycache__/
 result-*
 # Zitadel masterkey (provisioned at deploy time)
 idm/secrets/masterkey
+# Zitadel healthcheck helper (static busybox binary, extracted at deploy time)
+idm/zitadel/busybox

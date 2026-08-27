@@ -65,12 +65,17 @@ services:
     volumes:
       - ./idm/secrets:/secrets:ro
       - zitadel-machinekey:/machinekey
+      # busybox (extracted by the deploy role) provides a wget for the
+      # healthcheck — the distroless image has no shell/http client, and
+      # `zitadel ready` insists on an https probe under --tlsMode external
+      # (the server only speaks plain HTTP on :8080).
+      - ./idm/zitadel/busybox:/usr/local/bin/busybox:ro
     healthcheck:
-      test: ["CMD", "/app/zitadel", "ready"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "/usr/local/bin/busybox", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/debug/ready"]
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
     networks:
       - opensme-net
     labels:
