@@ -12,6 +12,7 @@ tests/
 ├── 00-static/                   # Layer 0: Static validation (no containers)
 │   ├── check_env.py             #   Env var completeness (.env.example)
 │   ├── scan_secrets.py          #   Secret scanning (no CHANGEME_ in compose)
+│   ├── check_platform.py        #   Runtime platform min versions (k3s, docker)
 │   └── yaml_lint.py             #   YAML syntax + structure validation
 ├── 01-specs/                    # Layer 1: Spec compliance (no containers)
 │   └── validate_specs.py        #   Compose files match specs/

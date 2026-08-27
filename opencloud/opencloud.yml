@@ -34,7 +34,7 @@ services:
       - opencloud-config:/etc/opencloud
       - opencloud-config:/var/lib/opencloud
       - opencloud-data:/var/lib/opencloud/data
-      - ./opencloud-entrypoint.sh:/entrypoint.sh:ro
+      - ./opencloud/opencloud-entrypoint.sh:/entrypoint.sh:ro
     environment:
       OC_INSECURE: ${OC_INSECURE:-true}
       # ^ true is correct for Docker Compose — inter-service traffic
