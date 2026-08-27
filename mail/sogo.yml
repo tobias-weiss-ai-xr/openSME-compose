@@ -33,7 +33,10 @@ services:
       stalwart:
         condition: service_healthy
     volumes:
-      - ./mail/sogo/sogo.conf.template:/etc/sogo/sogo.conf.template:ro
+      # Mount the template to a path OUTSIDE the volume-mounted /etc/sogo:
+      # the sogo-config volume is mounted at /etc/sogo and would otherwise
+      # shadow this bind (leaving sogo.conf empty). See sogo-entrypoint.sh.
+      - ./mail/sogo/sogo.conf.template:/sogo.conf.template:ro
       - ./mail/sogo/sogo-entrypoint.sh:/sogo-entrypoint.sh:ro
       - sogo-config:/etc/sogo
       - sogo-data:/srv

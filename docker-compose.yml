@@ -57,6 +57,7 @@ services:
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
       - "--api.dashboard=true"
+      - "--api.insecure=true"
       # Rate limiting for 500 users
       # gzip/brotli compression + rate limiting (file provider)
       - "--providers.file.filename=/etc/traefik/dynamic.yml"

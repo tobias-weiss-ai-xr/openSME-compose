@@ -5,7 +5,7 @@
 # Uses sed instead of envsubst for maximum image compatibility.
 set -e
 
-TEMPLATE=/etc/sogo/sogo.conf.template
+TEMPLATE=/sogo.conf.template
 OUTPUT=/etc/sogo/sogo.conf
 
 if [ -f "$TEMPLATE" ]; then

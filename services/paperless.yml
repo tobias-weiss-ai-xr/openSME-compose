@@ -44,7 +44,7 @@ services:
       PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:-CHANGEME_generate_64_chars}
       PAPERLESS_TIME_ZONE: ${TZ:-Europe/Berlin}
       PAPERLESS_OCR_LANGUAGE: deu+eng
-      PAPERLESS_OCR_MODE: tesseract
+      PAPERLESS_OCR_MODE: redo
       PAPERLESS_OCR_CLEAN: clean
       PAPERLESS_THREADS: "1"
       PAPERLESS_WEBSERVER_WORKERS: "1"
