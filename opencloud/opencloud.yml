@@ -56,6 +56,11 @@ services:
       # Local POSIX filesystem backend (no MinIO/S3 required).
       OC_STORAGE_USERS_DRIVER: ocis
       OC_ADD_RUN_SERVICES: notifications
+      # openCloud 6.0.0 has a startup data race ("concurrent map iteration and
+      # map write") that fires on high-core hosts when many services register
+      # concurrently. Capping GOMAXPROCS serialises goroutine startup and
+      # avoids the fatal panic. 2 is enough for a files/collab workload.
+      GOMAXPROCS: "2"
       # SMTP (password-reset / share notifications) — relay via Stalwart.
       # NOTE: openCloud 6.0.0 binds these WITHOUT the OC_ prefix
       # (struct tag env:"NOTIFICATIONS_SMTP_SENDER"), so the bare names are
