@@ -57,15 +57,17 @@ services:
       OC_STORAGE_USERS_DRIVER: ocis
       OC_ADD_RUN_SERVICES: notifications
       # SMTP (password-reset / share notifications) — relay via Stalwart.
-      # Startup only validates the sender format; actual delivery needs a
-      # matching Stalwart account (configure OC_SMTP_* in your .env).
-      OC_NOTIFICATIONS_SMTP_SENDER: ${OC_SMTP_SENDER:-noreply@${OPENSME_DOMAIN:-opensme.org}}
-      OC_NOTIFICATIONS_SMTP_HOST: ${OC_SMTP_HOST:-stalwart}
-      OC_NOTIFICATIONS_SMTP_PORT: ${OC_SMTP_PORT:-587}
-      OC_NOTIFICATIONS_SMTP_TLS_INSECURE: ${OC_SMTP_TLS_INSECURE:-true}
-      OC_NOTIFICATIONS_SMTP_AUTHENTICATION: ${OC_SMTP_AUTHENTICATION:-login}
-      OC_NOTIFICATIONS_SMTP_USERNAME: ${OC_SMTP_USERNAME:-noreply@${OPENSME_DOMAIN:-opensme.org}}
-      OC_NOTIFICATIONS_SMTP_PASSWORD: ${OC_SMTP_PASSWORD:-CHANGEME_smtp}
+      # NOTE: openCloud 6.0.0 binds these WITHOUT the OC_ prefix
+      # (struct tag env:"NOTIFICATIONS_SMTP_SENDER"), so the bare names are
+      # required. Startup only validates the sender format; actual delivery
+      # needs a matching Stalwart account (configure OC_SMTP_* in your .env).
+      NOTIFICATIONS_SMTP_SENDER: ${OC_SMTP_SENDER:-noreply@${OPENSME_DOMAIN:-opensme.org}}
+      NOTIFICATIONS_SMTP_HOST: ${OC_SMTP_HOST:-stalwart}
+      NOTIFICATIONS_SMTP_PORT: ${OC_SMTP_PORT:-587}
+      NOTIFICATIONS_SMTP_TLS_INSECURE: ${OC_SMTP_TLS_INSECURE:-true}
+      NOTIFICATIONS_SMTP_AUTHENTICATION: ${OC_SMTP_AUTHENTICATION:-login}
+      NOTIFICATIONS_SMTP_USERNAME: ${OC_SMTP_USERNAME:-noreply@${OPENSME_DOMAIN:-opensme.org}}
+      NOTIFICATIONS_SMTP_PASSWORD: ${OC_SMTP_PASSWORD:-CHANGEME_smtp}
       # Performance tuning
       OC_PERMISSIONS_SSH_KEY_AGE_MAX: 0
       OC_STORAGE_USERS_MAX_CONCURRENCY: 10
