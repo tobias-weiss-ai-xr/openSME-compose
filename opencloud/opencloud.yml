@@ -55,7 +55,7 @@ services:
       PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
       # Local POSIX filesystem backend (no MinIO/S3 required).
       OC_STORAGE_USERS_DRIVER: ocis
-      OC_ADD_RUN_SERVICES: notifications,antivirus
+      OC_ADD_RUN_SERVICES: notifications
       # SMTP (password-reset / share notifications) — relay via Stalwart.
       # Startup only validates the sender format; actual delivery needs a
       # matching Stalwart account (configure OC_SMTP_* in your .env).
