@@ -99,6 +99,14 @@ LAYERS = {
         ],
         "requires_stack": False,
     },
+    8: {
+        "name": "K8s deployment",
+        "description": "ArgoCD, pods, deployments, images, ingress, PVC, services, Keycloak",
+        "scripts": [
+            ("K8s deployment", "tests/08-k8s/run.py"),
+        ],
+        "requires_stack": True,
+    },
 }
 
 
@@ -141,6 +149,8 @@ def main():
                         help="Run only smoke tests (layer 3)")
     parser.add_argument("--security", action="store_true",
                         help="Run only security audit (layer 6)")
+    parser.add_argument("--k8s", action="store_true",
+                        help="Run only k8s deployment tests (layer 8)")
     parser.add_argument("--domain", type=str, default="localhost",
                         help="Domain for smoke tests (default: localhost)")
     args = parser.parse_args()
@@ -152,10 +162,12 @@ def main():
         layers_to_run = [3]
     elif args.security:
         layers_to_run = [6]
+    elif args.k8s:
+        layers_to_run = [8]
     elif args.layer:
         layers_to_run = [int(x) for x in args.layer.split(",")]
     else:
-        layers_to_run = [0, 1, 2, 3, 6]  # Skip 4, 5 (not implemented)
+        layers_to_run = [0, 1, 2, 3, 6]  # Skip 4, 5, 8 (not implemented or requires k8s)
 
     print(f"\n{BOLD}╔══════════════════════════════════════════════════════════════╗{NC}")
     print(f"{BOLD}║  openSME — Spec / Contract / Test Scaffold             ║{NC}")
@@ -178,18 +190,34 @@ def main():
 
         if layer["requires_stack"]:
             # Check if stack is running
-            try:
-                ps = subprocess.run(
-                    ["docker", "compose", "ps", "--format", "{{.Name}}"],
-                    capture_output=True, text=True, timeout=10,
-                    cwd=str(ROOT)
-                )
-                if not ps.stdout.strip():
-                    print(f"  {YELLOW}⚠ Stack not running — skipping layer {layer_num}{NC}")
+            # Layer 8 checks kubectl, not docker compose
+            if layer_num == 8:
+                try:
+                    ps = subprocess.run(
+                        ["kubectl", "cluster-info", "--request-timeout=10s"],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    if ps.returncode != 0:
+                        print(f"  {YELLOW}⚠ kubectl not reachable — skipping layer {layer_num}{NC}")
+                        layer_results[layer_num] = "skipped"
+                        continue
+                except Exception:
+                    print(f"  {YELLOW}⚠ kubectl not available — skipping layer {layer_num}{NC}")
                     layer_results[layer_num] = "skipped"
                     continue
-            except Exception:
-                print(f"  {YELLOW}⚠ Cannot check Docker — skipping layer {layer_num}{NC}")
+            else:
+                try:
+                    ps = subprocess.run(
+                        ["docker", "compose", "ps", "--format", "{{.Name}}"],
+                        capture_output=True, text=True, timeout=10,
+                        cwd=str(ROOT)
+                    )
+                    if not ps.stdout.strip():
+                        print(f"  {YELLOW}⚠ Stack not running — skipping layer {layer_num}{NC}")
+                        layer_results[layer_num] = "skipped"
+                        continue
+                except Exception:
+                    print(f"  {YELLOW}⚠ Cannot check Docker — skipping layer {layer_num}{NC}")
                 layer_results[layer_num] = "skipped"
                 continue
 

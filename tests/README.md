@@ -26,6 +26,15 @@ tests/
 │   └── (not yet implemented)
 └── 06-security/                 # Layer 6: Security audit (no containers)
     └── audit.py                 #   Exposed ports, secrets, TLS, privileges
+├── 08-k8s/                     # Layer 8: Kubernetes deployment health (requires kubectl)
+│   ├── run.py                   #   Layer 8 runner
+│   ├── check_cluster.py         #   ArgoCD app sync/health, node readiness
+│   ├── check_pods.py            #   Pod health (Running, CrashLoopBackOff, restarts)
+│   ├── check_deployments.py     #   Deployment + StatefulSet readiness
+│   ├── check_images.py          #   Image registry validation (no opencode.de)
+│   ├── check_ingress.py         #   Ingress LB address + TLS, PVC binding
+│   ├── check_services.py        #   Service endpoints
+│   └── check_keycloak.py        #   Keycloak + OIDC discovery + OAuth2 Proxy
 ```
 
 ## Specs (`specs/`)
@@ -80,6 +89,9 @@ python3 tests/run.py --smoke --domain opensme.org
 # Run security audit
 python3 tests/run.py --security
 
+# Run k8s deployment tests (requires kubectl + running cluster)
+python3 tests/run.py --k8s
+
 # Run everything
 python3 tests/run.py --domain opensme.org
 ```
@@ -94,6 +106,7 @@ make test-static   # Layers 0-2 (all static checks)
 make container     # Layer 2: container health (requires stack)
 make smoke         # Layer 3: HTTP smoke (requires stack)
 make security      # Layer 6: security audit
+make k8s           # Layer 8: k8s deployment health
 make test          # Layers 0-3 (static + container + smoke)
 make test-all      # Layers 0-6 (full suite)
 ```
