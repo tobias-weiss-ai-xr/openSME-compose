@@ -74,9 +74,9 @@ TARGETS = [
 # SOGo6 filepicker endpoints — the core question "attachments from
 # OpenCloud". These are on the sogo6-server API.
 SOGO6_OPENCLOUD_ENDPOINTS = [
-    ("api/v1/user/opencloud/token/exchange", "token exchange"),
-    ("api/v1/user/opencloud/files/browse?path=/&type=all", "file browse"),
-    ("api/v1/user/opencloud/files/select", "file select"),
+    ("api/user/v1/opencloud/token/exchange", "token exchange"),
+    ("api/user/v1/opencloud/files/browse?path=/&type=all", "file browse"),
+    ("api/user/v1/opencloud/files/select", "file select"),
 ]
 
 
