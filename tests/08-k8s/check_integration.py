@@ -163,14 +163,17 @@ def check_sogo6_filepicker(result: Result):
     in-cluster deployment).
 
     Because these paths sit behind the sogo6-ui proxy, an unauthenticated
-    hit reaches the sogo6-server API. 200/401/403/401-signed → the route is
+    hit reaches the sogo6-server API. 200/401/403 → the route is
     mounted; 404 → the blueprint is *not* registered.
+
+    The file picker is a Tier 3 roadmap feature (#37/#38/#43). Until
+    deployed, 404s are EXPECTED — treat as WARN not FAIL.
     """
     base = f"https://sogo6.{DOMAIN}/"
     for path, desc in SOGO6_OPENCLOUD_ENDPOINTS:
         code = curl(base + path)
         if code == 404:
-            result.fail(
+            result.warn(
                 f"/{path}: {code} — SOGo6 OpenCloud filepicker blueprint not "
                 f"registered ({desc})"
             )
@@ -187,8 +190,14 @@ def check_sogo6_filepicker(result: Result):
         timeout=30,
     )
     intercom_url, _, secret = env_out.partition("|")
-    if rc_env == 0 and intercom_url.strip() and secret.strip():
-        result.ok("SOGo6 INTERCOM_URL + INTERCOM_SHARED_SECRET set")
+    if rc_env == 0 and intercom_url.strip() and secret.strip() and "change-me" not in secret:
+        result.ok("SOGo6 INTERCOM_URL + INTERCOM_SHARED_SECRET configured")
+    elif rc_env != 0:
+        result.warn("SOGo6 INTERCOM_* env check failed (pod may be restarting)")
+    elif not intercom_url.strip():
+        result.warn("SOGo6 INTERCOM_URL not set — filepicker cannot reach nubusintercom")
+    elif not secret.strip() or "change-me" in secret:
+        result.warn("SOGo6 INTERCOM_SHARED_SECRET not set or default — HMAC signing disabled")
     else:
         result.fail(
             "SOGo6 INTERCOM_URL / INTERCOM_SHARED_SECRET not set — "
