@@ -168,16 +168,25 @@ def check_sogo6_filepicker(result: Result):
 
     The file picker is a Tier 3 roadmap feature (#37/#38/#43). Until
     deployed, 404s are EXPECTED — treat as WARN not FAIL.
+
+    Note: token/exchange and files/select are POST endpoints — 405 (Method
+    Not Allowed) confirms the route IS mounted (just wrong HTTP method for
+    unauthenticated GET probe).
     """
     base = f"https://sogo6.{DOMAIN}/"
+    # token/exchange and files/select are POST endpoints
     for path, desc in SOGO6_OPENCLOUD_ENDPOINTS:
-        code = curl(base + path)
+        # Use POST for endpoints that require it
+        extra = None
+        if "token/exchange" in path or "files/select" in path:
+            extra = ["-X", "POST", "-H", "Content-Type: application/json", "-d", "{}"]
+        code = curl(base + path, extra=extra)
         if code == 404:
             result.warn(
                 f"/{path}: {code} — SOGo6 OpenCloud filepicker blueprint not "
                 f"registered ({desc})"
             )
-        elif code in (200, 401, 403):
+        elif code in (200, 401, 403, 405):
             result.ok(f"/{path}: {code} — route mounted ({desc})")
         else:
             result.warn(f"/{path}: {code} — {desc}")
