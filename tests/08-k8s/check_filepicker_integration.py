@@ -226,30 +226,46 @@ def check_nubusintercom_keycloak_config(result: Result):
         return
     
     # Check Keycloak configuration via environment variables
+    # The deployment uses KEYCLOAK_URL, REALM_NAME, INTERCOM_CLIENT_ID
     rc_server, server_out = run([
         "kubectl", "exec", "-n", EDU_NAMESPACE, pod, "--",
-        "printenv", "KEYCLOAK_SERVER"
+        "printenv", "KEYCLOAK_URL"
+    ])
+    
+    rc_realm, realm_out = run([
+        "kubectl", "exec", "-n", EDU_NAMESPACE, pod, "--",
+        "printenv", "REALM_NAME"
     ])
     
     rc_client_id, client_id_out = run([
         "kubectl", "exec", "-n", EDU_NAMESPACE, pod, "--",
-        "printenv", "KEYCLOAK_CLIENT_ID"
+        "printenv", "INTERCOM_CLIENT_ID"
     ])
     
     rc_client_secret, client_secret_out = run([
         "kubectl", "exec", "-n", EDU_NAMESPACE, pod, "--",
-        "printenv", "KEYCLOAK_CLIENT_SECRET"
+        "printenv", "INTERCOM_CLIENT_SECRET"
     ])
     
-    if rc_server == 0 and rc_client_id == 0 and rc_client_secret == 0:
+    if rc_server == 0 and rc_realm == 0 and rc_client_id == 0 and rc_client_secret == 0:
         server = server_out.strip()
+        realm = realm_out.strip()
         client_id = client_id_out.strip()
         client_secret = client_secret_out.strip()
         
-        if server and client_id and client_secret and "change-me" not in client_secret.lower():
+        if server and realm and client_id and client_secret and "change-me" not in client_secret.lower():
             result.ok("nubusintercom Keycloak client configured")
         else:
-            result.warn("nubusintercom Keycloak configuration incomplete or has defaults")
+            missing = []
+            if not server:
+                missing.append("KEYCLOAK_URL")
+            if not realm:
+                missing.append("REALM_NAME")
+            if not client_id:
+                missing.append("INTERCOM_CLIENT_ID")
+            if "change-me" in client_secret.lower():
+                missing.append("INTERCOM_CLIENT_SECRET (has default)")
+            result.warn(f"nubusintercom Keycloak configuration incomplete: {', '.join(missing) if missing else 'unknown'}")
     else:
         result.warn("Cannot check nubusintercom Keycloak config")
 
