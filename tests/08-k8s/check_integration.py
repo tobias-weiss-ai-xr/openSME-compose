@@ -79,6 +79,10 @@ SOGO6_OPENCLOUD_ENDPOINTS = [
     ("api/user/v1/opencloud/files/select", "file select"),
 ]
 
+# nubusintercom deployment and service
+NUBUSINTERCOM_DEPLOYMENT = "nubusintercom"
+NUBUSINTERCOM_SERVICE = "sogo6-nubusintercom"
+
 
 def run(cmd: list[str], timeout: int = 30) -> tuple[int, str]:
     """Run a shell command, return (returncode, combined output)."""
@@ -152,6 +156,27 @@ def check_opencloud(result: Result):
 
 
 # ─── Layer 2: SOGo file picker ──────────────────────────────────
+
+def check_nubusintercom(result: Result):
+    """Check nubusintercom deployment and service for file picker."""
+    rc, output = run([
+        "kubectl", "get", "deployment", NUBUSINTERCOM_DEPLOYMENT, 
+        "-n", "opensme-edu", "-o", "jsonpath={.status.availableReplicas}"
+    ])
+    if rc == 0 and output.strip() and int(output.strip()) > 0:
+        result.ok(f"nubusintercom deployment: {output.strip()} pod(s) ready")
+    else:
+        result.warn("nubusintercom deployment not found or not ready")
+    
+    rc, output = run([
+        "kubectl", "get", "service", NUBUSINTERCOM_SERVICE, 
+        "-n", "opensme-edu", "-o", "jsonpath={.spec.clusterIP}"
+    ])
+    if rc == 0 and output.strip() and output.strip() != "None":
+        result.ok(f"nubusintercom service: {output.strip()}")
+    else:
+        result.warn("nubusintercom service not found")
+
 
 def check_sogo6_filepicker(result: Result):
     """SOGo6 OpenCloud filepicker endpoints + nubusintercom wiring.
@@ -315,6 +340,7 @@ def main():
     check_opencloud(result)
 
     result.header("Layer 2 — SOGo file picker (attachments from OpenCloud)")
+    check_nubusintercom(result)
     check_sogo6_filepicker(result)
 
     result.header("Layer 3 — Matrix (Synapse)")
