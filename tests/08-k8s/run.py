@@ -34,6 +34,8 @@ K8S_TESTS = [
     ("Ingress & PVC", "tests/08-k8s/check_ingress.py"),
     ("Service endpoints", "tests/08-k8s/check_services.py"),
     ("Keycloak & OIDC", "tests/08-k8s/check_keycloak.py"),
+    ("Service integration", "tests/08-k8s/check_integration.py"),
+    ("File picker deep integration", "tests/08-k8s/check_filepicker_integration.py"),
 ]
 
 
