@@ -178,6 +178,25 @@ def check_nubusintercom(result: Result):
         result.warn("nubusintercom service not found")
 
 
+def check_ox_cleanup(result: Result):
+    """Verify OX (Open-Xchange) resources are permanently removed from opensme.
+    
+    The postfix-ox deployment and services were removed to clean up legacy
+    Open-Xchange resources. This check ensures they haven't been recreated
+    by ArgoCD syncing from external repos.
+    """
+    # Check for any postfix-ox resources
+    rc, output = run([
+        "kubectl", "get", "deployment,service", "-n", "opensme",
+        "--ignore-not-found"
+    ])
+    
+    if rc == 0 and "postfix-ox" in output:
+        result.fail("OX (postfix-ox) resources still exist in opensme")
+    else:
+        result.ok("OX (postfix-ox) resources permanently removed from opensme")
+
+
 def check_sogo6_filepicker(result: Result):
     """SOGo6 OpenCloud filepicker endpoints + nubusintercom wiring.
 
@@ -342,6 +361,9 @@ def main():
     result.header("Layer 2 — SOGo file picker (attachments from OpenCloud)")
     check_nubusintercom(result)
     check_sogo6_filepicker(result)
+
+    result.header("Layer 2b — OX resource removal verification")
+    check_ox_cleanup(result)
 
     result.header("Layer 3 — Matrix (Synapse)")
     check_matrix(result)
