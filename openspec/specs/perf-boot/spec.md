@@ -5,7 +5,7 @@ core services it depends on via healthconditioned `depends_on`, so the stack
 boots in dependency order instead of racing, and every clustered service has
 a healthcheck that reflects true readiness.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Overlay services wait on their dependencies
 

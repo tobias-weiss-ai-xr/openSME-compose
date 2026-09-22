@@ -5,7 +5,7 @@ operation: capped and rotated logs, tuned shutdown grace, prune targets,
 digest-pinned critical images, and tmpfs/read-only filesystem hygiene so disk
 and processes stay bounded on finite SME VPS tiers.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: All services cap and rotate logs
 

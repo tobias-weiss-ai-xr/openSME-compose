@@ -5,7 +5,7 @@ Layer-0 invariant checks that keep them honest: every service must declare
 limits, a logging cap, and a healthcheck, and each tier must fit its
 documented reservation budget.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Every tier fits its reservation budget
 

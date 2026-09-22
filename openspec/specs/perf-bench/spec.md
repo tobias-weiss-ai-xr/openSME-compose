@@ -5,7 +5,7 @@ Defines the measurement layer that makes this change's outcomes verifiable: a
 and HTTP latency through Traefik; a `make bench` entrypoint; a static budget
 subset that runs in CI; and a documented before/after evidence template.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Benchmark harness measures memory, boot and latency
 

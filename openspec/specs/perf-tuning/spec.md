@@ -5,7 +5,7 @@ Defines runtime performance tuning across the stack: shared-memory sizing
 Traefik healthcheck plus compression middleware — applied per tier so small
 budgets are not wasted and medium tiers get throughput.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Shared memory is sized for real consumers
 
