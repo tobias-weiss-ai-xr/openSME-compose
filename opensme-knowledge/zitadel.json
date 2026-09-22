@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "service": "zitadel",
+  "runbooks": [
+    {
+      "symptoms": ["migration failed", "setup container exited non-zero", "database does not match expected state"],
+      "diagnosis": "Zitadel runs config/setup migrations against postgres at startup. A failed migration is usually a schema lock left by a killed previous setup container, or an unreachable postgres DSN (wrong host/db in ZITADEL_DATABASE_POSTGRES_HOST).",
+      "remediation": [
+        "Check zitadel-setup logs for the failing step",
+        "Verify postgres is reachable from the zitadel network",
+        "Remove stale advisory locks only if no setup container is running",
+        "Re-run the setup step after the blocker is cleared"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["oidc client invalid", "redirect uri mismatch", "invalid_request redirect_uri"],
+      "diagnosis": "The service's OIDC redirect URI registered in Zitadel does not match the externally visible URL. Happens when the public domain or Traefik router rule changed after the client was provisioned.",
+      "remediation": [
+        "Compare the callback URL in the Zitadel project's app config with the service's external URL",
+        "Update the redirect URI in Zitadel (or the service's OIDC env) — they must match byte-for-byte",
+        "No restart needed; Zitadel applies client changes immediately"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["human machine handshake timeout", "token endpoint slow", "zitadel not ready"],
+      "diagnosis": "Zitadel startup probe flaps while postgres is still migrating or under connection pressure from the other services starting in parallel.",
+      "remediation": [
+        "Wait for postgres healthy before restarting zitadel",
+        "Raise the healthcheck start_period instead of restarting"
+      ],
+      "flags": []
+    }
+  ]
+}

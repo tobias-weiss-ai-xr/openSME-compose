@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "service": "opencloud",
+  "runbooks": [
+    {
+      "symptoms": ["startup race", "data race warning", "opencloud exits at boot"],
+      "diagnosis": "OpenCloud 6.0.0 had a startup data race with default GOMAXPROCS on multi-core hosts; the fix in this stack is GOMAXPROCS=1 for the startup phase. If the env var was dropped in an image bump, the race returns.",
+      "remediation": [
+        "Verify GOMAXPROCS=1 is set in the opencloud service environment",
+        "Check the oc_notifications/oc_* SMTP env names have the OC_ prefix where required",
+        "Restart opencloud after the env fix"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["s3 backend error", "storage not available", "bucket not found"],
+      "diagnosis": "The S3/Garage backend env (endpoint, bucket, credentials) is misconfigured. In this stack opencloud may use the built-in ocis (local FS) backend instead — a mixed config (some services on S3, some local) surfaces as missing files after a restart.",
+      "remediation": [
+        "Confirm which storage backend the current config selects (OC_* storage env)",
+        "If S3: verify bucket exists and credentials work from inside the container",
+        "Do NOT switch backends on a populated instance without a migration"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["oidc issuer error opencloud", "token exchange failed"],
+      "diagnosis": "OpenCloud's OIDC issuer URL must be the externally reachable IdM URL, not the internal service name — token validation happens against the issuer metadata.",
+      "remediation": [
+        "Set the OIDC issuer to the public IdM URL",
+        "Ensure opencloud can reach that URL from inside the compose network (hairpin NAT or split DNS)"
+      ],
+      "flags": []
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "service": "postgres",
+  "runbooks": [
+    {
+      "symptoms": ["out of memory", "oom killed", "out of shared memory"],
+      "diagnosis": "PostgreSQL OOM in this stack is almost always shared_buffers/work_mem sized for a bigger tier than the host, or PgBouncer letting in more active connections than max_connections can hold. The OOM killer targets the backend with the largest allocation.",
+      "remediation": [
+        "Check dmesg for which process the OOM killer chose",
+        "Compare shared_buffers+work_mem*max_connections against the container memory limit",
+        "Lower PgBouncer default_pool_size or postgres max_connections",
+        "Restart postgres as a last resort — expect a failover of app connections"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["too many clients", "connection refused", "pausing pgbouncer"],
+      "diagnosis": "Connection exhaustion: a service is leaking connections or PgBouncer pool mode does not match the workload (transaction pooling breaks session-level features).",
+      "remediation": [
+        "Identify the leaking client via pg_stat_activity (client_addr counts)",
+        "Verify PgBouncer pool_mode matches the service expectations",
+        "Restart the leaking service before touching postgres"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["database files are incompatible with server", "pg_control version mismatch"],
+      "diagnosis": "Postgres major version downgrade attempt — the data directory was initialized by a newer major version. The postgres-data volume pins the major version; image tag drift causes this.",
+      "remediation": [
+        "Pin the postgres image back to the major version that created the data dir",
+        "Never bump the postgres major without a pg_dump/pg_upgrade migration"
+      ],
+      "flags": []
+    }
+  ]
+}

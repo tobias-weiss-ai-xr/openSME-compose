@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "service": "invoice-ninja",
+  "runbooks": [
+    {
+      "symptoms": ["502 whoops invoice ninja", "invoice ninja blank page", "php-fpm segfault"],
+      "diagnosis": "Invoice Ninja's PHP app crashes at boot when the app key changed under an existing database (APP_KEY mismatch makes encrypted columns undecryptable) or when migrations run concurrently from scaled containers.",
+      "remediation": [
+        "Never change APP_KEY on an existing install without re-encrypting",
+        "Ensure only one container runs migrations at a time",
+        "Check laravel.log for the concrete exception before restarting"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["mail not sending invoice ninja", "smtp timeout invoice"],
+      "diagnosis": "Invoice Ninja uses its own SMTP settings stored in the database, not the stack-wide env. Stale SMTP rows point at dead hosts after a mail server change.",
+      "remediation": [
+        "Update the SMTP settings in the Invoice Ninja UI/database settings",
+        "Test with the built-in 'send test email' before restarting anything"
+      ],
+      "flags": []
+    }
+  ]
+}

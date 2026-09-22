@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "service": "sogo",
+  "runbooks": [
+    {
+      "symptoms": ["no auth sources", "register a contact/user source without id", "sogo cannot authenticate"],
+      "diagnosis": "SOGo user-source registration silently skipped. In SOGo 5.x sogo.conf the user source id key must be LOWERCASE `id = x;` — the documented `ID =` is silently ignored, leaving SOGo with zero auth sources (source-verified in LDAPSource.m).",
+      "remediation": [
+        "Check sogo.conf user source block for lowercase `id` key",
+        "Also verify the `hostname` key spelling (not canonicalHostname)",
+        "Restart sogod after the config fix"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["sogo session expired", "redirect loop login", "fetching folders failed"],
+      "diagnosis": "Session/cookie domain mismatch: SOGo's SOGoTrustProxyAuthentication and the public URL must agree, or the session cookie domain doesn't match the Traefik router host, causing infinite login redirects.",
+      "remediation": [
+        "Compare SOGo's external URL env with the Traefik router rule host",
+        "Ensure the cookie domain matches the public host",
+        "Clear stale sessions in the sogo database if the domain changed"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["imap connection refused sogo", "cannot connect to mail server"],
+      "diagnosis": "SOGo cannot reach Stalwart's IMAP port: wrong mail host in sogo.conf or the stalwart container was recreated with a new name/network alias.",
+      "remediation": [
+        "Verify the IMAP host/port in sogo.conf resolves inside the compose network",
+        "Test reachability, then restart sogod workers"
+      ],
+      "flags": []
+    }
+  ]
+}

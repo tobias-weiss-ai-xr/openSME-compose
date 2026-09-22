@@ -27,7 +27,8 @@
         bootstrap clean help \
         up down status logs pull \
         up-soho up-small up-medium up-all \
-        nix-build nix-load nix-images
+        nix-build nix-load nix-images \
+        agent-build agent-status
 
 .DEFAULT_GOAL := help
 
@@ -255,6 +256,19 @@ nix-load: nix-images
 	@echo -e "$(GREEN)✅ Images loaded and tagged$(NC)"
 
 # ---------------------------------------------------------------------------
+# Dev maintenance bot (opensme-dev-agent)
+# ---------------------------------------------------------------------------
+agent-build:
+	@echo -e "$(BLUE)── building dev-maintenance-bot image ──$(NC)"
+	docker build -f opensme-dev-agent/Dockerfile -t ${DEV_MAINTENANCE_BOT_IMAGE:-opensme-dev-maintenance-bot:latest} .
+	@echo -e "$(GREEN)✅ dev-maintenance-bot image built$(NC)"
+
+agent-status:
+	@docker run --rm -v opensme_dev-maintenance-bot-state:/var/lib/opensme:ro \
+		--entrypoint /usr/local/bin/agent \
+		${DEV_MAINTENANCE_BOT_IMAGE:-opensme-dev-maintenance-bot:latest} -status
+
+# ---------------------------------------------------------------------------
 # Backup / Restore
 # ---------------------------------------------------------------------------
 backup:
@@ -350,6 +364,10 @@ help:
 	@echo -e "  $(GREEN)Monitoring images (Nix)$(NC)"
 	@echo "    make nix-build            Build dev-agent, predictive-agent, taskfleet images"
 	@echo "    make nix-load             Build + load into Docker + tag for registry"
+	@echo ""
+	@echo -e "  $(GREEN)Dev maintenance bot$(NC)"
+	@echo "    make agent-build          Build the dev-maintenance-bot image"
+	@echo "    make agent-status         Print the bot's persisted status"
 	@echo ""
 	@echo -e "  $(GREEN)Other$(NC)"
 	@echo "    make bootstrap           Create .env from .env.example"

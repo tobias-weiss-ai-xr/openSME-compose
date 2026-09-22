@@ -556,6 +556,47 @@ docker compose up -d
 Endpoints: `:8081/healthz`, `:8081/ready`, `:8080/metrics`,
 `:8080/status`, `:8080/history`, `:8080/cache`
 
+### dev-maintenance-bot — runbook-aware maintenance (act, with consent)
+
+Where the `dev-agent` observes and explains, the **dev-maintenance-bot**
+knows how this stack fails and can act. A small Go binary (~128 MB budget)
+that runs as a **one-shot** container (`restart: "no"`): it checks containers
+over a **read-only** Docker socket, matches symptoms against the embedded
+[`opensme-knowledge/`](opensme-knowledge/) runbook KB (traefik, postgres,
+zitadel, stalwart, sogo, opencloud, invoice-ninja, paperless), and
+remediates **only with explicit consent** — without `DEV_AGENT_ALLOW_HEAL=true`
+every action returns a dry-run receipt.
+
+Everything it might ever send to an LLM passes the strip-then-review
+anonymizer first (secrets → `***`, IPs → `<ip>`, hostnames → `<host>`,
+user paths → `/home/<user>`); every strip and every heal is recorded in an
+auditable evidence log. LLM analysis is **off by default**
+(`DEV_AGENT_LLM_BACKEND=none`).
+
+```bash
+export COMPOSE_FILE="docker-compose.yml:monitoring/dev-agent.yml"
+make agent-build                      # build the image (multi-stage, repo-root context)
+docker compose run --rm dev-maintenance-bot       # one reconcile pass, prints triage
+make agent-status                     # persisted status (history, evidence)
+
+# serve mode (private REST API on :8082, compose-network only):
+docker compose run --rm --name dev-maintenance-bot dev-maintenance-bot -serve
+# endpoints: GET /status /healthz /ready /history /evidence, POST /heal
+```
+
+Heal via API (dry-run receipt without consent):
+```bash
+curl -X POST http://<bot>:8082/heal -d '{"action":"restart","target":"opensme-sogo-1"}'
+```
+
+If you maintain this repo with pi, the bundled extension exposes the bot as
+`/status`, `/heal` (with confirmation prompt) and `/diag` — see
+[`.pi/extensions/opensme-dev-agent.ts`](.pi/extensions/opensme-dev-agent.ts),
+registered as `com.opensme.agent`.
+
+Runbook contributions follow the privacy policy in
+[`opensme-knowledge/CONTRIBUTING.md`](opensme-knowledge/CONTRIBUTING.md).
+
 ### predictive-agent — Predictive health
 
 Uses Kalman filters (memory/CPU trends), Markov chains (state transitions),

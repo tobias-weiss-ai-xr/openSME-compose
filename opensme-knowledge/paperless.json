@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "service": "paperless",
+  "runbooks": [
+    {
+      "symptoms": ["gotenberg timeout", "document conversion failed", "consume loop stalled"],
+      "diagnosis": "Paperless-Gotenberg OCR/conversion timeouts happen on large PDFs with the default timeout, or when the gotenberg container was recreated with a different hostname than PAPERLESS_URL expects.",
+      "remediation": [
+        "Raise the gotenberg timeout in paperless config for large documents",
+        "Verify PAPERLESS_URL matches the gotenberg container's reachable address",
+        "Re-trigger consumption after fixing; the file stays in the consume dir"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["redis connection refused paperless", "celery worker offline"],
+      "diagnosis": "Paperless task queue (celery) lost Redis: wrong PAPERLESS_REDIS URL or redis restarted with a flushed queue while consumers were mid-task.",
+      "remediation": [
+        "Verify PAPERLESS_REDIS points at the compose redis service",
+        "Restart the paperless consumer/webserver pair after redis is healthy"
+      ],
+      "flags": ["requires-consent"]
+    }
+  ]
+}

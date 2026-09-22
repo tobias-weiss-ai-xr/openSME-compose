@@ -6,11 +6,16 @@ cd "$(dirname "$0")/../.."
 
 PY="${PYTHON:-python3}"
 ok=1
-for t in yaml_lint check_env scan_secrets check_perf; do
+for t in yaml_lint check_env scan_secrets check_perf check_agent; do
   echo "── $t ──"
   "$PY" "tests/00-static/$t.py" || ok=0
   echo
 done
+if [ "$ok" = 1 ]; then
+  echo "── ram-budget (dev-maintenance-bot ≤ 128 MB) ──"
+  awk -f tests/00-static/sum-memory.awk monitoring/dev-agent.yml || ok=0
+  echo
+fi
 if [ "$ok" = 1 ]; then
   echo "✅ Layer 0 static: ALL PASS"
 else

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "service": "stalwart",
+  "runbooks": [
+    {
+      "symptoms": ["listener flapping", "accept loop restarts", "bind address already in use"],
+      "diagnosis": "Stalwart listener flapping in this stack is typically a port collision (another container or the host claims 25/465/587/993) or a config reload loop where the listener references a certificate that fails to load, making the listener bounce.",
+      "remediation": [
+        "Check stalwart logs for the specific listener bind error",
+        "Verify certificate files exist and are readable for the listener's TLS config",
+        "Confirm no port conflict with the host or other containers",
+        "Restart stalwart only after the cause is fixed — blind restarts churn the flap"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["authentication failed imap", "smtp auth error", "535 authentication credentials invalid"],
+      "diagnosis": "Credential source mismatch: Stalwart's auth directory must point at the same user store the client expects (Zitadel OIDC or internal). After an IdM change, cached IMAP sessions keep old tokens while new ones fail.",
+      "remediation": [
+        "Check which auth mechanism the failing client uses",
+        "Verify the Stalwart directory config matches the current IdM",
+        "Clear stale sessions by restarting the affected account's connection, not the server"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["mail loop", "relay access denied", "554 permanent error"],
+      "diagnosis": "Outbound relay refused: the smarthost/relay config or SPF-related rejection. In this stack outbound mail goes through the configured relay; a wrong relay host yields 554 on submission.",
+      "remediation": [
+        "Inspect the queue for the failing recipient domain",
+        "Verify relay host credentials and network reachability",
+        "Check the rejection reason before changing DNS/SPF"
+      ],
+      "flags": []
+    }
+  ]
+}

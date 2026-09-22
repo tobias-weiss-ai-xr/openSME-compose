@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "service": "traefik",
+  "runbooks": [
+    {
+      "symptoms": ["acme rate limit", "too many certificates", "letsencrypt error"],
+      "diagnosis": "Let's Encrypt rate limits hit — usually after repeated re-creation of the traefik container with a lost acme.json or a wildcard/san burst. The LE staging/duplicate limit is 5 failures per hour, 50 certs per week per domain.",
+      "remediation": [
+        "Stop recreating the traefik container; preserve the acme.json volume across restarts",
+        "Verify the requested domains (duplicate certificate limit is 5/week)",
+        "Wait out the rate-limit window (1h for validations, 7d for certificates)",
+        "Switch to the LE staging endpoint while debugging issuance"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["router missing", "404 for service", "no certificate issued"],
+      "diagnosis": "Traefik did not pick up the dynamic config or the target container has no matching router labels/network attachment. Most common in this stack: service is on a different compose network than traefik, or the router rule host mismatches the requested domain.",
+      "remediation": [
+        "Confirm the service shares the traefik network (opensme-net)",
+        "Compare the router rule host with the actual request Host header",
+        "Check traefik logs for 'router ... error' lines naming the service",
+        "Restart traefik only after config verification"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["permission denied acme.json", "acme load error"],
+      "diagnosis": "acme.json must be 0600; Docker volume copies can reset permissions and traefik refuses to start with a world-readable acme file.",
+      "remediation": [
+        "chmod 600 the acme.json inside the traefik-data volume",
+        "Restart traefik"
+      ],
+      "flags": ["requires-consent"]
+    }
+  ]
+}
