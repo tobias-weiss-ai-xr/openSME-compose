@@ -35,7 +35,12 @@ services:
         condition: service_healthy
     volumes:
       - opencloud-config:/etc/opencloud
-      - opencloud-config:/var/lib/opencloud
+      # NOTE: /var/lib/opencloud MUST be its own volume. Mounting
+      # opencloud-config here too (as an earlier revision did) makes the
+      # config dir and the runtime-state dir the same filesystem — the
+      # binary writes registry/idm/web state into its config dir and dies
+      # at startup (frontend revad exits 1 silently, web: "invalid app").
+      - opencloud-lib:/var/lib/opencloud
       - opencloud-data:/var/lib/opencloud/data
       - ./opencloud/opencloud-entrypoint.sh:/entrypoint.sh:ro
     environment:
@@ -163,4 +168,5 @@ services:
 
 volumes:
   opencloud-config:
+  opencloud-lib:
   opencloud-data:
