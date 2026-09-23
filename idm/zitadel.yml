@@ -51,19 +51,26 @@ services:
       # Public https URLs are derived from Traefik's X-Forwarded-Proto header.
       ZITADEL_EXTERNALSECURE: false
       # ── First admin ──
-      # v3.4 env keys — the old ZITADEL_FIRSTINSTANCE_* names are silently
-      # ignored, which seeds the admin with zitadel's built-in default
-      # credentials (unknowable ⇒ broken OIDC setup on fresh installs).
-      ZITADEL_DEFAULTINSTANCE_ORG_NAME: openSME
-      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_USERNAME: zitadel-admin
-      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.org}}
-      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_FIRSTNAME: Admin
-      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_LASTNAME: openSME
+      # v3.4 setup keys — setup reads FirstInstance.Org.* (NOT DefaultInstance,
+      # which only configures start); the even older USERADMIN_* names are
+      # silently ignored, seeding zitadel's built-in default credentials
+      # (unknowable ⇒ broken OIDC setup on fresh installs).
+      ZITADEL_FIRSTINSTANCE_ORG_NAME: openSME
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: zitadel-admin
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.org}}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_FIRSTNAME: Admin
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_LASTNAME: openSME
       # must satisfy the default password complexity policy (min 8, upper,
       # lower, digit, symbol) — setup rejects weaker values
-      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-CHANGEME_zitadel1!}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-CHANGEME_zitadel1!}
+      # machine user + PAT for headless automation (Management API); the
+      # signed PAT lands in this file at first setup
+      ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: opensme-automation
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: openSME automation
     volumes:
       - ./idm/secrets:/secrets:ro
+      - zitadel-machinekey:/machinekey
       # busybox (extracted by the deploy role) provides a wget for the
       # healthcheck — the distroless image has no shell/http client, and
       # `zitadel ready` insists on an https probe under --tlsMode external
@@ -92,3 +99,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
+
+volumes:
+  zitadel-machinekey:
