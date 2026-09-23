@@ -93,19 +93,50 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      # fpm image: no HTTP on :9000 (FastCGI) — just check the process
+      test: ["CMD", "pgrep", "-f", "php-fpm"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # nginx front for the fpm container; serves the shared public volume and
+  # forwards FastCGI to the "invoiceninja" service (default in the image)
+  invoiceninja-web:
+    <<: *service-defaults
+    image: ${INVOICENINJA_NGINX_IMAGE:-invoiceninja/nginx:5}
+    container_name: opensme-invoiceninja-web
+    restart: unless-stopped
+    profiles: ["invoice"]
+    volumes:
+      - invoiceninja-public:/var/www/app/public:ro
+    networks:
+      - opensme-net
+    depends_on:
+      invoiceninja:
+        condition: service_started
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.invoices.rule=Host(`invoices.${OPENSME_DOMAIN:-opensme.org}`)"
       - "traefik.http.routers.invoices.tls=true"
       - "traefik.http.routers.invoices.tls.certresolver=letsencrypt"
       - "traefik.http.routers.invoices.entrypoints=websecure"
-      - "traefik.http.services.invoices.loadbalancer.server.port=9000"
+      - "traefik.http.services.invoices.loadbalancer.server.port=80"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 5
-      start_period: 60s
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 16M
     deploy:
       resources:
         limits:
