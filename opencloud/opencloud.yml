@@ -47,6 +47,10 @@ services:
       OC_INSECURE: ${OC_INSECURE:-true}
       # ^ true is correct for Docker Compose — inter-service traffic
       #   stays on the internal network (no TLS). Security boundary is Traefik.
+      # Proxy must serve plain HTTP on :9200 internally — otherwise the
+      # healthcheck (curl http://localhost:9200/health/ready) hits a TLS
+      # listener and the container reports unhealthy forever.
+      PROXY_TLS: "false"
       OC_LOG_LEVEL: ${LOG_LEVEL:-info}
       OC_LOG_PRETTY: ${LOG_PRETTY:-true}
       OC_ADMIN_USERNAME: ${OC_ADMIN_USERNAME:-admin}
