@@ -52,5 +52,5 @@
 - [x] 7.3 Run full unit tests: Go test ./... -v -count=1 across opensme-dev-agent
 - [x] 7.4 Run the Layer 0 static check via tests/00-static/run.sh and fix any findings
 - [x] 7.5 Document the dev-agent in README.md (architecture, env vars, /status /heal /diag usage, private-first defaults)
-- [ ] 7.6 Build and deploy the agent image and sidecar on a small tier (manual)
+- [x] 7.6 Build and deploy the agent image and sidecar on a small tier (manual)
 - [x] 7.7 Simulate+Verify: simulate an unhealthy container, confirm heal receipt and evidence log, and verify no secrets leak into logs (manual)
