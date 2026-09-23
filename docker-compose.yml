@@ -70,9 +70,9 @@ services:
       - "443:443"
     healthcheck:
       # `traefik healthcheck --ping` can't resolve entrypoints without the
-      # static config file; just probe the /ping endpoint (traefik
-      # entrypoint :8080) directly — the v3 image ships busybox wget
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/ping"]
+      # static config file; probe /ping directly — ping.entryPoint=web
+      # serves it on :80 in-container (the v3 image ships busybox wget)
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/ping"]
       interval: 30s
       timeout: 5s
       retries: 3
