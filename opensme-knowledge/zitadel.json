@@ -31,6 +31,27 @@
         "Raise the healthcheck start_period instead of restarting"
       ],
       "flags": []
+    },
+    {
+      "symptoms": ["admin password invalid after fresh provisioning", "password is invalid on fresh zitadel", "cannot log in after re-provision"],
+      "diagnosis": "Zitadel v3.4 silently IGNORES unknown FIRSTINSTANCE env keys. ZITADEL_FIRSTINSTANCE_USERADMIN_* (and other older names) are dead — the instance then seeds zitadel's built-in default admin (userName zitadel-admin@zitadel.<domain>, random password) instead of the intended one. Only ZITADEL_FIRSTINSTANCE_ORG_* keys work (verify against `strings` of the binary). Complexity policy at seed time comes from ZITADEL_DEFAULTINSTANCE_PASSWORDCOMPLEXITYPOLICY_* — a .env password without a symbol needs HASSYMBOL: false or setup fails with PasswordComplexityPolicy.HasSymbol.",
+      "remediation": [
+        "Use ZITADEL_FIRSTINSTANCE_ORG_NAME + ORG_HUMAN_{USERNAME,EMAIL_ADDRESS,PASSWORD,PASSWORDCHANGEREQUIRED}",
+        "Set ORG_HUMAN_PASSWORDCHANGEREQUIRED: false — a forced first-login pw change breaks headless automation (CSRF tokens are single-use, /ui/login/password/change is POST-only)",
+        "Login name is username@<orgdomain>.<instancedomain> — the org domain comes from ORG_NAME, not from the admin email",
+        "Full re-provision: stop/rm zitadel, DROP DATABASE zitadel WITH (FORCE), compose run zitadel init, compose run zitadel setup --masterkeyFile /secrets/masterkey, up -d"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["PAT file missing after setup", "PATPATH volume empty", "machine user has no personal access token"],
+      "diagnosis": "ZITADEL_FIRSTINSTANCE_PATPATH does not reliably write the seeded machine user's PAT file to the volume in v3.4. Mint one via the Management API instead — note the v3.4 route is /management/v1/users/{userId}/pats (PLURAL; the old /pat returns a bare 404 {code:5}).",
+      "remediation": [
+        "Login as admin (PKCE dance or console), POST /management/v1/users/{userId}/pats with Bearer token",
+        "Write the token into the machinekey volume (e.g. _data/pat, mode 600) where services expect it",
+        "Verify: GET /management/v1/users/{userId} with Authorization: Bearer <pat> → 200 (users/me does NOT work for machine users)"
+      ],
+      "flags": []
     }
   ]
 }

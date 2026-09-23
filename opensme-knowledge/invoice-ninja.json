@@ -20,6 +20,27 @@
         "Test with the built-in 'send test email' before restarting anything"
       ],
       "flags": []
+    },
+    {
+      "symptoms": ["invoiceninja exit 1 mysql server has gone away", "invoiceninja pdo driver could not find driver", "invoiceninja crash loops on boot"],
+      "diagnosis": "Three independent traps when deploying invoiceninja against postgres: (1) Laravel reads DB_CONNECTION, not the DB_TYPE documented by invoiceninja — without DB_CONNECTION the mysql driver is used and fails with 'MySQL server has gone away' against postgres. (2) The upstream image only ships pdo_mysql/pdo_sqlite — 'could not find driver (Connection: pgsql)' means the pgsql PHP extension is missing entirely; it must be baked via the local build (services/invoice-ninja/Dockerfile, apk + docker-php-ext-install pdo_pgsql; build as USER root — base runs as uid 1500, image is Alpine not Debian). (3) Even with the driver, v5 migrations contain MySQL-dialect SQL (ALTER TABLE ... MODIFY COLUMN) and fail on postgres with syntax error at 'modify' — postgres is unsupported upstream; deploy the dedicated MariaDB (invoiceninja-db) instead.",
+      "remediation": [
+        "Set DB_CONNECTION (DB_TYPE is dead)",
+        "Use the local build image invoiceninja-pg:5 (build: ./services/invoice-ninja) if pgsql is ever needed",
+        "Use the invoiceninja-db MariaDB service (DB_HOST=invoiceninja-db:3306) — the supported path",
+        "Sync the role password: ALTER USER invoiceninja_user with the .env INVOICENINJA_DB_PASSWORD if it drifted"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["invoiceninja 404 via traefik", "invoices router missing", "invoiceninja healthcheck fails curl connection refused"],
+      "diagnosis": "invoiceninja:5 is an FPM image — port 9000 speaks FastCGI, not HTTP. A healthcheck or traefik service pointing at localhost:9000/health fails ('connection refused' or '000'). Traefik must route to the invoiceninja-web nginx front (port 80), which serves the shared invoiceninja-public volume and fastcgi_passes to invoiceninja:9000. Note: localhost in alpine busybox resolves ::1 — nginx listens v4 only, use 127.0.0.1 in healthchecks.",
+      "remediation": [
+        "Route the traefik invoices router to invoiceninja-web:80 (host-only compose.internal.yml overrides the labels)",
+        "Healthcheck fpm via pgrep php-fpm; healthcheck web via wget http://127.0.0.1:80/health",
+        "First boot takes 2-3 min (composer + migrations + seeding) — RestartCount 3-4 with exit 0 during init is normal"
+      ],
+      "flags": []
     }
   ]
 }
