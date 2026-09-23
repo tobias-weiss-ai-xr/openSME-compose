@@ -82,7 +82,13 @@ services:
       - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - traefik-data:/etc/traefik
     networks:
-      - opensme-net
+      opensme-net:
+        # opencloud resolves the public IdP/web hostnames to traefik on the
+        # docker network (TLS path intact, no /etc/hosts hacks); OC_INSECURE
+        # covers the self-signed cert for .local deployments
+        aliases:
+          - "${ZITADEL_DOMAIN:-auth.opensme.org}"
+          - "${OPENCLOUD_DOMAIN:-cloud.opensme.org}"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.org}`)"
