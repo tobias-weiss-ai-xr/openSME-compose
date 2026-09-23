@@ -102,14 +102,15 @@ services:
       start_period: 60s
 
   # nginx front for the fpm container; serves the shared public volume and
-  # forwards FastCGI to the "invoiceninja" service (default in the image)
+  # forwards FastCGI to the "invoiceninja" service
   invoiceninja-web:
     <<: *service-defaults
-    image: ${INVOICENINJA_NGINX_IMAGE:-invoiceninja/nginx:5}
+    image: ${INVOICENINJA_NGINX_IMAGE:-nginx:1.27-alpine}
     container_name: opensme-invoiceninja-web
     restart: unless-stopped
     profiles: ["invoice"]
     volumes:
+      - ./services/invoice-ninja/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - invoiceninja-public:/var/www/app/public:ro
     networks:
       - opensme-net
