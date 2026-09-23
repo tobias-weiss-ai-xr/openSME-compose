@@ -110,7 +110,10 @@ services:
 
   opencloud:
     environment:
-      OC_ADD_RUN_SERVICES: "notifications,antivirus"
+      # notifications only — do NOT add "antivirus": it is an ICAP client
+      # with no scanner in this stack and silently kills the whole opencloud
+      # supervisor ~2s after startup (exit 1, no log line).
+      OC_ADD_RUN_SERVICES: "notifications"
     deploy:
       resources:
         limits:
