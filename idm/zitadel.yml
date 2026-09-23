@@ -63,6 +63,8 @@ services:
       # must satisfy the default password complexity policy (min 8, upper,
       # lower, digit, symbol) — setup rejects weaker values
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-CHANGEME_zitadel1!}
+      # no forced password-change on first login (breaks headless bootstrap)
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: false
       # machine user + PAT for headless automation (Management API); the
       # signed PAT lands in this file at first setup
       ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat
