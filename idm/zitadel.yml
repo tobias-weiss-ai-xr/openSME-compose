@@ -68,6 +68,12 @@ services:
       ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: opensme-automation
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: openSME automation
+      # ── Seeded policies ──
+      # setup seeds instance policies from DefaultInstance; keep the
+      # symbol requirement OFF so the .env admin password (which may lack
+      # symbols) can seed — human passwords created later still follow the
+      # runtime policy which admins can tighten
+      ZITADEL_DEFAULTINSTANCE_PASSWORDCOMPLEXITYPOLICY_HASSYMBOL: false
     volumes:
       - ./idm/secrets:/secrets:ro
       - zitadel-machinekey:/machinekey
