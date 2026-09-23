@@ -22,8 +22,7 @@ x-service-defaults: &service-defaults
 #   - LLM backend reachable at OLLAMA_URL (or enable monitoring/ollama.yml)
 #
 # Endpoints:
-#   :8081/healthz   Liveness probe
-#   :8081/ready     Readiness probe
+#   :8080/healthz   Liveness probe (deployed image serves all probes on :8080)
 #   :8080/metrics   Prometheus metrics
 #   :8080/status    Operator status (JSON)
 #   :8080/history   Analysis history (JSON)
@@ -52,7 +51,7 @@ services:
       OPERATOR_NAMESPACE: opensme
       OPERATOR_VERSION: "3.1.0"
       OPERATOR_LOG_LEVEL: ${LOG_LEVEL:-info}
-      OPERATOR_WATCH_NAMESPACES: ${DEV_AGENT_WATCH_NAMESPACES:-opensme,default}
+      OPERATOR_WATCH_NAMESPACES: ${DEV_AGENT_WATCH_NAMESPACES:-opensme-compose,default}
       # LLM backend (ollama | saia | tud | openai)
       LLM_BACKEND: ${DEV_AGENT_LLM_BACKEND:-ollama}
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
@@ -80,7 +79,7 @@ services:
       OPERATOR_HEALTH_PROBE_BIND_ADDRESS: "0.0.0.0:8081"
       TZ: ${TZ:-Europe/Berlin}
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:8081/healthz"]
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -14,7 +14,9 @@ COPY . .
 RUN cargo build --release --bin opensme-portal
 
 FROM gcr.io/distroless/cc-debian12 AS runtime
-COPY --from=busybox:1.36 /bin/busybox /busybox
+# musl-static busybox — the default busybox image is glibc-dynamic and
+# needs a newer glibc than debian12 ships
+COPY --from=busybox:1.36-musl /bin/busybox /busybox
 ENV PATH=/busybin:$PATH
 COPY --from=builder /app/target/release/opensme-portal /opensme-portal
 USER 1000:1000
