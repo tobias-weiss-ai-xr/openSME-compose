@@ -23,7 +23,9 @@ x-service-defaults: &service-defaults
 services:
   invoiceninja:
     <<: *service-defaults
-    image: invoiceninja/invoiceninja:5
+    image: invoiceninja-pg:5
+    # upstream image lacks pdo_pgsql — local build adds it (see Dockerfile)
+    build: ./services/invoice-ninja
     container_name: opensme-invoiceninja
     restart: unless-stopped
     profiles: ["invoice"]
