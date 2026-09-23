@@ -51,20 +51,19 @@ services:
       # Public https URLs are derived from Traefik's X-Forwarded-Proto header.
       ZITADEL_EXTERNALSECURE: false
       # ── First admin ──
-      ZITADEL_FIRSTINSTANCE_ORGID: opensme
-      ZITADEL_FIRSTINSTANCE_ORGNAME: openSME
-      ZITADEL_FIRSTINSTANCE_USERADMIN_EMAIL: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.org}}
-      ZITADEL_FIRSTINSTANCE_USERADMIN_FIRSTNAME: Admin
-      ZITADEL_FIRSTINSTANCE_USERADMIN_LASTNAME: openSME
-      ZITADEL_FIRSTINSTANCE_USERADMIN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-CHANGEME_zitadel}
-      # ── Instance ID (stable across restarts) ──
-      ZITADEL_FIRSTINSTANCE_MACHINE_KEYPATH: /machinekey
-      ZITADEL_FIRSTINSTANCE_MACHINE_KEYSIZE: 4096
-      # ── Security ──
-      ZITADEL_DEFAULTINSTANCE_PASSWORD_COMPLEXITY_POLICY: 0
+      # v3.4 env keys — the old ZITADEL_FIRSTINSTANCE_* names are silently
+      # ignored, which seeds the admin with zitadel's built-in default
+      # credentials (unknowable ⇒ broken OIDC setup on fresh installs).
+      ZITADEL_DEFAULTINSTANCE_ORG_NAME: openSME
+      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_USERNAME: zitadel-admin
+      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.org}}
+      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_FIRSTNAME: Admin
+      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_LASTNAME: openSME
+      # must satisfy the default password complexity policy (min 8, upper,
+      # lower, digit, symbol) — setup rejects weaker values
+      ZITADEL_DEFAULTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_ADMIN_PASSWORD:-CHANGEME_zitadel1!}
     volumes:
       - ./idm/secrets:/secrets:ro
-      - zitadel-machinekey:/machinekey
       # busybox (extracted by the deploy role) provides a wget for the
       # healthcheck — the distroless image has no shell/http client, and
       # `zitadel ready` insists on an https probe under --tlsMode external
@@ -93,6 +92,3 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
-
-volumes:
-  zitadel-machinekey:
