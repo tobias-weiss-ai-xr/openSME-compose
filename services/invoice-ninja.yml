@@ -21,10 +21,45 @@ x-service-defaults: &service-defaults
 # ═══════════════════════════════════════════════════════════════
 
 services:
+  # Invoiceninja's pgsql "support" is broken upstream (v5 migrations contain
+  # MySQL-dialect SQL, e.g. `ALTER TABLE ... MODIFY COLUMN`) — give it the
+  # officially supported MariaDB instead of the shared postgres.
+  invoiceninja-db:
+    <<: *service-defaults
+    image: ${MARIADB_IMAGE:-mariadb:11.4}
+    container_name: opensme-invoiceninja-db
+    restart: unless-stopped
+    profiles: ["invoice"]
+    command: --transaction-isolation=READ-COMMITTED --innodb-buffer-pool-size=128M
+    environment:
+      MARIADB_DATABASE: invoiceninja_db
+      MARIADB_USER: invoiceninja_user
+      MARIADB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-CHANGEME_invoiceninja}
+      MARIADB_ROOT_PASSWORD: ${INVOICENINJA_DB_ROOT_PASSWORD:-CHANGEME_invoiceninja_root}
+    volumes:
+      - invoiceninja-db:/var/lib/mysql
+    networks:
+      - opensme-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
   invoiceninja:
     <<: *service-defaults
     image: invoiceninja-pg:5
-    # upstream image lacks pdo_pgsql — local build adds it (see Dockerfile)
+    # upstream image lacks pdo_pgsql — local build adds it (see Dockerfile);
+    # harmless with MariaDB but keeps the pg option buildable
     build: ./services/invoice-ninja
     container_name: opensme-invoiceninja
     restart: unless-stopped
@@ -32,16 +67,15 @@ services:
     environment:
       APP_URL: "https://invoices.${OPENSME_DOMAIN:-opensme.org}"
       APP_ENV: production
-      DB_HOST: postgres
-      DB_PORT: "5432"
+      DB_HOST: invoiceninja-db
+      DB_PORT: "3306"
       DB_DATABASE: invoiceninja_db
       DB_USERNAME: invoiceninja_user
       DB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-CHANGEME_invoiceninja}
-      DB_TYPE: pgsql
+      DB_TYPE: mysql
       # Laravel reads DB_CONNECTION (DB_TYPE is a invoiceninja-doc but
-      # dead name — without this it defaults to the mysql driver and dies
-      # with "MySQL server has gone away" against postgres)
-      DB_CONNECTION: pgsql
+      # dead name — without this it defaults to the mysql driver)
+      DB_CONNECTION: mysql
       MAIL_MAILER: smtp
       MAIL_HOST: stalwart
       MAIL_PORT: "25"
@@ -55,7 +89,7 @@ services:
     networks:
       - opensme-net
     depends_on:
-      postgres:
+      invoiceninja-db:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -84,3 +118,4 @@ services:
 volumes:
   invoiceninja-public:
   invoiceninja-storage:
+  invoiceninja-db:
