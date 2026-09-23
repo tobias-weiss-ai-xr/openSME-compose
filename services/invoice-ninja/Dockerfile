@@ -1,8 +1,6 @@
-# invoiceninja/invoiceninja:5 ships only pdo_mysql/pdo_sqlite — postgres
-# deployments need the pgsql driver baked in.
+# invoiceninja/invoiceninja:5 is Alpine-based and ships only
+# pdo_mysql/pdo_sqlite — postgres deployments need the pgsql driver.
 FROM invoiceninja/invoiceninja:5
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends libpq-dev \
- && docker-php-ext-install pdo_pgsql \
- && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache postgresql-dev \
+ && docker-php-ext-install pdo_pgsql
