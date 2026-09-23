@@ -121,9 +121,10 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.invoices.rule=Host(`invoices.${OPENSME_DOMAIN:-opensme.org}`)"
       - "traefik.http.routers.invoices.tls=true"
-      - "traefik.http.routers.invoices.tls.certresolver=letsencrypt"
       - "traefik.http.routers.invoices.entrypoints=websecure"
       - "traefik.http.services.invoices.loadbalancer.server.port=80"
+      # NOTE: no certresolver here — internal hosts without LE use the
+      # host-only compose.internal.yml to override these labels
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/health"]
       interval: 30s
