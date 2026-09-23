@@ -23,7 +23,11 @@ x-service-defaults: &service-defaults
 services:
   opencloud:
     <<: *service-defaults
-    image: opencloudeu/opencloud-rolling:6.0.0
+    # 8.0.1 (2026-09): upgrade from 6.0.0 — 6.x never got the startup
+    # data-race patch ("concurrent map read and map write"), 7.x fixed it.
+    # If a multi-core startup race ever resurfaces, pin cpuset on the host
+    # (Go derives GOMAXPROCS from affinity; the env var is ignored).
+    image: opencloudeu/opencloud-rolling:8.0.1
     container_name: opensme-opencloud
     restart: unless-stopped
     stop_grace_period: 60s
@@ -65,15 +69,8 @@ services:
       # Local POSIX filesystem backend (no MinIO/S3 required).
       OC_STORAGE_USERS_DRIVER: ocis
       OC_ADD_RUN_SERVICES: notifications
-      # openCloud 6.0.0 has a startup data race ("concurrent map iteration and
-      # map write"/"concurrent map read and map write") that fires on multi-core
-      # hosts when many services register concurrently during startup. The only
-      # reliable workaround is GOMAXPROCS=1 (fully serialises goroutines). This
-      # is single-threaded and slower, but stable; revisit when a patched
-      # 6.0.x is available.
-      GOMAXPROCS: "1"
       # SMTP (password-reset / share notifications) — relay via Stalwart.
-      # NOTE: openCloud 6.0.0 binds these WITHOUT the OC_ prefix
+      # NOTE: the notifications service binds these WITHOUT the OC_ prefix
       # (struct tag env:"NOTIFICATIONS_SMTP_SENDER"), so the bare names are
       # required. Startup only validates the sender format; actual delivery
       # needs a matching Stalwart account (configure OC_SMTP_* in your .env).
