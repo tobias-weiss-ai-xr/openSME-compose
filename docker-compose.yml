@@ -174,6 +174,10 @@ services:
       POSTGRESQL_USERNAME: opensme
       POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
       POSTGRESQL_DATABASE: opensme
+      # bitnami uses PGBOUNCER_DATABASE as the client-facing [databases]
+      # alias; unset it defaults to "postgres" and every -d opensme
+      # connection (incl. the healthcheck) fails with "no such database".
+      PGBOUNCER_DATABASE: opensme
       PGPASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
       PGBOUNCER_POOL_MODE: transaction
       PGBOUNCER_DEFAULT_POOL_SIZE: 25
