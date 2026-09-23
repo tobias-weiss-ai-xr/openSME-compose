@@ -86,10 +86,12 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: 384M
+          # 384M OOM-killed the container at startup: granian + celery worker
+          # + beat + OCR tooling all spawn before usage settles. 768M holds.
+          memory: 768M
         reservations:
           cpus: "0.25"
-          memory: 64M
+          memory: 256M
 
   paperless-gotenberg:
     <<: *service-defaults
