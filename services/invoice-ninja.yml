@@ -36,6 +36,10 @@ services:
       DB_USERNAME: invoiceninja_user
       DB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-CHANGEME_invoiceninja}
       DB_TYPE: pgsql
+      # Laravel reads DB_CONNECTION (DB_TYPE is a invoiceninja-doc but
+      # dead name — without this it defaults to the mysql driver and dies
+      # with "MySQL server has gone away" against postgres)
+      DB_CONNECTION: pgsql
       MAIL_MAILER: smtp
       MAIL_HOST: stalwart
       MAIL_PORT: "25"
