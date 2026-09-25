@@ -66,7 +66,6 @@
   <g transform="translate(180, 90)">
     <!-- Logo text -->
     <text x="0" y="48" font-family="Inter, system-ui, sans-serif" font-size="42" font-weight="800" fill="url(#accent2)" letter-spacing="-1.5">openSME</text>
-    <text x="198" y="48" font-family="Inter, system-ui, sans-serif" font-size="42" font-weight="300" fill="#9fb4d8" letter-spacing="-1">SME</text>
 
     <!-- Tagline -->
     <text x="0" y="82" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500" fill="#e3ecff">Self-hosted digital workplace for small &amp; medium enterprises</text>

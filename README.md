@@ -10,7 +10,7 @@ Docker Compose-based — from 5 to 500 users. SSO-first: one login for files,
 mail, groupware, documents &amp; chat.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
-[![CI](https://github.com/tobias-weiss-ai-xr/opensme-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/opensme-compose/actions/workflows/ci.yml)
+[![CI](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/DockerCompose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose)
 [![Traefik](https://img.shields.io/badge/Reverse_Proxy-Traefik_v3-24a7c0?logo=traefikproxy&logoColor=white)](https://traefik.io/)
 [![Rust](https://img.shields.io/badge/Portal-Rust_Axum-ce422b?logo=rust&logoColor=white)](https://axum.rs/)
@@ -186,8 +186,8 @@ halving the service count for the IAM layer.
 ### 1. Clone &amp; configure
 
 ```bash
-git clone https://github.com/tobias-weiss-ai-xr/opensme-compose.git
-cd opensme-compose
+git clone https://github.com/tobias-weiss-ai-xr/openSME-compose.git
+cd openSME-compose
 cp .env.example .env
 # Edit .env — set your domains and passwords
 ```
@@ -323,7 +323,7 @@ docker compose \
 ## Project Structure
 
 ```
-opensme-compose/
+openSME-compose/
 ├── docker-compose.yml          # Core: Traefik, PostgreSQL, Redis, Memcached, Portal
 ├── .env.example                # All configuration variables
 ├── Makefile                    # Test pyramid + tier-based deployment

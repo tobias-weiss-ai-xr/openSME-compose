@@ -56,7 +56,7 @@ require a **Commercial License**, available at:
 - [graphwiz.ai](https://graphwiz.ai)
 - [hello@opensme.org](mailto:hello@opensme.org)
 
-See the [Enterprise Edition](https://github.com/tobias-weiss-ai-xr/opensme-compose-enterprise)
+See the [Enterprise Edition](https://github.com/tobias-weiss-ai-xr/openSME-compose-enterprise)
 for the fully tuned multi-node deployment stack.
 
 ### What You Get
