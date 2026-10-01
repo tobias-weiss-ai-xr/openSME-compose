@@ -1,0 +1,56 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ── Typst render overlay — document typesetting service ──
+# HTTP API around the typst CLI (PDF/PNG/SVG) for template-driven
+# document production: letters, invoices, certificates, reports.
+#
+# Include via:
+#   COMPOSE_FILE="docker-compose.yml:typesetting/typst-render.yml"
+#
+# API (internal only, machine-facing — not exposed via Traefik):
+#   POST http://typst-render:8080/render
+#     {"source": "= Hello", "format": "pdf", "assets": {"data.csv": "..."}}
+#     -> compiled document bytes
+#   GET  http://typst-render:8080/healthz
+#
+# Image: openEduSuite fork build of typst (upstream-synced weekly),
+# released per upstream version. See
+# https://github.com/tobias-weiss-ai-xr/typst (render-service/).
+
+services:
+  typst-render:
+    <<: *service-defaults
+    image: ghcr.io/tobias-weiss-ai-xr/typst-render:0.15.1
+    container_name: opendesk-typst-render
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      PORT: "8080"
+      COMPILE_TIMEOUT_SECONDS: "60"
+      MAX_CONCURRENT_COMPILES: "2"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - opendesk-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
