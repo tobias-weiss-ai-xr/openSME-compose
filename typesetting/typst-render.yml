@@ -30,7 +30,7 @@ x-service-defaults: &service-defaults
 services:
   typst-render:
     <<: *service-defaults
-    image: ghcr.io/tobias-weiss-ai-xr/typst-render:0.15.1
+    image: ghcr.io/tobias-weiss-ai-xr/typst-render:latest
     container_name: opendesk-typst-render
     restart: unless-stopped
     user: "1000:1000"

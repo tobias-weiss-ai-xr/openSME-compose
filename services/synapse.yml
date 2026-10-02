@@ -25,7 +25,7 @@ x-service-defaults: &service-defaults
 services:
   synapse:
     <<: *service-defaults
-    image: element-hq/synapse:v1.144.0
+    image: element-hq/synapse:latest
     container_name: opensme-synapse
     restart: unless-stopped
     profiles: ["chat"]

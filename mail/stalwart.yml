@@ -19,7 +19,7 @@ x-service-defaults: &service-defaults
 services:
   stalwart:
     <<: *service-defaults
-    image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.15.0}
+    image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.15}
     container_name: opensme-stalwart
     hostname: mail.${OPENSME_DOMAIN:-opensme.org}
     restart: unless-stopped

@@ -26,7 +26,7 @@ services:
   # officially supported MariaDB instead of the shared postgres.
   invoiceninja-db:
     <<: *service-defaults
-    image: ${MARIADB_IMAGE:-mariadb:11.4}
+    image: ${MARIADB_IMAGE:-mariadb:11}
     container_name: opensme-invoiceninja-db
     restart: unless-stopped
     profiles: ["invoice"]
@@ -105,7 +105,7 @@ services:
   # forwards FastCGI to the "invoiceninja" service
   invoiceninja-web:
     <<: *service-defaults
-    image: ${INVOICENINJA_NGINX_IMAGE:-nginx:1.27-alpine}
+    image: ${INVOICENINJA_NGINX_IMAGE:-nginx:alpine}
     container_name: opensme-invoiceninja-web
     restart: unless-stopped
     profiles: ["invoice"]

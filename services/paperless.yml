@@ -95,7 +95,7 @@ services:
 
   paperless-gotenberg:
     <<: *service-defaults
-    image: gotenberg/gotenberg:8
+    image: gotenberg/gotenberg:latest
     container_name: opensme-gotenberg
     restart: unless-stopped
     profiles: ["paperless"]

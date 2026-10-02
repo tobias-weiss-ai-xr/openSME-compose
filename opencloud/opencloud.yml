@@ -27,7 +27,7 @@ services:
     # data-race patch ("concurrent map read and map write"), 7.x fixed it.
     # If a multi-core startup race ever resurfaces, pin cpuset on the host
     # (Go derives GOMAXPROCS from affinity; the env var is ignored).
-    image: opencloudeu/opencloud-rolling:8.0.1
+    image: opencloudeu/opencloud-rolling:latest
     container_name: opensme-opencloud
     restart: unless-stopped
     stop_grace_period: 60s
@@ -119,7 +119,7 @@ services:
     # No `<<: *service-defaults`: CODE cannot run under no-new-privileges
     # (it Elevates through file capabilities at runtime). Enumerate the other
     # defaults explicitly instead.
-    image: ${COLLABORA_IMAGE:-collabora/code:24.04.13.3.1}
+    image: ${COLLABORA_IMAGE:-collabora/code:latest}
     container_name: opensme-collabora
     restart: unless-stopped
     init: true

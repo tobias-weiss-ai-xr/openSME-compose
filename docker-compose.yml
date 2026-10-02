@@ -30,7 +30,7 @@ services:
   # connect the portal to the host's traefik-web network instead.
   traefik:
     <<: *service-defaults
-    image: ${TRAEFIK_IMAGE:-traefik:v3.3}
+    image: ${TRAEFIK_IMAGE:-traefik:latest}
     container_name: opensme-traefik
     profiles: ["standalone"]
     restart: unless-stopped
@@ -114,7 +114,7 @@ services:
   # ── Database ─────────────────────────────────
   postgres:
     <<: *service-defaults
-    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    image: ${POSTGRES_IMAGE:-postgres:17}
     container_name: opensme-postgres
     restart: unless-stopped
     stop_grace_period: 120s
@@ -174,7 +174,7 @@ services:
   # ── Connection Pool (PgBouncer) ─────────────
   pgbouncer:
     <<: *service-defaults
-    image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:1.23.0}
+    image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:latest}
     container_name: opensme-pgbouncer
     restart: unless-stopped
     environment:
@@ -215,7 +215,7 @@ services:
   # ── Cache ────────────────────────────────────
   redis:
     <<: *service-defaults
-    image: ${REDIS_IMAGE:-redis:7-alpine}
+    image: ${REDIS_IMAGE:-redis:alpine}
     container_name: opensme-redis
     restart: unless-stopped
     stop_grace_period: 60s
@@ -251,7 +251,7 @@ services:
 
   memcached:
     <<: *service-defaults
-    image: ${MEMCACHED_IMAGE:-memcached:1.6-alpine}
+    image: ${MEMCACHED_IMAGE:-memcached:alpine}
     container_name: opensme-memcached
     restart: unless-stopped
     command: memcached -m 2048 -c 4096 -t 4

@@ -44,7 +44,7 @@ services:
       memory: 384M
 
   paperless-gotenberg:
-    image: gotenberg/gotenberg:8
+    image: gotenberg/gotenberg:latest
     compose_file: services/paperless.yml
     required: false
     profiles: [paperless]
@@ -68,7 +68,7 @@ services:
       memory: 512M
 
   cryptpad:
-    image: cryptpad/cryptpad:2025.9.0
+    image: cryptpad/cryptpad:latest
     compose_file: services/cryptpad.yml
     required: false
     profiles: [collab]
@@ -86,7 +86,7 @@ services:
       memory: 256M
 
   synapse:
-    image: element-hq/synapse:v1.144.0
+    image: element-hq/synapse:latest
     compose_file: services/synapse.yml
     required: false
     profiles: [chat]
@@ -104,7 +104,7 @@ services:
       memory: 384M
 
   element-web:
-    image: elementio/element-web:v1.12.6
+    image: elementio/element-web:latest
     compose_file: services/element.yml
     required: false
     profiles: [element]
@@ -116,7 +116,7 @@ services:
       memory: 48M
 
   notes-backend:
-    image: lasuite/impress:1.14.0-backend
+    image: lasuite/impress:latest-backend
     compose_file: services/notes.yml
     required: false
     profiles: [notes]
@@ -136,7 +136,7 @@ services:
       memory: 256M
 
   notes-frontend:
-    image: lasuite/impress:1.14.0-frontend
+    image: lasuite/impress:latest-frontend
     compose_file: services/notes.yml
     required: false
     profiles: [notes]
@@ -149,7 +149,7 @@ services:
       memory: 64M
 
   notes-y-provider:
-    image: lasuite/impress:1.14.0-y-provider
+    image: lasuite/impress:latest-y-provider
     compose_file: services/notes.yml
     required: false
     profiles: [notes]

@@ -23,7 +23,7 @@ x-service-defaults: &service-defaults
 services:
   cryptpad:
     <<: *service-defaults
-    image: cryptpad/cryptpad:2025.9.0
+    image: cryptpad/cryptpad:latest
     container_name: opensme-cryptpad
     restart: unless-stopped
     profiles: ["collab"]

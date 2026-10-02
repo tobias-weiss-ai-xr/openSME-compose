@@ -20,7 +20,7 @@ x-service-defaults: &service-defaults
 services:
   zitadel:
     <<: *service-defaults
-    image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:v3.4.15}
+    image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:latest}
     container_name: opensme-zitadel
     restart: unless-stopped
     # Fresh installs need `zitadel init` + `zitadel setup` once before `start`

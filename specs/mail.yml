@@ -4,7 +4,7 @@
 
 services:
   stalwart:
-    image: stalwartlabs/stalwart:v0.15.0
+    image: stalwartlabs/stalwart:v0.15
     compose_file: mail/stalwart.yml
     required: false
     host_ports: [25, 143, 587]  # SMTP, IMAP, Submission (TLS terminated by Traefik)

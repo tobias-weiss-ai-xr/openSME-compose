@@ -6,7 +6,7 @@
 
 services:
   traefik:
-    image: traefik:v3.3
+    image: traefik:latest
     compose_file: docker-compose.yml
     required: true
     profiles: [standalone]
@@ -22,7 +22,7 @@ services:
       memory: 256M
 
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17
     compose_file: docker-compose.yml
     required: true
     host_ports: []
@@ -37,7 +37,7 @@ services:
       memory: 4G
 
   pgbouncer:
-    image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:1.23.0}
+    image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:latest}
     compose_file: docker-compose.yml
     required: true
     host_ports: []
@@ -55,7 +55,7 @@ services:
       memory: 256M
 
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     compose_file: docker-compose.yml
     required: true
     host_ports: []
@@ -69,7 +69,7 @@ services:
       memory: 4G
 
   memcached:
-    image: memcached:1.6-alpine
+    image: memcached:alpine
     compose_file: docker-compose.yml
     required: true
     host_ports: []
