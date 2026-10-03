@@ -274,10 +274,6 @@ services:
   # ── Rust Portal ─────────────────────────────
   portal:
     <<: *service-defaults
-    labels: ["com.centurylinklabs.watchtower.enable=false"]  # local build
-    read_only: true
-  portal:
-    <<: *service-defaults
     read_only: true
     tmpfs:
       - /tmp
