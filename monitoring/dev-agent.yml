@@ -32,6 +32,11 @@ services:
   dev-agent:
     <<: *service-defaults
     image: ${DEV_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/dev-agent:latest}
+    # local fallback build has no registry tag — watchtower must skip
+    labels: ["com.centurylinklabs.watchtower.enable=false"]
+  dev-agent:
+    <<: *service-defaults
+    image: ${DEV_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/dev-agent:latest}
     # Reproducible local fallback: build from the in-repo sources when the
     # image cannot be pulled (offline / no registry access). Docker uses the
     # image name for the build tag.

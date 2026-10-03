@@ -58,6 +58,11 @@ services:
   invoiceninja:
     <<: *service-defaults
     image: invoiceninja-pg:5
+    # local build (adds pdo_pgsql) — no registry tag, watchtower must skip
+    labels: ["com.centurylinklabs.watchtower.enable=false"]
+  invoiceninja:
+    <<: *service-defaults
+    image: invoiceninja-pg:5
     # upstream image lacks pdo_pgsql — local build adds it (see Dockerfile);
     # harmless with MariaDB but keeps the pg option buildable
     build: ./services/invoice-ninja
