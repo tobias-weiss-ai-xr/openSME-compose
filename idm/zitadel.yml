@@ -21,7 +21,7 @@ services:
   zitadel:
     <<: *service-defaults
     image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:latest}
-    container_name: opensme-zitadel
+    container_name: opendesk-zitadel
     restart: unless-stopped
     # Fresh installs need `zitadel init` + `zitadel setup` once before `start`
     # (run headlessly by the ansible role / `docker compose run`). The image is
@@ -68,7 +68,7 @@ services:
       # machine user + PAT for headless automation (Management API); the
       # signed PAT lands in this file at first setup
       ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat
-      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: opensme-automation
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: opendesk-automation
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: openSME automation
       # ── Seeded policies ──
       # setup seeds instance policies from DefaultInstance; keep the
@@ -91,7 +91,7 @@ services:
       retries: 5
       start_period: 60s
     networks:
-      - opensme-net
+      - opendesk-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"

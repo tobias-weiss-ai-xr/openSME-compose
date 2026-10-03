@@ -9,7 +9,7 @@ services:
     required: false
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     depends_on: [postgres]
     volumes:
       - opencloud-config:/etc/opencloud
@@ -33,7 +33,7 @@ services:
     required: false
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     env:
       - COLLABORA_DOMAIN
       - COLLABORA_USERNAME
@@ -48,7 +48,7 @@ services:
     required: false
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     volumes:
       - minio-data:/data
     env:

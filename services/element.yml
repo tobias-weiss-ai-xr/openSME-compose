@@ -26,7 +26,7 @@ services:
   element-web:
     <<: *service-defaults
     image: elementio/element-web:latest
-    container_name: opensme-element
+    container_name: opendesk-element
     restart: unless-stopped
     depends_on:
       synapse:
@@ -35,7 +35,7 @@ services:
     environment:
       ELEMENT_DEFAULT_SERVER_URL: "https://matrix.${OPENSME_DOMAIN:-opensme.org}"
     networks:
-      - opensme-net
+      - opendesk-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.element.rule=Host(`element.${OPENSME_DOMAIN:-opensme.org}`)"

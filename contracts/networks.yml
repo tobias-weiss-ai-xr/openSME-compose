@@ -1,20 +1,20 @@
 # ═══════════════════════════════════════════════════════════════
 # contracts/networks.yml — Network isolation
 # ═══════════════════════════════════════════════════════════════
-# All services must be on the opensme-net network (not host mode).
+# All services must be on the opendesk-net network (not host mode).
 # This ensures service-to-service communication via Docker DNS names
 # and prevents direct host access.
 
 name: network-isolation
 description: >
-  All services must be connected to the opensme-net bridge network.
+  All services must be connected to the opendesk-net bridge network.
   No service may use host network mode. This ensures isolation and
   DNS-based service discovery.
 severity: error
 
 rules:
   - type: on-network
-    network: opensme-net
+    network: opendesk-net
     services:
       - traefik
       - postgres

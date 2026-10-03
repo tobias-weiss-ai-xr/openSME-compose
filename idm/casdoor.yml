@@ -28,7 +28,7 @@ services:
   casdoor:
     <<: *service-defaults
     image: casbin/casdoor:latest
-    container_name: opensme-casdoor
+    container_name: opendesk-casdoor
     restart: unless-stopped
     entrypoint: ["/bin/sh"]
     command: ["-c", "envsubst < /opt/casdoor/conf/app.conf.template > /opt/casdoor/conf/app.conf && /opt/casdoor/casdoor"]
@@ -39,7 +39,7 @@ services:
       - casdoor-data:/opt/casdoor/data
       - ./idm/casdoor-config:/opt/casdoor/conf
     networks:
-      - opensme-net
+      - opendesk-net
     depends_on:
       postgres:
         condition: service_healthy

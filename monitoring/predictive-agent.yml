@@ -36,7 +36,7 @@ services:
   predictive-agent:
     <<: *service-defaults
     image: ${PREDICTIVE_AGENT_IMAGE:-ghcr.io/tobias-weiss-ai-xr/predictive-agent:latest}
-    container_name: opensme-predictive-agent
+    container_name: opendesk-predictive-agent
     restart: unless-stopped
     volumes:
       # Read-only Docker socket — agent collects metrics but cannot mutate
@@ -44,7 +44,7 @@ services:
       # Persistent state (Kalman filters, Markov chain, predictions) across restarts
       - predictive-agent-state:/var/lib/opensme
     environment:
-      OPERATOR_NAME: opensme-predictive-agent
+      OPERATOR_NAME: opendesk-predictive-agent
       OPERATOR_NAMESPACE: opensme
       OPERATOR_WATCH_NAMESPACES: ${PREDICTIVE_AGENT_WATCH_NAMESPACES:-opensme,default}
       # LLM backend (ollama | saia | tud | openai)
@@ -89,7 +89,7 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - opensme-net
+      - opendesk-net
     deploy:
       resources:
         limits:

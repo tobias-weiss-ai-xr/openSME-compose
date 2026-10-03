@@ -23,7 +23,7 @@ services:
   # ── Portal (system Traefik labels) ───────────
   portal:
     networks:
-      - opensme-net
+      - opendesk-net
       - traefik-web
     labels:
       - "traefik.enable=true"
@@ -38,8 +38,8 @@ services:
     ports: !reset []
 
 networks:
-  opensme-net:
-    name: opensme-net
+  opendesk-net:
+    name: opendesk-net
     driver: bridge
   traefik-web:
     external: true

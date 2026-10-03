@@ -26,7 +26,7 @@ services:
   notes-backend:
     <<: *service-defaults
     image: lasuite/impress:latest-backend
-    container_name: opensme-notes-backend
+    container_name: opendesk-notes-backend
     restart: unless-stopped
     profiles: ["notes"]
     environment:
@@ -41,7 +41,7 @@ services:
       DB_USER: notes_user
       DB_PASSWORD: ${NOTES_DB_PASSWORD:-CHANGEME_notes}
       REDIS_URL: redis://redis:6379/1
-      OIDC_RP_CLIENT_ID: "opensme-notes"
+      OIDC_RP_CLIENT_ID: "opendesk-notes"
       OIDC_RP_CLIENT_SECRET: ${NOTES_OIDC_CLIENT_SECRET:-CHANGEME_notes_oidc}
       OIDC_OP_JWKS_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/.well-known/openid-configuration/jwks"
       OIDC_OP_AUTHORIZATION_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oauth/v2/authorize"
@@ -63,7 +63,7 @@ services:
     volumes:
       - notes-data:/data
     networks:
-      - opensme-net
+      - opendesk-net
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,14 +89,14 @@ services:
   notes-frontend:
     <<: *service-defaults
     image: lasuite/impress:latest-frontend
-    container_name: opensme-notes-frontend
+    container_name: opendesk-notes-frontend
     restart: unless-stopped
     profiles: ["notes"]
     environment:
       NOTES_BACKEND_URL: http://notes-backend:3010
       NOTES_Y_PROVIDER_URL: http://notes-y-provider:1234
     networks:
-      - opensme-net
+      - opendesk-net
     depends_on:
       notes-backend:
         condition: service_healthy
@@ -124,13 +124,13 @@ services:
   notes-y-provider:
     <<: *service-defaults
     image: lasuite/impress-y-provider:latest
-    container_name: opensme-notes-y-provider
+    container_name: opendesk-notes-y-provider
     restart: unless-stopped
     profiles: ["notes"]
     environment:
       Y_PROVIDER_API_KEY: ${NOTES_COLLABORATION_SECRET:-CHANGEME_notes_collab}
     networks:
-      - opensme-net
+      - opendesk-net
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "-O", "/dev/null", "http://localhost:1234/"]
       interval: 20s

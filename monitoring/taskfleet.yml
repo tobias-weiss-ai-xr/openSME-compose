@@ -47,7 +47,7 @@ services:
   taskfleet:
     <<: *service-defaults
     image: ${TASKFLEET_IMAGE:-ghcr.io/tobias-weiss-ai-xr/taskfleet:latest}
-    container_name: opensme-taskfleet
+    container_name: opendesk-taskfleet
     profiles: ["taskfleet"]
     restart: "no"
     # v2: npm `taskfleet` bin (native --help/--status/--dry-run/--version;
@@ -77,7 +77,7 @@ services:
       TF_STATE_DIR: /var/lib/taskfleet
       TZ: ${TZ:-Europe/Berlin}
     networks:
-      - opensme-net
+      - opendesk-net
     deploy:
       resources:
         limits:

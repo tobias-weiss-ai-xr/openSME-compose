@@ -12,7 +12,7 @@ services:
     profiles: [standalone]
     host_ports: [80, 443]
     healthcheck: false
-    networks: [opensme-net]
+    networks: [opendesk-net]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-data:/etc/traefik
@@ -27,7 +27,7 @@ services:
     required: true
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
@@ -42,7 +42,7 @@ services:
     required: true
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     depends_on: [postgres]
     env:
       - POSTGRESQL_HOST
@@ -60,7 +60,7 @@ services:
     required: true
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     volumes:
       - redis-data:/data
     env: []
@@ -74,7 +74,7 @@ services:
     required: true
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     env: []
     traefik_labels: false
     resource_limits:
@@ -86,7 +86,7 @@ services:
     required: true
     host_ports: []
     healthcheck: true
-    networks: [opensme-net]
+    networks: [opendesk-net]
     depends_on: [postgres]
     env:
       - PORTAL_DOMAIN

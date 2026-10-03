@@ -22,7 +22,7 @@ services:
   sogo:
     <<: *service-defaults
     image: ${SOGO_IMAGE:-salvoxia/sogo:latest}
-    container_name: opensme-sogo
+    container_name: opendesk-sogo
     restart: unless-stopped
     stop_grace_period: 60s
     tmpfs:
@@ -55,7 +55,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opensme-net
+      - opendesk-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.org}`) && PathPrefix(`/SOGo`)"

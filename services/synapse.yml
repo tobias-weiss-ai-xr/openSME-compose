@@ -26,7 +26,7 @@ services:
   synapse:
     <<: *service-defaults
     image: element-hq/synapse:latest
-    container_name: opensme-synapse
+    container_name: opendesk-synapse
     restart: unless-stopped
     profiles: ["chat"]
     environment:
@@ -43,7 +43,7 @@ services:
       - synapse-data:/data
       - ./services/synapse-setup.sh:/entrypoint-setup.sh:ro
     networks:
-      - opensme-net
+      - opendesk-net
     depends_on:
       postgres:
         condition: service_healthy

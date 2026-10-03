@@ -19,7 +19,7 @@ services:
   minio:
     <<: *service-defaults
     image: minio/minio:latest
-    container_name: opensme-minio
+    container_name: opendesk-minio
     restart: unless-stopped
     stop_grace_period: 60s
     cap_drop:
@@ -39,7 +39,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opensme-net
+      - opendesk-net
     deploy:
       resources:
         limits:

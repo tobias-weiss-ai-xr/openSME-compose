@@ -28,7 +28,7 @@ services:
     # If a multi-core startup race ever resurfaces, pin cpuset on the host
     # (Go derives GOMAXPROCS from affinity; the env var is ignored).
     image: opencloudeu/opencloud-rolling:latest
-    container_name: opensme-opencloud
+    container_name: opendesk-opencloud
     restart: unless-stopped
     stop_grace_period: 60s
     shm_size: 256M
@@ -98,7 +98,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opensme-net
+      - opendesk-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
@@ -120,7 +120,7 @@ services:
     # (it Elevates through file capabilities at runtime). Enumerate the other
     # defaults explicitly instead.
     image: ${COLLABORA_IMAGE:-collabora/code:latest}
-    container_name: opensme-collabora
+    container_name: opendesk-collabora
     restart: unless-stopped
     init: true
     logging:
@@ -150,7 +150,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opensme-net
+      - opendesk-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.org}`)"
