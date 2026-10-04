@@ -8,7 +8,7 @@ Runs all test layers in order:
   Layer 2: Contract validation (contracts/ rules)
   Layer 3: Smoke tests (HTTP, container health — requires running stack)
   Layer 4: Integration tests (service interactions — requires running stack)
-  Layer 5: E2E tests (browser — requires running stack + playwright)
+  Layer 5: E2E tests (SSO/OIDC flows — requires running stack)
   Layer 6: Security audit
 
 Usage:
@@ -18,6 +18,7 @@ Usage:
     python3 tests/run.py --static           # Layers 0-2 (no running stack needed)
     python3 tests/run.py --smoke            # Layer 3 only
     python3 tests/run.py --security         # Layer 6 only
+    python3 tests/run.py --e2e              # Layer 5 only (requires running stack)
     python3 tests/run.py --domain example.com  # Domain for smoke tests
 
 Exit codes:
@@ -87,8 +88,10 @@ LAYERS = {
     },
     5: {
         "name": "E2E tests",
-        "description": "Browser tests (Playwright)",
-        "scripts": [],
+        "description": "SSO / OIDC flows over HTTP (Zitadel, portal, apps)",
+        "scripts": [
+            ("E2E tests (SSO etc.)", "tests/05-e2e/run.py"),
+        ],
         "requires_stack": True,
     },
     6: {
@@ -110,14 +113,19 @@ LAYERS = {
 }
 
 
-def run_script(name: str, script_path: str, domain: str = "localhost") -> tuple[bool, str]:
+def run_script(name: str, script_path: str, domain: str = "localhost",
+               e2e: bool = False) -> tuple[bool, str]:
     """Run a test script and return (success, output)."""
     full_path = ROOT / script_path
     if not full_path.exists():
         return False, f"{script_path} not found"
 
     cmd = [sys.executable, str(full_path)]
+    # e2e resolves the domain itself from .env (OPENSME_DOMAIN) unless the
+    # caller was explicit — "localhost" would hide a demo-domain .env
     if domain and "smoke" in script_path:
+        cmd.append(domain)
+    elif domain and "e2e" in script_path and not e2e:
         cmd.append(domain)
 
     try:
@@ -125,7 +133,7 @@ def run_script(name: str, script_path: str, domain: str = "localhost") -> tuple[
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=420 if "e2e" in script_path else 120,
             cwd=str(ROOT),
         )
         output = result.stdout
@@ -149,6 +157,8 @@ def main():
                         help="Run only smoke tests (layer 3)")
     parser.add_argument("--security", action="store_true",
                         help="Run only security audit (layer 6)")
+    parser.add_argument("--e2e", action="store_true",
+                        help="Run only e2e tests (layer 5, requires running stack)")
     parser.add_argument("--k8s", action="store_true",
                         help="Run only k8s deployment tests (layer 8)")
     parser.add_argument("--domain", type=str, default="localhost",
@@ -162,12 +172,14 @@ def main():
         layers_to_run = [3]
     elif args.security:
         layers_to_run = [6]
+    elif args.e2e:
+        layers_to_run = [5]
     elif args.k8s:
         layers_to_run = [8]
     elif args.layer:
         layers_to_run = [int(x) for x in args.layer.split(",")]
     else:
-        layers_to_run = [0, 1, 2, 3, 6]  # Skip 4, 5, 8 (not implemented or requires k8s)
+        layers_to_run = [0, 1, 2, 3, 6]  # Skip 4, 5, 8 (4 unimplemented; 5 & 8 need opt-in stack access)
 
     print(f"\n{BOLD}╔══════════════════════════════════════════════════════════════╗{NC}")
     print(f"{BOLD}║  openSME — Spec / Contract / Test Scaffold             ║{NC}")
@@ -218,8 +230,8 @@ def main():
                         continue
                 except Exception:
                     print(f"  {YELLOW}⚠ Cannot check Docker — skipping layer {layer_num}{NC}")
-                layer_results[layer_num] = "skipped"
-                continue
+                    layer_results[layer_num] = "skipped"
+                    continue
 
         if not layer["scripts"]:
             print(f"  {YELLOW}⚠ Layer {layer_num} not yet implemented{NC}")
@@ -230,7 +242,9 @@ def main():
         layer_fail = 0
         for script_name, script_path in layer["scripts"]:
             print(f"\n  {BOLD}── {script_name} ──{NC}")
-            ok, output = run_script(script_name, script_path, args.domain)
+            e2e_explicit = "--domain" in sys.argv or "-d" in sys.argv
+            ok, output = run_script(script_name, script_path, args.domain,
+                                    e2e=e2e_explicit)
             print(output.rstrip())
             if ok:
                 layer_pass += 1

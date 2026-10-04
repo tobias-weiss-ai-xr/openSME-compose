@@ -73,3 +73,56 @@ jobs:
             fi
           done < <(git ls-files -z)
           exit $FAIL
+
+  e2e:
+    name: E2E — SSO flows (demo stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Heavy job: builds the portal (rust) and boots the demo stack.
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+
+      - name: Provision deploy-time Zitadel artifacts (masterkey + busybox)
+        # Both are gitignored and normally created by the ansible deploy role.
+        # The masterkey must be exactly 32 bytes with no trailing newline
+        # (`openssl rand -base64 32` yields 44 chars + newline → rejected).
+        run: |
+          printf '%s' "$(openssl rand -base64 24)" > idm/secrets/masterkey
+          mkdir -p idm/zitadel
+          cid=$(docker create busybox:stable-musl true)
+          docker cp "$cid":/bin/busybox idm/zitadel/busybox
+          docker rm "$cid" >/dev/null
+          chmod +x idm/zitadel/busybox
+
+      - name: Boot demo stack (generates .env with random passwords)
+        run: bash scripts/demo.sh
+
+      - name: Initialize Zitadel (fresh installs need init + setup before start)
+        run: |
+          CF="-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml"
+          for _ in $(seq 1 60); do
+            docker compose $CF ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
+            sleep 5
+          done
+          docker compose $CF run --rm zitadel init
+          docker compose $CF run --rm zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml
+          docker compose $CF up -d --force-recreate zitadel
+
+      - name: Wait for IdP and Portal
+        run: |
+          timeout 300 bash -c 'until curl -skf --resolve auth.opensme.local:443:127.0.0.1 \
+            https://auth.opensme.local/debug/ready >/dev/null 2>&1; do sleep 5; done'
+          timeout 120 bash -c 'until curl -sf http://127.0.0.1:8080/health >/dev/null 2>&1; do sleep 5; done'
+
+      - name: Run e2e suite (Layer 5 — SSO flows)
+        run: python3 tests/05-e2e/run.py opensme.local

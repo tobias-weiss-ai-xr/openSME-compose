@@ -211,8 +211,8 @@ integration:
 	@echo -e "$(YELLOW)⚠ integration tests not yet implemented$(NC)"
 
 e2e:
-	@echo -e "$(BLUE)── layer 5: e2e ──$(NC)"
-	@echo -e "$(YELLOW)⚠ e2e tests not yet implemented$(NC)"
+	@echo -e "$(BLUE)── layer 5: e2e — SSO flows (requires running stack) ──$(NC)"
+	@$(PYTHON) tests/05-e2e/run.py $(DOMAIN) 2>&1
 
 security:
 	@echo -e "$(BLUE)── layer 6: security audit ──$(NC)"
@@ -348,7 +348,7 @@ help:
 	@echo "    make container           Layer 3: container health (requires stack)"
 	@echo "    make smoke               Layer 3: HTTP smoke tests (requires stack)"
 	@echo "    make integration         Layer 4: integration tests (not yet implemented)"
-	@echo "    make e2e                 Layer 5: e2e browser tests (not yet implemented)"
+	@echo "    make e2e                 Layer 5: e2e SSO/OIDC flows (running stack; e.g. make e2e DOMAIN=opensme.local)"
 	@echo "    make security            Layer 6: security audit (exposed ports, secrets, TLS)"
 	@echo "    make test                Layers 0-3 (static + container + smoke)"
 	@echo "    make test-all            Layers 0-6 (full suite)"

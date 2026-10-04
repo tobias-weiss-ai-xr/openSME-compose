@@ -22,8 +22,8 @@ tests/
 │   └── run.py                   #   HTTP endpoints, container health
 ├── 04-integration/              # Layer 4: Integration tests (requires running stack)
 │   └── (not yet implemented)
-├── 05-e2e/                      # Layer 5: E2E browser tests (requires Playwright)
-│   └── (not yet implemented)
+├── 05-e2e/                      # Layer 5: E2E tests — SSO/OIDC flows (requires running stack)
+│   └── run.py                   #   Zitadel login flow, SSO reuse, logout, app checks
 └── 06-security/                 # Layer 6: Security audit (no containers)
     └── audit.py                 #   Exposed ports, secrets, TLS, privileges
 ├── 08-k8s/                     # Layer 8: Kubernetes deployment health (requires kubectl)
@@ -89,6 +89,11 @@ python3 tests/run.py --smoke --domain opensme.org
 # Run security audit
 python3 tests/run.py --security
 
+# Run e2e tests (requires running stack; SSO flows need ZITADEL_ADMIN_PASSWORD
+# from .env and access to the running zitadel container for the machine PAT,
+# or a pre-registered app via E2E_OIDC_CLIENT_ID)
+python3 tests/run.py --e2e --domain opensme.local
+
 # Run k8s deployment tests (requires kubectl + running cluster)
 python3 tests/run.py --k8s
 
@@ -105,6 +110,7 @@ make contracts     # Layer 2: contract validation
 make test-static   # Layers 0-2 (all static checks)
 make container     # Layer 2: container health (requires stack)
 make smoke         # Layer 3: HTTP smoke (requires stack)
+make e2e           # Layer 5: SSO/OIDC e2e flows (requires stack)
 make security      # Layer 6: security audit
 make k8s           # Layer 8: k8s deployment health
 make test          # Layers 0-3 (static + container + smoke)
@@ -123,3 +129,51 @@ make test-all      # Layers 0-6 (full suite)
 2. Add a rule with a supported type (see `contracts/README.md`)
 3. Run `python3 tests/02-contracts/validate_contracts.py` to verify
 4. If a new rule type is needed, add a handler in `tests/02-contracts/validate_contracts.py`
+
+## E2E tests (`05-e2e/`) — SSO & friends
+
+Exercises real user journeys over HTTP against a running stack. No browser
+needed — logins are performed programmatically through the Zitadel v2
+Session API (the same API the hosted Login v2 UI uses), so the suite works
+against the React-based Login v2 UI where form scraping cannot.
+
+What is covered:
+
+1. **IdP discovery** — `/.well-known/openid-configuration` + JWKS
+2. **Portal** — landing page, `/health`, `/api/services`
+3. **SSO login flow** — authorization-code + PKCE, logged in via the v2
+   Session API (`POST /v2/sessions` + password check + auth-request
+   finalize) using the seeded login-client PAT. A throw-away OIDC app
+   (`e2e-sso` project) is bootstrapped via the Zitadel Management API
+   using the seeded machine-user PAT (`docker compose cp
+   zitadel:/machinekey/pat -`) and removed afterwards
+4. **Single sign-on** — a second authorize is finalized with the existing
+   IdP session; no second credential check
+5. **Logout** — the session is terminated (`DELETE /v2/sessions/{id}`) and
+   the dead session must be rejected
+6. **App reachability** — opencloud, synapse, notes, paperless (when running)
+7. **Synapse SSO wiring** — `/_matrix/client/v3/login/sso/redirect` targets the IdP
+
+Configuration (env vars win over `.env`):
+
+| Variable | Purpose |
+|---|---|
+| `ZITADEL_ADMIN_PASSWORD` | admin credentials for the login flow (`.env`) |
+| `E2E_ZITADEL_LOGIN_NAME` | login name (default `zitadel-admin`) |
+| `E2E_ZITADEL_PAT` | machine-user PAT (skip the `docker compose cp`) |
+| `E2E_ZITADEL_LOGINCLIENT_PAT` | login-client PAT (skip the `docker compose cp`) |
+| `E2E_OIDC_CLIENT_ID` / `_SECRET` | pre-registered OIDC app (skip bootstrap) |
+| `E2E_INSECURE=1` | disable TLS verification |
+
+The seeded credentials come from `zitadel setup --steps /steps.yaml`
+(`idm/zitadel/steps.yaml` — v4 does not pick up the machine/PAT seeding
+from env vars alone): it creates the `opendesk-automation` machine user
+(IAM_OWNER, PAT at `/machinekey/pat`) and the `opensme-login-client`
+service user (IAM_LOGIN_CLIENT, PAT at `/machinekey/login-client.pat`).
+
+Local demo conveniences (domains under `.local`/`.localhost`/`.test`):
+unresolvable hostnames resolve to loopback (reaches local Traefik, no
+`/etc/hosts` edits) and TLS verification is off (self-signed demo certs).
+
+Skips don't fail the run; flow failures (bad login, missing code, session
+surviving logout) do.
