@@ -157,31 +157,7 @@ jobs:
           docker rm "$cid" >/dev/null
           chmod +x idm/zitadel/busybox
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Pre-build portal image (GHA layer cache)
-        # Build once with registry→GHA layer caching; demo.sh then skips its
-        # own --build (PORTAL_SKIP_BUILD=1). Cuts ~1min of rust deps compile
-        # per run — the cache reuses them unless Cargo.lock moves.
-        run: |
-          CF="-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml"
-          # build-only services carry no image key in `config` output; compose
-          # tags them {project}-{service} — resolve the project name the same
-          # way compose does so demo.sh finds the prebuilt image.
-          PROJ=$(docker compose $CF --env-file .env.example config --format json \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')
-          IMG="${PROJ}-portal"
-          echo "portal image: $IMG"
-          docker buildx build \
-            --provenance=false --sbom=false \
-            --cache-from type=gha,scope=portal \
-            --cache-to type=gha,scope=portal,mode=max \
-            -t "$IMG" --load portal/
-
       - name: Boot demo stack (generates .env with random passwords)
-        env:
-          PORTAL_SKIP_BUILD: "1"
         run: bash scripts/demo.sh
 
       - name: Wait for IdP and Portal
