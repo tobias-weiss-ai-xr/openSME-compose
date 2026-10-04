@@ -374,6 +374,8 @@ help:
 	@echo "    make test                Layers 0-3 (static + container + smoke)"
 	@echo "    make test-all            Layers 0-6 (full suite)"
 	@echo "    make test-run            Full test runner (python3 tests/run.py --static)"
+	@echo "    make fmt                 Apply all formatters (rustfmt, gofmt)"
+	@echo "    make lint-code           CI code-quality gates (fmt/clippy/vet/test/shellcheck)"
 	@echo ""
 	@echo -e "  $(GREEN)Backup / Restore$(NC)"
 	@echo "    make backup              Full backup (PG + Traefik + volumes)"
