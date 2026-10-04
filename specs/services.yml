@@ -6,20 +6,22 @@
 
 services:
   invoiceninja:
-    image: invoiceninja/invoiceninja:5
+    # local build: upstream image lacks pdo_pgsql (see services/invoice-ninja/Dockerfile)
+    image: invoiceninja-pg:5
     compose_file: services/invoice-ninja.yml
     required: false
     profiles: [invoice]
     host_ports: []
     healthcheck: true
     networks: [opendesk-net]
-    depends_on: [postgres]
+    depends_on: [invoiceninja-db, redis]
     volumes:
       - invoiceninja-public:/var/www/app/public
       - invoiceninja-storage:/var/www/app/storage
     env:
       - INVOICENINJA_DB_PASSWORD
-    traefik_labels: true
+    # Traefik labels live on the invoiceninja-web nginx front, not on the fpm app
+    traefik_labels: false
     resource_limits:
       memory: 192M
 

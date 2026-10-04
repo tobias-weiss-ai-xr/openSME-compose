@@ -101,6 +101,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 192M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
 
   # nginx front for the fpm container; serves the shared public volume and
   # forwards FastCGI to the "invoiceninja" service
