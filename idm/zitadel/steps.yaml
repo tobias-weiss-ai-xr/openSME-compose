@@ -1,0 +1,33 @@
+# ── Zitadel setup steps (mounted at /steps.yaml) ─────────────
+# Passed to `zitadel setup --steps /steps.yaml`.
+#
+# Why a file instead of env vars: v4 does not pick up the
+# ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE /
+# ..._MACHINEKEY_* variables from the environment (verified against
+# v4.19.4 — the env reaches the container but the corresponding
+# FirstInstance sections stay nil, so no PAT / machinekey is
+# written). The steps-file path is the documented, reliable way.
+# This file must be self-contained for the machine section: partial
+# sections do not merge with the ZITADEL_FIRSTINSTANCE_* env vars.
+FirstInstance:
+  Org:
+    Machine:
+      Machine:
+        Username: opendesk-automation
+        Name: openSME automation
+      MachineKey:
+        # 1 = JSON key file (JWT profile auth) at FirstInstance.MachineKeyPath
+        Type: 1
+      Pat:
+        # PAT for the machine user, written to FirstInstance.PatPath
+        ExpirationDate: "2038-01-01T00:00:00Z"
+    LoginClient:
+      Machine:
+        # service account with IAM_LOGIN_CLIENT — required to drive the
+        # v2 Session API / finalize OIDC auth requests programmatically
+        # (e2e tests use this instead of scraping the Login v2 SPA)
+        Username: opensme-login-client
+        Name: openSME login client
+      Pat:
+        # written to FirstInstance.LoginClientPatPath
+        ExpirationDate: "2038-01-01T00:00:00Z"

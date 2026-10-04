@@ -73,13 +73,21 @@ if [[ "$FORCE_ENV" == true ]] || [[ ! -f .env ]]; then
   # Generate Traefik dashboard password and hash
   TRAEFIK_PASS=$(pw)
   TRAEFIK_HASH=$(printf '%s' "$TRAEFIK_PASS" | openssl passwd -apr1 -stdin 2>/dev/null || printf 'admin:')
+  # Compose interpolates $ inside .env values — escape $ → $$ so the
+  # apr1 hash ($apr1$salt$hash) survives; compose unescapes it again
+  # when injecting the variable into containers.
+  TRAEFIK_HASH_ESC=${TRAEFIK_HASH//\$/\$\$}
 
-  cat > .env <<ENVEOF
+  # Write to a temp file first, then move into place — a failed generation
+  # must not leave a truncated .env that poisons subsequent runs
+  # ("using existing .env" would then boot with compose defaults).
+  env_tmp=$(mktemp)
+  cat > "$env_tmp" <<ENVEOF
 # openSME — Local Demo Configuration
 OPENSME_DOMAIN=opensme.local
 OPENCLOUD_DOMAIN=cloud.opensme.local
 ZITADEL_DOMAIN=auth.opensme.local
-IDP_URL=https://"$ZITADEL_DOMAIN"
+IDP_URL=https://auth.opensme.local
 PORTAL_DOMAIN=portal.opensme.local
 MAIL_DOMAIN=mail.opensme.local
 SOGO_DOMAIN=webmail.opensme.local
@@ -98,14 +106,51 @@ OC_S3_SECRET_KEY=$(pw)
 COLLABORA_PASSWORD=$(pw)
 
 # Traefik dashboard
-TRAEFIK_USERS=${TRAEFIK_HASH}
+TRAEFIK_USERS=${TRAEFIK_HASH_ESC}
 
 LOG_LEVEL=debug
 LOG_PRETTY=true
 ENVEOF
+  mv "$env_tmp" .env
   ok ".env created with random passwords"
 else
   info "Using existing .env"
+fi
+
+# ── Provision deploy-time Zitadel artifacts ─
+# Both are gitignored and normally created by the ansible deploy role.
+# The masterkey must be exactly 32 bytes with no trailing newline.
+if [[ ! -s idm/secrets/masterkey ]]; then
+  mkdir -p idm/secrets
+  printf '%s' "$(openssl rand -base64 24)" > idm/secrets/masterkey
+  ok "Generated idm/secrets/masterkey"
+fi
+if [[ ! -x idm/zitadel/busybox ]]; then
+  mkdir -p idm/zitadel
+  cid=$(docker create busybox:stable-musl true)
+  docker cp "$cid":/bin/busybox idm/zitadel/busybox
+  docker rm "$cid" >/dev/null
+  chmod +x idm/zitadel/busybox
+  ok "Extracted busybox for the Zitadel healthcheck"
+fi
+
+# ── Initialize Zitadel (fresh installs) ─────
+# The service command is plain `start`; on a fresh database it needs the
+# one-time `init` + `setup` (idempotent — safe on every run) which also
+# seeds the automation machine user and writes its PATs into the
+# zitadel-machinekey volume (used by tests/05-e2e).
+CF="-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml"
+info "Waiting for PostgreSQL..."
+docker compose $CF up -d postgres >/dev/null 2>&1
+for _ in $(seq 1 60); do
+  docker compose $CF ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
+  sleep 5
+done
+info "Running Zitadel init + setup (idempotent)..."
+docker compose $CF run --rm zitadel init
+if ! docker compose $CF run --rm zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
+  err "Zitadel setup failed — check the logs above"
+  exit 1
 fi
 
 # ── Build and start ──────────────────────────
@@ -117,6 +162,7 @@ docker compose \
   -f idm/zitadel.yml \
   -f opencloud/opencloud.yml \
   -f profiles/demo.dev.yml \
+  --profile standalone \
   up -d --build
 
 echo ""
