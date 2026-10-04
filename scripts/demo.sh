@@ -161,19 +161,21 @@ fi
 # one-time `init` + `setup` (idempotent — safe on every run) which also
 # seeds the automation machine user and writes its PATs into the
 # zitadel-machinekey volume (used by tests/05-e2e).
-CF="-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml"
+# Array (not string): each -f must stay its own argv element — quoting a
+# flat string would pass the whole flag list as ONE argument.
+CF=(-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml)
 info "Waiting for PostgreSQL..."
-docker compose "$CF" up -d postgres >/dev/null 2>&1
+docker compose "${CF[@]}" up -d postgres >/dev/null 2>&1
 for _ in $(seq 1 60); do
-  docker compose "$CF" ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
+  docker compose "${CF[@]}" ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
   sleep 5
 done
 info "Running Zitadel init + setup (idempotent)..."
-docker compose "$CF" run --rm zitadel init
+docker compose "${CF[@]}" run --rm zitadel init
 # --user 0:0: a freshly created named volume is root-owned and the
 # distroless image runs as uid 1000 — without this the PAT files cannot
 # be created on a first-ever run. Files land 0644 (world-readable).
-if ! docker compose "$CF" run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
+if ! docker compose "${CF[@]}" run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
   err "Zitadel setup failed — check the logs above"
   exit 1
 fi
