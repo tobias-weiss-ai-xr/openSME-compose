@@ -46,7 +46,10 @@ NC     := \033[0m
 # Environment
 # ---------------------------------------------------------------------------
 PROFILE    ?= soho
-DOMAIN     ?= $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
+# DOMAIN: .env wins over the ambient environment (an exported $DOMAIN from
+# an unrelated shell would otherwise silently point tests at a foreign
+# host); a make-command-line override (make e2e DOMAIN=x) still wins.
+DOMAIN     := $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
 COMPOSE    ?= docker compose
 TEST_ENV   ?= .env.example
 PYTHON     ?= python3
