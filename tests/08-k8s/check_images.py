@@ -4,7 +4,8 @@ tests/08-k8s/check_images.py — Image registry validation.
 
 Verifies that no running deployment or statefulset in the opensme namespaces
 references the old registry.opencode.de registry. All images should come from
-either the local registry (172.25.24.36:5001) or ghcr.io.
+either the local registry (K8S_LOCAL_REGISTRY, default registry.local:5001)
+or a public registry.
 
 Usage:
     python3 tests/08-k8s/check_images.py
@@ -14,6 +15,7 @@ Exit codes:
     1 = stale registry.opencode.de references found
 """
 
+import os
 import subprocess
 import json
 import sys
@@ -37,7 +39,7 @@ STALE_REGISTRIES = [
 
 # Acceptable registries
 ACCEPTABLE_REGISTRIES = [
-    "172.25.24.36:5001",  # local registry
+    os.environ.get("K8S_LOCAL_REGISTRY", "registry.local:5001"),  # local registry
     "ghcr.io",            # GitHub Container Registry
     "quay.io",            # quay.io (oauth2-proxy, keycloak)
     "docker.io",          # Docker Hub (nginx, etc.)

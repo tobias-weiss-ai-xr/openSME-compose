@@ -58,6 +58,14 @@ jobs:
           set -u
           FAIL=0
           while IFS= read -r -d '' f; do
+            # Documented non-leaks, verified by hand:
+            #  - vendored dependency tests (node_modules) contain upstream
+            #    unit-test fixtures with private-range IPv4 literals
+            #  - *_test.go / *_test.py canary fixtures deliberately embed
+            #    private IPs and fake secrets to test the redactor
+            case "$f" in
+              */node_modules/*|*_test.go|*_test.py) continue ;;
+            esac
             # RFC1918 10/8 — full dotted-quad only (avoids numeric literals)
             if grep -E '\b10\.([0-9]{1,3}\.){2}[0-9]{1,3}\b' "$f" 2>/dev/null; then
               echo "::error::RFC1918 10/8 IP in $f"; FAIL=1
@@ -67,8 +75,12 @@ jobs:
               echo "::error::private/link-local IPv4 in $f"; FAIL=1
             fi
             # Host filesystem paths (require a component after the username so
-            # container home dirs like /home/opensme are not flagged)
-            if grep -E '(/home|/Users|/srv)/[a-zA-Z0-9_.-]+/' "$f" 2>/dev/null; then
+            # container home dirs like /home/opensme are not flagged).
+            # /srv/etc is the SOGo container's config dir on its volume, not
+            # a host path (mail/sogo/sogo-entrypoint.sh).
+            if grep -E '(/home|/Users|/srv)/[a-zA-Z0-9_.-]+/' "$f" 2>/dev/null \
+              | grep -v '/srv/etc/' 2>/dev/null \
+              | grep -q .; then
               echo "::error::host filesystem path in $f"; FAIL=1
             fi
           done < <(git ls-files -z)

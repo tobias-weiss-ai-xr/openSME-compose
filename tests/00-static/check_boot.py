@@ -50,13 +50,15 @@ from conftest import ComposeLoader, Result, ROOT
 # Core services: a :latest update silently changes config/boot models.
 CORE_PINNED = {
     "traefik", "postgres", "redis", "memcached", "pgbouncer",
-    "stalwart", "zitadel", "opencloud", "collabora", "portal", "minio",
+    "stalwart", "zitadel", "collabora", "portal", "minio",
 }
 
 # Images that legitimately track a rolling line (documented; their own
 # migration/boot story handles upgrades). Adding more here needs intent.
 MUTABLE_IMAGES = {
     "minio",            # RELEASE-speed rolling; self-contained S3 daemon
+    "opencloud",        # opencloudeu/opencloud-rolling: the free community
+                        # line publishes :latest only (LTS is a paid offering)
     "sogo",             # salvoxia/sogo:latest is the only maintained tag
     "paperless-ngx",    # official guidance: track :latest for migrations
     "invoiceninja",     # major-version tag (invoiceninja:5), battletested
@@ -114,7 +116,7 @@ HEALTHCHECK_BINS = {
     "redis": ["redis-cli"],
     "memcached": ["nc"],
     "portal": ["busybox", "wget"],
-    "zitadel": ["zitadel", "/app/zitadel"],
+    "zitadel": ["zitadel", "/app/zitadel", "busybox"],  # busybox volume-injected (distroless)
     "opencloud": ["curl"],
     "collabora": ["curl"],
     "minio": ["mc"],
@@ -123,7 +125,7 @@ HEALTHCHECK_BINS = {
     "paperless-ngx": ["curl"],
     "gotenberg": ["curl"],
     "tika": ["curl"],
-    "invoiceninja": ["curl"],
+    "invoiceninja": ["curl", "pgrep"],  # php-fpm image ships procps
     "dev-agent": ["curl"],
 }
 

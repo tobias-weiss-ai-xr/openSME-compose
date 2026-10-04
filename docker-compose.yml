@@ -69,10 +69,11 @@ services:
       - "80:80"
       - "443:443"
     healthcheck:
-      # `traefik healthcheck --ping` can't resolve entrypoints without the
-      # static config file; probe /ping directly — ping.entryPoint=web
-      # serves it on :80 in-container (the v3 image ships busybox wget)
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/ping"]
+      # CLI healthcheck re-parses the flags it is given (not the daemon's)
+      # and HEADs the ping URL of the running daemon — the entrypoint flags
+      # must be repeated so it can build the :80 target.
+      test: ["CMD", "traefik", "healthcheck", "--ping=true",
+             "--ping.entryPoint=web", "--entryPoints.web.address=:80"]
       interval: 30s
       timeout: 5s
       retries: 3
