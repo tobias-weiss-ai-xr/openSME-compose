@@ -57,7 +57,11 @@ services:
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
       - "--api.dashboard=true"
-      - "--api.insecure=true"
+      # Secure mode: the dashboard/API is served ONLY via the authenticated
+      # router (Host(traefik.<domain>) + basicauth). api.insecure=true would
+      # expose an unauthenticated API on :8080 to every container on the
+      # network — leave it off.
+      - "--api.insecure=false"
       # Rate limiting for 500 users
       # gzip/brotli compression + rate limiting (file provider)
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
@@ -222,6 +226,8 @@ services:
     stop_grace_period: 60s
     command:
       - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
       - --save 300 100
       - --save 60 10000
       - --appendonly yes
@@ -233,8 +239,11 @@ services:
       - --loglevel notice
     volumes:
       - redis-data:/data
+    environment:
+      # for the healthcheck only (no AUTH warning noise)
+      - REDIS_PASSWORD
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 3

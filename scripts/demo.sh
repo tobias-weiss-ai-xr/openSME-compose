@@ -65,14 +65,17 @@ if [[ "${1:-}" == "--force-env" ]]; then
   warn "Regenerating .env (--force-env)"
 fi
 
+# Random password generator (needed by the generation block below AND the
+# upgrade-append block — must be defined unconditionally)
+pw() { openssl rand -base64 24; }
+
 if [[ "$FORCE_ENV" == true ]] || [[ ! -f .env ]]; then
   info "Generating .env with random passwords..."
 
-  pw() { openssl rand -base64 24; }
-
-  # Generate Traefik dashboard password and hash
+  # Generate Traefik dashboard password and hash — Traefik basicauth
+  # requires 'user:hash'; openssl emits the bare hash.
   TRAEFIK_PASS=$(pw)
-  TRAEFIK_HASH=$(printf '%s' "$TRAEFIK_PASS" | openssl passwd -apr1 -stdin 2>/dev/null || printf 'admin:')
+  TRAEFIK_HASH="admin:$(printf '%s' "$TRAEFIK_PASS" | openssl passwd -apr1 -stdin 2>/dev/null || true)"
   # Compose interpolates $ inside .env values — escape $ → $$ so the
   # apr1 hash ($apr1$salt$hash) survives; compose unescapes it again
   # when injecting the variable into containers.
@@ -95,6 +98,7 @@ COLLABORA_DOMAIN=collabora.opensme.local
 
 # Random passwords
 POSTGRES_PASSWORD=$(pw)
+REDIS_PASSWORD=$(pw)
 ZITADEL_DB_PASSWORD=$(pw)
 SOGO_DB_PASSWORD=$(pw)
 LDAP_ADMIN_PASSWORD=$(pw)
@@ -115,6 +119,24 @@ ENVEOF
   ok ".env created with random passwords"
 else
   info "Using existing .env"
+fi
+
+# ── Keep .env complete across upgrades ────────
+# New required variables introduced after an .env was generated are
+# appended with a fresh random value instead of failing the boot.
+if ! grep -q '^REDIS_PASSWORD=' .env; then
+  printf '\nREDIS_PASSWORD=%s\n' "$(pw)" >> .env
+  ok "Appended REDIS_PASSWORD to existing .env (new required var)"
+fi
+# Older .env files stored a bare apr1 hash; Traefik basicauth needs
+# 'user:hash' — regenerate so the dashboard is actually usable.
+TU_VAL=$(grep -m1 '^TRAEFIK_USERS=' .env | cut -d= -f2-)
+if [[ "$TU_VAL" != *:* ]]; then
+  TRAEFIK_PASS=$(pw)
+  HASH=$(printf '%s' "$TRAEFIK_PASS" | openssl passwd -apr1 -stdin | sed 's/\$/\$\$/g')
+  awk -v line="TRAEFIK_USERS=admin:${HASH}" '/^TRAEFIK_USERS=/{print line; next} {print}' .env > .env.tmp \
+    && mv .env.tmp .env
+  ok "Regenerated TRAEFIK_USERS with user:hash prefix (dashboard auth fixed)"
 fi
 
 # ── Provision deploy-time Zitadel artifacts ─

@@ -40,7 +40,7 @@ services:
       DB_NAME: notes_db
       DB_USER: notes_user
       DB_PASSWORD: ${NOTES_DB_PASSWORD:-CHANGEME_notes}
-      REDIS_URL: redis://redis:6379/1
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/1
       OIDC_RP_CLIENT_ID: "opendesk-notes"
       OIDC_RP_CLIENT_SECRET: ${NOTES_OIDC_CLIENT_SECRET:-CHANGEME_notes_oidc}
       OIDC_OP_JWKS_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/.well-known/openid-configuration/jwks"

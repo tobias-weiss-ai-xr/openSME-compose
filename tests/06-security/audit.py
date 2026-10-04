@@ -132,6 +132,89 @@ def check_tls_config(result, loader):
         result.warn("traefik: no ACME cert resolver")
 
 
+def check_traefik_api_secure(result, loader):
+    """Traefik must not serve the unauthenticated API on the insecure port.
+
+    --api.insecure=true binds an unauthenticated dashboard/API on :8080
+    inside the container network — every other container could read the
+    routing config and drive the API. The dashboard must be reachable only
+    via the authenticated websecure router (api@internal + basicauth).
+    """
+    traefik = loader.get_service("traefik")
+    if traefik is None:
+        result.skip("traefik: not in compose files (using system Traefik?)")
+        return
+
+    command = [str(c) for c in (traefik["data"].get("command") or [])]
+    insecure = [c for c in command if c.startswith("--api.insecure")]
+    if any(c in ("--api.insecure=true", "--api.insecure") for c in insecure):
+        result.fail("traefik: --api.insecure=true exposes an unauthenticated "
+                    "API on :8080 to the whole docker network")
+    else:
+        result.ok("traefik: api.insecure disabled")
+
+    # The secure dashboard router must carry an auth middleware
+    labels = [str(l) for l in (traefik["data"].get("labels") or [])]
+    has_internal = any("service=api@internal" in l for l in labels)
+    has_auth = any("middlewares=auth" in l or "basicauth" in l for l in labels)
+    if has_internal:
+        if has_auth:
+            result.ok("traefik: dashboard routed via api@internal with auth middleware")
+        else:
+            result.fail("traefik: dashboard router (api@internal) has no auth middleware")
+    else:
+        result.warn("traefik: no api@internal router found (dashboard disabled?)")
+
+
+def check_redis_auth(result, loader):
+    """Redis must require authentication (--requirepass).
+
+    Without a password any container on the network can read/flush the
+    shared cache (notes sessions, etc.).
+    """
+    redis = loader.get_service("redis")
+    if redis is None:
+        result.skip("redis: not in compose files")
+        return
+    command = [str(c) for c in (redis["data"].get("command") or [])]
+    if "--requirepass" in command:
+        # next list element is the interpolated value; ensure it is env-driven
+        idx = command.index("--requirepass")
+        val = command[idx + 1] if idx + 1 < len(command) else ""
+        if val.startswith("${") or val:
+            result.ok("redis: --requirepass set")
+        else:
+            result.fail("redis: --requirepass without a value")
+    else:
+        result.fail("redis: no --requirepass — unauthenticated on the docker network")
+
+
+def check_host_port_binding(result, loader):
+    """Published host ports must bind loopback unless the service is
+    intentionally internet-facing.
+
+    "80:80" binds 0.0.0.0 — every interface, including VPN/exposed ones.
+    Exceptions: traefik (public reverse proxy) and stalwart (public
+    MX/IMAP — mail must accept external connections by design).
+    """
+    INTERNET_FACING = {"traefik", "stalwart"}
+    for svc_name, svc in loader.services.items():
+        ports = svc["data"].get("ports") or []
+        for p in ports:
+            if isinstance(p, dict):
+                p = f"{p.get('published', '')}:{p.get('target', '')}"
+            if not isinstance(p, str) or ":" not in p:
+                continue
+            if svc_name in INTERNET_FACING:
+                result.ok(f"{svc_name}: internet-facing port {p} (by design)")
+                continue
+            if p.startswith("127.0.0.1:") or p.startswith("localhost:"):
+                result.ok(f"{svc_name}: host port binds loopback ({p})")
+            else:
+                result.fail(f"{svc_name}: host port {p} binds all interfaces "
+                            f"(use 127.0.0.1:{p})")
+
+
 def check_env_not_in_git(result):
     """.env must not be tracked in git."""
     env_file = ROOT / ".env"
@@ -217,6 +300,15 @@ def main():
 
     result.header("TLS configuration")
     check_tls_config(result, loader)
+
+    result.header("Traefik API exposure")
+    check_traefik_api_secure(result, loader)
+
+    result.header("Cache authentication")
+    check_redis_auth(result, loader)
+
+    result.header("Host port binding")
+    check_host_port_binding(result, loader)
 
     result.header("Secret management")
     check_env_not_in_git(result)

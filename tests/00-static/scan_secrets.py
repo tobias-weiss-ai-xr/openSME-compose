@@ -24,8 +24,9 @@ from conftest import Result, ROOT
 # Patterns that indicate hardcoded secrets.
 # Negative lookahead excludes placeholders (${VAR}, CHANGEME_) and reads from
 # config modules (config.X / os.environ.get / os.getenv) so variable *references*
-# are not mistaken for literal secrets.
-_REF = r'(?!CHANGEME|\$\{|(?:config|os|env)\.)'
+# are not mistaken for literal secrets. printf '%s' placeholders and command
+# substitutions ($(...)) are generators, not literals.
+_REF = r'(?!CHANGEME|\$\{|\$?\(|%s|(?:config|os|env)\.)'
 SECRET_PATTERNS = [
     (rf'password\s*[=:]\s*["\']?{_REF}[^"\'\s$]+', "hardcoded password"),
     (rf'api[_-]?key\s*[=:]\s*["\']?{_REF}[^"\'\s$]{{16,}}', "hardcoded API key"),
