@@ -184,26 +184,14 @@ fi
 # File order matters: overlays first, then demo profile (must be last to win).
 info "Building and starting openSME (demo mode)..."
 
-# CI pre-builds the portal image with layer caching and sets PORTAL_IMAGE;
-# rebuild only when nobody provided a usable image (locals get --build always
-# unless they opt in explicitly).
-if [[ "${PORTAL_SKIP_BUILD:-}" == "1" ]]; then
-  docker compose \
-    -f docker-compose.yml \
-    -f idm/zitadel.yml \
-    -f opencloud/opencloud.yml \
-    -f profiles/demo.dev.yml \
-    --profile standalone \
-    up -d
-else
-  docker compose \
-    -f docker-compose.yml \
-    -f idm/zitadel.yml \
-    -f opencloud/opencloud.yml \
-    -f profiles/demo.dev.yml \
-    --profile standalone \
-    up -d --build
-fi
+# Build and start — locals always rebuild so source edits land in the image.
+docker compose \
+  -f docker-compose.yml \
+  -f idm/zitadel.yml \
+  -f opencloud/opencloud.yml \
+  -f profiles/demo.dev.yml \
+  --profile standalone \
+  up -d --build
 
 echo ""
 ok "openSME Demo is running!"
