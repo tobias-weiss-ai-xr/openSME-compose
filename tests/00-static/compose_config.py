@@ -83,8 +83,16 @@ def has_compose_plugin() -> bool:
 
 
 def run_config(files: list[str], profiles: list[str]) -> tuple[bool, str]:
-    """Run `docker compose -f ... --profile ... config --quiet`."""
+    """Run `docker compose -f ... --profile ... config --quiet`.
+
+    Validated against .env.example (the documented defaults) — in CI there
+    is no .env, and fail-fast :? interpolations must resolve against the
+    example file, not an ambient local .env.
+    """
+    env_example = ROOT / ".env.example"
     cmd = ["docker", "compose"]
+    if env_example.exists():
+        cmd += ["--env-file", str(env_example)]
     for f in files:
         cmd += ["-f", str(ROOT / f)]
     for p in profiles:
