@@ -23,9 +23,13 @@ services:
     image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:latest}
     container_name: opendesk-zitadel
     restart: unless-stopped
-    # Fresh installs need `zitadel init` + `zitadel setup` once before `start`
-    # (run headlessly by the ansible role / `docker compose run`). The image is
-    # distroless — no shell here. TLS is terminated by Traefik (--tlsMode external).
+    # Fresh installs need `zitadel init` then
+    # `zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml`
+    # once before `start` (run headlessly by scripts/demo.sh, CI or the
+    # ansible role via `docker compose run`). --steps is REQUIRED for the
+    # machine-user/PAT seeding — v4 ignores the ZITADEL_FIRSTINSTANCE_*
+    # env fallbacks. The image is distroless — no shell here. TLS is
+    # terminated by Traefik (--tlsMode external).
     command: ["start", "--masterkeyFile", "/secrets/masterkey", "--tlsMode", "external"]
     depends_on:
       postgres:

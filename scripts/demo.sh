@@ -148,7 +148,10 @@ for _ in $(seq 1 60); do
 done
 info "Running Zitadel init + setup (idempotent)..."
 docker compose $CF run --rm zitadel init
-if ! docker compose $CF run --rm zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
+# --user 0:0: a freshly created named volume is root-owned and the
+# distroless image runs as uid 1000 — without this the PAT files cannot
+# be created on a first-ever run. Files land 0644 (world-readable).
+if ! docker compose $CF run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
   err "Zitadel setup failed — check the logs above"
   exit 1
 fi

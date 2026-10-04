@@ -115,7 +115,7 @@ jobs:
             sleep 5
           done
           docker compose $CF run --rm zitadel init
-          docker compose $CF run --rm zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml
+          docker compose $CF run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml
           docker compose $CF up -d --force-recreate zitadel
 
       - name: Wait for IdP and Portal
