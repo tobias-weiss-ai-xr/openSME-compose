@@ -167,7 +167,7 @@ Configuration (env vars win over `.env`):
 
 The seeded credentials come from `zitadel setup --steps /steps.yaml`
 (`idm/zitadel/steps.yaml` — v4 does not pick up the machine/PAT seeding
-from env vars alone): it creates the `opendesk-automation` machine user
+from env vars alone): it creates the `opensme-automation` machine user
 (IAM_OWNER, PAT at `/machinekey/pat`) and the `opensme-login-client`
 service user (IAM_LOGIN_CLIENT, PAT at `/machinekey/login-client.pat`).
 

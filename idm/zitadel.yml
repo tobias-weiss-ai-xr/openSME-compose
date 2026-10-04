@@ -77,7 +77,7 @@ services:
       ZITADEL_FIRSTINSTANCE_PATPATH: /machinekey/pat
       ZITADEL_FIRSTINSTANCE_MACHINEKEYPATH: /machinekey/machinekey.json
       ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /machinekey/login-client.pat
-      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: opendesk-automation
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: opensme-automation
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: openSME automation
       # v4 only seeds the PAT when FirstInstance.Org.Machine.Pat is non-nil;
       # the zero date means "never expires"

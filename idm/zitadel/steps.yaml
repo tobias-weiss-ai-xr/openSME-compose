@@ -13,7 +13,7 @@ FirstInstance:
   Org:
     Machine:
       Machine:
-        Username: opendesk-automation
+        Username: opensme-automation
         Name: openSME automation
       MachineKey:
         # 1 = JSON key file (JWT profile auth) at FirstInstance.MachineKeyPath
