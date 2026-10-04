@@ -84,7 +84,7 @@ func (l *LLM) ollama(ctx context.Context, prompt string) (string, error) {
 
 func (l *LLM) openaiCompatible(ctx context.Context, prompt string) (string, error) {
 	body, _ := json.Marshal(map[string]any{
-		"model": l.Model,
+		"model":    l.Model,
 		"messages": []map[string]string{{"role": "user", "content": prompt}},
 	})
 	return l.post(ctx, l.URL+"/chat/completions", body, func(raw []byte) (string, error) {

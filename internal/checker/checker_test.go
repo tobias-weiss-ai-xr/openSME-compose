@@ -24,9 +24,9 @@ func psJSON(name, state, project, service, status string) string {
 
 func TestRestartingDetected(t *testing.T) {
 	f := &fakeRunner{output: map[string]string{
-		"ps": psJSON("opensme-stalwart-1", "restarting", "opensme", "stalwart", "Restarting (1) 5 seconds ago") + "\n",
+		"ps":      psJSON("opensme-stalwart-1", "restarting", "opensme", "stalwart", "Restarting (1) 5 seconds ago") + "\n",
 		"inspect": `{"Restarting":true,"OOMKilled":false,"RestartCount":4}`,
-		"logs": "stalwart listener started\n",
+		"logs":    "stalwart listener started\n",
 	}}
 	c := New([]string{"opensme"}, f)
 	findings, err := c.Inspect(context.Background())
@@ -47,9 +47,9 @@ func TestRestartingDetected(t *testing.T) {
 
 func TestExitedWithRestartsDetected(t *testing.T) {
 	f := &fakeRunner{output: map[string]string{
-		"ps": psJSON("c1", "exited", "opensme", "sogo", "Exited (137) 2 minutes ago") + "\n",
+		"ps":      psJSON("c1", "exited", "opensme", "sogo", "Exited (137) 2 minutes ago") + "\n",
 		"inspect": `{"Restarting":false,"OOMKilled":false,"RestartCount":3}`,
-		"logs": "",
+		"logs":    "",
 	}}
 	c := New([]string{"opensme"}, f)
 	findings, _ := c.Inspect(context.Background())
@@ -60,9 +60,9 @@ func TestExitedWithRestartsDetected(t *testing.T) {
 
 func TestHealthyIgnored(t *testing.T) {
 	f := &fakeRunner{output: map[string]string{
-		"ps": psJSON("c1", "running", "opensme", "postgres", "Up 2 hours") + "\n",
+		"ps":      psJSON("c1", "running", "opensme", "postgres", "Up 2 hours") + "\n",
 		"inspect": `{"Restarting":false,"OOMKilled":false,"RestartCount":0,"Health":{"Status":"healthy"}}`,
-		"logs": "",
+		"logs":    "",
 	}}
 	c := New([]string{"opensme"}, f)
 	findings, _ := c.Inspect(context.Background())
@@ -73,9 +73,9 @@ func TestHealthyIgnored(t *testing.T) {
 
 func TestOOMAndHealthDetected(t *testing.T) {
 	f := &fakeRunner{output: map[string]string{
-		"ps": psJSON("c1", "running", "opensme", "postgres", "Up 2 minutes") + "\n",
+		"ps":      psJSON("c1", "running", "opensme", "postgres", "Up 2 minutes") + "\n",
 		"inspect": `{"Restarting":false,"OOMKilled":true,"RestartCount":0,"Health":{"Status":"unhealthy"}}`,
-		"logs": "",
+		"logs":    "",
 	}}
 	c := New([]string{"opensme"}, f)
 	findings, _ := c.Inspect(context.Background())
@@ -92,7 +92,7 @@ func TestWatchFilterAndLogSpike(t *testing.T) {
 		"ps": psJSON("in", "restarting", "opensme", "traefik", "Restarting (2) 1 minute ago") + "\n" +
 			psJSON("out", "restarting", "other", "web", "Restarting") + "\n",
 		"inspect": `{"Restarting":true,"OOMKilled":false,"RestartCount":2}`,
-		"logs": strings.Repeat("ERROR something failed\n", 6),
+		"logs":    strings.Repeat("ERROR something failed\n", 6),
 	}}
 	c := New([]string{"opensme"}, f)
 	findings, _ := c.Inspect(context.Background())

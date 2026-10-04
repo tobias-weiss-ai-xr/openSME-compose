@@ -163,17 +163,17 @@ fi
 # zitadel-machinekey volume (used by tests/05-e2e).
 CF="-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml"
 info "Waiting for PostgreSQL..."
-docker compose $CF up -d postgres >/dev/null 2>&1
+docker compose "$CF" up -d postgres >/dev/null 2>&1
 for _ in $(seq 1 60); do
-  docker compose $CF ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
+  docker compose "$CF" ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
   sleep 5
 done
 info "Running Zitadel init + setup (idempotent)..."
-docker compose $CF run --rm zitadel init
+docker compose "$CF" run --rm zitadel init
 # --user 0:0: a freshly created named volume is root-owned and the
 # distroless image runs as uid 1000 — without this the PAT files cannot
 # be created on a first-ever run. Files land 0644 (world-readable).
-if ! docker compose $CF run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
+if ! docker compose "$CF" run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml; then
   err "Zitadel setup failed — check the logs above"
   exit 1
 fi
@@ -182,13 +182,26 @@ fi
 # File order matters: overlays first, then demo profile (must be last to win).
 info "Building and starting openSME (demo mode)..."
 
-docker compose \
-  -f docker-compose.yml \
-  -f idm/zitadel.yml \
-  -f opencloud/opencloud.yml \
-  -f profiles/demo.dev.yml \
-  --profile standalone \
-  up -d --build
+# CI pre-builds the portal image with layer caching and sets PORTAL_IMAGE;
+# rebuild only when nobody provided a usable image (locals get --build always
+# unless they opt in explicitly).
+if [[ "${PORTAL_SKIP_BUILD:-}" == "1" ]]; then
+  docker compose \
+    -f docker-compose.yml \
+    -f idm/zitadel.yml \
+    -f opencloud/opencloud.yml \
+    -f profiles/demo.dev.yml \
+    --profile standalone \
+    up -d
+else
+  docker compose \
+    -f docker-compose.yml \
+    -f idm/zitadel.yml \
+    -f opencloud/opencloud.yml \
+    -f profiles/demo.dev.yml \
+    --profile standalone \
+    up -d --build
+fi
 
 echo ""
 ok "openSME Demo is running!"

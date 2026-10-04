@@ -14,6 +14,47 @@ permissions:
   contents: read
 
 jobs:
+  quality:
+    name: Code quality (fmt + lint + unit tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Rust (portal) ────────────────────────────────────────
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: cargo fmt --check (portal)
+        run: cargo fmt --check
+        working-directory: portal
+      - name: cargo clippy -D warnings (portal)
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: portal
+
+      # ── Go (dev-agent) ───────────────────────────────────
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: gofmt (fail on drift)
+        run: |
+          drift=$(gofmt -l . | grep -v node_modules || true)
+          if [ -n "$drift" ]; then echo "::error::unformatted Go files: $drift"; exit 1; fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+      # ── Shell (scripts) ──────────────────────────────────
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      - name: shellcheck (scripts)
+        run: shellcheck scripts/*.sh
+
   static:
     name: Static validation + secret scan
     runs-on: ubuntu-latest
@@ -116,19 +157,27 @@ jobs:
           docker rm "$cid" >/dev/null
           chmod +x idm/zitadel/busybox
 
-      - name: Boot demo stack (generates .env with random passwords)
-        run: bash scripts/demo.sh
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Initialize Zitadel (fresh installs need init + setup before start)
+      - name: Pre-build portal image (GHA layer cache)
+        # Build once with registry→GHA layer caching; demo.sh then skips its
+        # own --build (PORTAL_SKIP_BUILD=1). Cuts ~1min of rust deps compile
+        # per run — the cache reuses them unless Cargo.lock moves.
         run: |
           CF="-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml"
-          for _ in $(seq 1 60); do
-            docker compose $CF ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
-            sleep 5
-          done
-          docker compose $CF run --rm zitadel init
-          docker compose $CF run --rm --user 0:0 zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml
-          docker compose $CF up -d --force-recreate zitadel
+          IMG=$(docker compose $CF --env-file .env.example config --format json \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["portal"]["image"])')
+          echo "portal image: $IMG"
+          docker buildx build \
+            --cache-from type=gha,scope=portal \
+            --cache-to type=gha,scope=portal,mode=max \
+            -t "$IMG" --load portal/
+
+      - name: Boot demo stack (generates .env with random passwords)
+        env:
+          PORTAL_SKIP_BUILD: "1"
+        run: bash scripts/demo.sh
 
       - name: Wait for IdP and Portal
         run: |

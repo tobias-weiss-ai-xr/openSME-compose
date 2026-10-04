@@ -407,6 +407,16 @@ Environment variables for local development:
 | `MAIL_URL` | *(empty — card hidden)* | Webmail link |
 | `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
 
+### Code quality
+
+The CI "Code quality" job enforces formatters and linters; run the same
+locally:
+
+```bash
+make fmt        # apply rustfmt + gofmt
+make lint-code  # rustfmt --check, clippy -D warnings, gofmt/vet/test, shellcheck
+```
+
 ## Troubleshooting
 
 <details>

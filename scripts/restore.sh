@@ -58,7 +58,7 @@ if [ "$LIST" = true ]; then
   echo "Available backups in ${BACKUP_DIR}/:"
   echo ""
   # Group by timestamp
-  for ts in $(ls -1 "${BACKUP_DIR}"/*_*.sql.gz 2>/dev/null | sed 's/.*postgres_//' | sed 's/\.sql\.gz//' | sort -u); do
+  for ts in $(find "${BACKUP_DIR}" -maxdepth 1 -name '*_*.sql.gz' 2>/dev/null | sed 's/.*postgres_//' | sed 's/\.sql\.gz//' | sort -u); do
     echo "  📦 ${ts}"
     [ -f "${BACKUP_DIR}/postgres_${ts}.sql.gz" ] && echo "    PostgreSQL: postgres_${ts}.sql.gz ($(du -h "${BACKUP_DIR}/postgres_${ts}.sql.gz" | cut -f1))"
     [ -f "${BACKUP_DIR}/traefik_${ts}.tar.gz" ] && echo "    Traefik:    traefik_${ts}.tar.gz ($(du -h "${BACKUP_DIR}/traefik_${ts}.tar.gz" | cut -f1))"
@@ -77,7 +77,6 @@ if [ -z "$BACKUP_PREFIX" ]; then
 fi
 
 PG_FILE="${BACKUP_DIR}/postgres_${BACKUP_PREFIX}.sql.gz"
-TRAEFIK_FILE="${BACKUP_DIR}/traefik_${BACKUP_PREFIX}.tar.gz"
 VOLUMES_FILE="${BACKUP_DIR}/volumes_${BACKUP_PREFIX}.tar.gz"
 
 echo "📦 openSME Restore"

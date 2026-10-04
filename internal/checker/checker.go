@@ -83,8 +83,8 @@ type psLine struct {
 	State  string `json:"State"`
 	Status string `json:"Status"`
 	// Labels is a flat "k=v,k=v" string in docker ps JSON output.
-	Labels        string `json:"Labels"`
-	HealthStatus  string `json:"HealthStatus"`
+	Labels       string `json:"Labels"`
+	HealthStatus string `json:"HealthStatus"`
 }
 
 // label parses one compose label out of the flat Labels string.

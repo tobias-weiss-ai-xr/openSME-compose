@@ -295,9 +295,11 @@ async fn main() {
     let app = build_router(config);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap_or_else(|e| {
-        panic!("failed to bind to {addr}: {e}");
-    });
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .unwrap_or_else(|e| {
+            panic!("failed to bind to {addr}: {e}");
+        });
 
     info!("listening on {addr}");
 

@@ -31,8 +31,8 @@ type Entry struct {
 
 // Match is a knowledge query hit.
 type Match struct {
-	Service  string
-	Runbook  Runbook
+	Service string
+	Runbook Runbook
 }
 
 // Store is the loaded knowledge base.

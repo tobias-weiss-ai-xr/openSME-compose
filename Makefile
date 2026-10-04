@@ -160,6 +160,24 @@ bench:
 lint: compose-check yaml-lint env-check secret-scan perf-check
 	@echo -e "$(GREEN)✅ All linting passed$(NC)"
 
+# ────────────────────────────────────────────────────────────────
+# Code quality (mirrors the CI "Code quality" job)
+# ────────────────────────────────────────────────────────────────
+fmt: ## Apply all formatters (rustfmt, gofmt)
+	cd portal && cargo fmt
+	gofmt -w internal/ .
+	@echo -e "$(GREEN)✅ formats applied$(NC)"
+
+lint-code: ## Format checks + linters (no fixes) — what CI enforces
+	cd portal && cargo fmt --check
+	cd portal && cargo clippy --all-targets -- -D warnings
+	@if [ -n "$$(gofmt -l . | grep -v node_modules)" ]; then \
+		echo "unformatted Go files: $$(gofmt -l . | grep -v node_modules)"; exit 1; fi
+	go vet ./...
+	go test ./...
+	shellcheck scripts/*.sh
+	@echo -e "$(GREEN)✅ code quality gates passed$(NC)"
+
 compose-check:
 	@echo -e "$(BLUE)── docker compose config (profile: $(PROFILE)) ──$(NC)"
 	@$(FULL_COMPOSE) --env-file $(TEST_ENV) config --quiet 2>&1

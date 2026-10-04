@@ -141,6 +141,8 @@ fi
 # ── Validate .env ─────────────────────────────────
 step "Validating configuration"
 
+# .env is generated at deploy time (not tracked)
+# shellcheck source=/dev/null
 source .env
 
 DOMAINS=(
@@ -210,7 +212,7 @@ step "Waiting for services to become healthy"
 wait_for_healthy() {
   local name="$1" timeout="${2:-120}"
   local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
+  while [ "$elapsed" -lt "$timeout" ]; do
     status=$(docker inspect --format='{{.State.Health.Status}}' "$name" 2>/dev/null || echo "missing")
     if [[ "$status" == "healthy" ]]; then
       ok "$name is healthy"

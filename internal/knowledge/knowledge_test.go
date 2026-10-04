@@ -62,11 +62,11 @@ func TestQueryBySymptom(t *testing.T) {
 
 func TestMalformedFails(t *testing.T) {
 	cases := map[string]string{
-		"bad json":     `{"schema": 1, "service":`,
-		"wrong schema": `{"schema": 2, "service": "x", "runbooks": [{"symptoms": ["s"], "diagnosis": "d", "remediation": ["r"]}]}`,
-		"empty svc":    `{"schema": 1, "service": "", "runbooks": [{"symptoms": ["s"], "diagnosis": "d", "remediation": ["r"]}]}`,
+		"bad json":      `{"schema": 1, "service":`,
+		"wrong schema":  `{"schema": 2, "service": "x", "runbooks": [{"symptoms": ["s"], "diagnosis": "d", "remediation": ["r"]}]}`,
+		"empty svc":     `{"schema": 1, "service": "", "runbooks": [{"symptoms": ["s"], "diagnosis": "d", "remediation": ["r"]}]}`,
 		"name mismatch": `{"schema": 1, "service": "other", "runbooks": [{"symptoms": ["s"], "diagnosis": "d", "remediation": ["r"]}]}`,
-		"no runbooks":  `{"schema": 1, "service": "x", "runbooks": []}`,
+		"no runbooks":   `{"schema": 1, "service": "x", "runbooks": []}`,
 	}
 	for name, data := range cases {
 		fsys := fstest.MapFS{"kb/broken.json": &fstest.MapFile{Data: []byte(data)}}
