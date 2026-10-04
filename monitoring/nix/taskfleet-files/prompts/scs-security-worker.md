@@ -60,7 +60,7 @@ re-run. **Never commit code that fails the acceptance gate.**
 4. **SPDX headers**: Every new file starts with:
    ```
    # SPDX-License-Identifier: Apache-2.0
-   # SPDX-FileCopyrightText: 2026 openEDU Contributors
+   # SPDX-FileCopyrightText: 2026 openEduSuite Contributors
    ```
 5. **No imperative Nix**: Use `let/in` and `import` expressions, not `with`. Follow
    the pure-functional style of existing service files.
