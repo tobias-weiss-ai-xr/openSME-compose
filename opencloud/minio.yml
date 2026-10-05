@@ -10,36 +10,57 @@ x-service-defaults: &service-defaults
   security_opt:
     - no-new-privileges:true
 
-# ── MinIO S3-compatible storage ─────────────────
+# ── S3 object storage: SeaweedFS (was MinIO until 2026-10-05) ──
+# MinIO community edition is dead upstream: images pulled from Docker Hub
+# 2026-09, quay.io anonymous pulls closed 2026-10, and the final release
+# (RELEASE.2025-10-15) will never receive a fix. SeaweedFS serves the same
+# S3 API on :9000; the network alias `minio` keeps `http://minio:9000`
+# consumers working unchanged. Auth comes from ./opencloud/seaweedfs-s3.json
+# (placeholder defaults match OC_S3_* in .env.example — override both on
+# real deployments). The MinIO admin console is gone; there is no
+# minio-console hostname anymore. Old minio-data volumes stay as cold backup.
+#
+# Proxy-env note: hosts with docker client proxy config inject HTTP(S)_PROXY
+# into every container. Weed's internal gRPC (volume/filer/s3 → master) must
+# never traverse a corporate proxy — squid denies the private IP and only the
+# master ever binds (endless "wait to connect" loops). The empty overrides
+# below disable the injection for this service.
+#
 # Include via: COMPOSE_FILE=docker-compose.yml:opencloud/opencloud.yml:opencloud/minio.yml
-# Required for production OpenCloud (decomposeds3 storage driver).
-# Not needed for demo profiles (they override to STORAGE_USERS_DRIVER=ocis).
 
 services:
-  minio:
+  seaweedfs:
     <<: *service-defaults
-    image: minio/minio:latest
-    container_name: opendesk-minio
+    image: chrislusf/seaweedfs:3.99
+    container_name: opendesk-seaweedfs
     restart: unless-stopped
     stop_grace_period: 60s
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-    command: server /data --console-address ":9001"
+    command: server -dir=/data -master.volumeSizeLimitMB=10240 -s3 -s3.port=9000 -s3.config=/etc/seaweedfs/s3.json
     environment:
-      MINIO_ROOT_USER: ${OC_S3_ACCESS_KEY:-minio}
-      MINIO_ROOT_PASSWORD: ${OC_S3_SECRET_KEY:-CHANGEME_minio}
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      http_proxy: ""
+      https_proxy: ""
+      NO_PROXY: "*"
+      no_proxy: "*"
     volumes:
-      - minio-data:/data
+      - seaweedfs-data:/data
+      - ./opencloud/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      # weed binds S3 to the container IP only — 127.0.0.1:9000 is NOT up.
+      # Raft leader election takes ~20s; the healthcheck start_period rides
+      # it out and netstat only passes once S3 actually listens.
+      test: ["CMD-SHELL", "netstat -tln | grep -q ':9000 ' || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 30s
     networks:
-      - opendesk-net
+      opendesk-net:
+        aliases:
+          - minio
     deploy:
       resources:
         limits:
@@ -55,13 +76,7 @@ services:
       - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
       - "traefik.http.routers.minio.entrypoints=websecure"
       - "traefik.http.routers.minio.service=minio-api"
-      - "traefik.http.routers.minio-console.rule=Host(`minio-console.${OPENSME_DOMAIN:-opensme.org}`)"
-      - "traefik.http.routers.minio-console.tls=true"
-      - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.minio-console.entrypoints=websecure"
-      - "traefik.http.routers.minio-console.service=minio-console"
       - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
-      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
 
 volumes:
-  minio-data:
+  seaweedfs-data:

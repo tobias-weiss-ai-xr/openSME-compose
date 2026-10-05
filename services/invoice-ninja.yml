@@ -135,7 +135,8 @@ services:
       # NOTE: no certresolver here — internal hosts without LE use the
       # host-only compose.internal.yml to override these labels
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/health"]
+      # env -u: never let host-injected proxy env redirect the health probe
+      test: ["CMD-SHELL", "env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY wget -q -O /dev/null http://127.0.0.1:80/health"]
       interval: 30s
       timeout: 5s
       retries: 5

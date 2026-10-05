@@ -1,0 +1,16 @@
+{
+  "identities": [
+    {
+      "name": "opendesk-admin",
+      "actions": [
+        "Admin"
+      ],
+      "credentials": [
+        {
+          "accessKey": "minio",
+          "secretKey": "CHANGEME_minio"
+        }
+      ]
+    }
+  ]
+}
