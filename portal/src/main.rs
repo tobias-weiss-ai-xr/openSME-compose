@@ -1,6 +1,7 @@
 use axum::{
     extract::State,
     http::StatusCode,
+    middleware,
     response::{Html, IntoResponse, Json},
     routing::{get, post},
     Router,
@@ -527,6 +528,29 @@ async fn handle_ai_chat(
     }
 }
 
+/// Security headers on every response (belt-and-braces with the CSP meta
+/// tag in the HTML — headers also cover the JSON API responses).
+async fn security_headers(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut res = next.run(request).await;
+    let h = res.headers_mut();
+    h.insert("x-content-type-options", "nosniff".parse().unwrap());
+    h.insert("x-frame-options", "DENY".parse().unwrap());
+    h.insert(
+        "referrer-policy",
+        "strict-origin-when-cross-origin".parse().unwrap(),
+    );
+    h.insert(
+        "content-security-policy",
+        "default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'"
+            .parse()
+            .unwrap(),
+    );
+    res
+}
+
 fn build_router(config: Arc<AppConfig>) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -544,7 +568,10 @@ fn build_router(config: Arc<AppConfig>) -> Router {
         router = router.route("/api/ai/chat", post(handle_ai_chat));
     }
 
-    router.layer(cors).with_state(config)
+    router
+        .layer(middleware::from_fn(security_headers))
+        .layer(cors)
+        .with_state(config)
 }
 
 async fn handle_app_js() -> impl IntoResponse {

@@ -31,7 +31,7 @@ services:
   traefik:
     <<: *service-defaults
     image: ${TRAEFIK_IMAGE:-traefik:latest}
-    container_name: opendesk-traefik
+    container_name: opensme-traefik
     profiles: ["standalone"]
     restart: unless-stopped
     stop_grace_period: 30s
@@ -45,7 +45,7 @@ services:
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
-      - "--providers.docker.network=opendesk-net"
+      - "--providers.docker.network=opensme-net"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
       - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
@@ -87,7 +87,7 @@ services:
       - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - traefik-data:/etc/traefik
     networks:
-      opendesk-net:
+      opensme-net:
         # opencloud resolves the public IdP/web hostnames to traefik on the
         # docker network (TLS path intact, no /etc/hosts hacks); OC_INSECURE
         # covers the self-signed cert for .local deployments
@@ -120,7 +120,7 @@ services:
   postgres:
     <<: *service-defaults
     image: ${POSTGRES_IMAGE:-postgres:17}
-    container_name: opendesk-postgres
+    container_name: opensme-postgres
     restart: unless-stopped
     stop_grace_period: 120s
     shm_size: 256M
@@ -176,7 +176,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:
@@ -190,7 +190,7 @@ services:
   pgbouncer:
     <<: *service-defaults
     image: ${PGBOUNCER_IMAGE:-bitnamilegacy/pgbouncer:latest}
-    container_name: opendesk-pgbouncer
+    container_name: opensme-pgbouncer
     restart: unless-stopped
     environment:
       POSTGRESQL_HOST: postgres
@@ -217,7 +217,7 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:
@@ -231,7 +231,7 @@ services:
   redis:
     <<: *service-defaults
     image: ${REDIS_IMAGE:-redis:alpine}
-    container_name: opendesk-redis
+    container_name: opensme-redis
     restart: unless-stopped
     stop_grace_period: 60s
     command:
@@ -259,7 +259,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:
@@ -272,7 +272,7 @@ services:
   memcached:
     <<: *service-defaults
     image: ${MEMCACHED_IMAGE:-memcached:alpine}
-    container_name: opendesk-memcached
+    container_name: opensme-memcached
     restart: unless-stopped
     command: memcached -m 2048 -c 4096 -t 4
     healthcheck:
@@ -281,7 +281,7 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:
@@ -304,7 +304,7 @@ services:
     build:
       context: ./portal
       dockerfile: Dockerfile
-    container_name: opendesk-portal
+    container_name: opensme-portal
     restart: unless-stopped
     environment:
       PORTAL_DOMAIN: ${PORTAL_DOMAIN:-portal.opensme.org}
@@ -331,7 +331,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - opendesk-net
+      - opensme-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
@@ -349,8 +349,8 @@ services:
           memory: 32M
 
 networks:
-  opendesk-net:
-    name: opendesk-net
+  opensme-net:
+    name: opensme-net
     driver: bridge
 
 volumes:

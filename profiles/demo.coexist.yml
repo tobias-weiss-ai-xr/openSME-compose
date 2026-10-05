@@ -28,7 +28,7 @@
 # Network: join the existing Traefik's Docker network.
 # Find it: docker inspect <traefik-container> --format '{{range $n, $_ := .NetworkSettings.Networks}}{{$n}}'
 networks:
-  opendesk-net:
+  opensme-net:
     name: ${EXISTING_NETWORK:-traefik-web}
     external: true
 
@@ -55,20 +55,20 @@ services:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opendesk-portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
-      - "traefik.http.routers.opendesk-portal.tls=true"
-      - "traefik.http.routers.opendesk-portal.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
-      - "traefik.http.services.opendesk-portal.loadbalancer.server.port=8080"
+      - "traefik.http.routers.opensme-portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.opensme-portal.tls=true"
+      - "traefik.http.routers.opensme-portal.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
+      - "traefik.http.services.opensme-portal.loadbalancer.server.port=8080"
 
   # ── Zitadel ────────────────────────────────
   zitadel:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opendesk-zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"
-      - "traefik.http.routers.opendesk-zitadel.tls=true"
-      - "traefik.http.routers.opendesk-zitadel.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
-      - "traefik.http.services.opendesk-zitadel.loadbalancer.server.port=8080"
+      - "traefik.http.routers.opensme-zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.opensme-zitadel.tls=true"
+      - "traefik.http.routers.opensme-zitadel.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
+      - "traefik.http.services.opensme-zitadel.loadbalancer.server.port=8080"
 
   # ── LDAP (legacy, not used with Zitadel) ──
   # ldap:
@@ -79,7 +79,7 @@ services:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opendesk-opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
-      - "traefik.http.routers.opendesk-opencloud.tls=true"
-      - "traefik.http.routers.opendesk-opencloud.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
-      - "traefik.http.services.opendesk-opencloud.loadbalancer.server.port=9200"
+      - "traefik.http.routers.opensme-opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
+      - "traefik.http.routers.opensme-opencloud.tls=true"
+      - "traefik.http.routers.opensme-opencloud.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
+      - "traefik.http.services.opensme-opencloud.loadbalancer.server.port=9200"

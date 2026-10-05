@@ -49,7 +49,7 @@ Any single tool on this list is easy to install alone. The hard part —
 and the reason this project exists — is that everything already works
 **together**, and keeps working together:
 
-- **One stack, one command** — every component shares one `opendesk-net`
+- **One stack, one command** — every component shares one `opensme-net`
   network, one Traefik TLS edge, one PostgreSQL, one backup/restore path.
 - **One login** — Zitadel OIDC wired into every service that supports it;
   proven by automated end-to-end login flows in CI, not by screenshots.
@@ -259,8 +259,9 @@ docker compose --profile notes up -d                        # Collaborative note
 ```bash
 ./scripts/demo.sh
 # → Portal:    http://localhost:8080
-# → Zitadel:   http://localhost:8081
-# → OpenCloud: http://localhost:8082
+# → Zitadel & OpenCloud via Traefik TLS (self-signed):
+#     echo '127.0.0.1 auth.opensme.local cloud.opensme.local' | sudo tee -a /etc/hosts
+#     https://auth.opensme.local  ·  https://cloud.opensme.local
 ```
 
 Requires **2 vCPU / 4 GB RAM** — perfect for evaluation.
@@ -518,7 +519,7 @@ The `demo.sh` and `demo-live.sh` scripts generate this automatically.
 If Zitadel fails to connect to PostgreSQL on first start:
 
 ```bash
-docker compose logs opendesk-zitadel
+docker compose logs opensme-zitadel
 # Look for "failed to connect" or "connection refused"
 ```
 
@@ -942,7 +943,7 @@ cloud.home.opensme.org.  IN A   <your-server-ip>
 2. **Generate a Zitadel master key**: `head -c 32 /dev/urandom | base64 > idm/secrets/masterkey && chmod 600 idm/secrets/masterkey`
 3. **Set a strong `TRAEFIK_USERS`** htpasswd: `htpasswd -nb admin 'YOUR_PASSWORD'`
 4. **Close unnecessary ports** — only 80, 443 should be public. PostgreSQL (5432),
-   Redis (6379), etc. must be on `opendesk-net` only, never published.
+   Redis (6379), etc. must be on `opensme-net` only, never published.
 5. **Enable firewall** (UFW or equivalent):
    ```bash
    sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw enable

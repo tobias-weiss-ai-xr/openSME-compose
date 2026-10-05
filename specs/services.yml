@@ -13,7 +13,7 @@ services:
     profiles: [invoice]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [invoiceninja-db, redis]
     volumes:
       - invoiceninja-public:/var/www/app/public
@@ -32,7 +32,7 @@ services:
     profiles: [paperless]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres, redis]
     volumes:
       - paperless-data:/usr/src/paperless/data
@@ -52,7 +52,7 @@ services:
     profiles: [paperless]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     traefik_labels: false
     resource_limits:
       memory: 96M
@@ -64,7 +64,7 @@ services:
     profiles: [tika]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     traefik_labels: false
     resource_limits:
       memory: 512M
@@ -76,7 +76,7 @@ services:
     profiles: [collab]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     volumes:
       - cryptpad-data:/cryptpad/data
       - cryptpad-blob:/cryptpad/blob
@@ -94,7 +94,7 @@ services:
     profiles: [chat]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres]
     volumes:
       - synapse-data:/data
@@ -112,7 +112,7 @@ services:
     profiles: [element]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     traefik_labels: true
     resource_limits:
       memory: 48M
@@ -124,7 +124,7 @@ services:
     profiles: [notes]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres]
     volumes:
       - notes-data:/data
@@ -144,7 +144,7 @@ services:
     profiles: [notes]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [notes-backend]
     traefik_labels: true
     resource_limits:
@@ -157,7 +157,7 @@ services:
     profiles: [notes]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     env:
       - NOTES_COLLABORATION_SECRET
     traefik_labels: false
@@ -171,7 +171,7 @@ services:
     profiles: [ticketing]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres, redis]
     volumes:
       - nosdesk-uploads:/app/uploads
@@ -191,7 +191,7 @@ services:
     profiles: [cms]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: []
     volumes:
       - cms-data:/config
@@ -208,7 +208,7 @@ services:
     profiles: [store]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: []
     volumes:
       - store-data:/data
@@ -226,7 +226,7 @@ services:
     profiles: [ai]
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: []
     volumes:
       - ai-models:/models

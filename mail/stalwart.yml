@@ -20,7 +20,7 @@ services:
   stalwart:
     <<: *service-defaults
     image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.15}
-    container_name: opendesk-stalwart
+    container_name: opensme-stalwart
     hostname: mail.${OPENSME_DOMAIN:-opensme.org}
     restart: unless-stopped
     stop_grace_period: 120s
@@ -51,7 +51,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opendesk-net
+      - opensme-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.org}`)"

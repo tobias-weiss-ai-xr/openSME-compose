@@ -29,7 +29,7 @@ services:
   nosdesk:
     <<: *service-defaults
     image: ${NOSDESK_IMAGE:-ghcr.io/nosdesk/nosdesk:1.0.12}
-    container_name: opendesk-nosdesk
+    container_name: opensme-nosdesk
     restart: unless-stopped
     profiles: ["ticketing"]
     environment:
@@ -72,7 +72,7 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:

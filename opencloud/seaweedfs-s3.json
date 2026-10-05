@@ -1,7 +1,7 @@
 {
   "identities": [
     {
-      "name": "opendesk-admin",
+      "name": "opensme-admin",
       "actions": [
         "Admin"
       ],

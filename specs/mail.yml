@@ -9,7 +9,7 @@ services:
     required: false
     host_ports: [25, 143, 587]  # SMTP, IMAP, Submission (TLS terminated by Traefik)
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     volumes:
       - stalwart-etc:/opt/stalwart/etc
       - stalwart-data:/var/lib/stalwart
@@ -26,7 +26,7 @@ services:
     required: false
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres]
     volumes:
       - sogo-config:/etc/sogo

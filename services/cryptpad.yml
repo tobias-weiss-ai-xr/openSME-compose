@@ -24,7 +24,7 @@ services:
   cryptpad:
     <<: *service-defaults
     image: cryptpad/cryptpad:latest
-    container_name: opendesk-cryptpad
+    container_name: opensme-cryptpad
     restart: unless-stopped
     profiles: ["collab"]
     environment:
@@ -39,7 +39,7 @@ services:
       - cryptpad-blob:/cryptpad/blob
       - ./services/cryptpad-config/config.js:/cryptpad/config/config.js:ro
     networks:
-      - opendesk-net
+      - opensme-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pad.rule=Host(`pad.${OPENSME_DOMAIN:-opensme.org}`)"

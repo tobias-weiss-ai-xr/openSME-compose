@@ -31,7 +31,7 @@ services:
   typst-render:
     <<: *service-defaults
     image: ghcr.io/tobias-weiss-ai-xr/typst-render:latest
-    container_name: opendesk-typst-render
+    container_name: opensme-typst-render
     restart: unless-stopped
     user: "1000:1000"
     environment:
@@ -45,7 +45,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:
