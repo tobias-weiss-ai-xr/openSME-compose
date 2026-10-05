@@ -82,8 +82,10 @@ LAYERS = {
     },
     4: {
         "name": "Integration tests",
-        "description": "Service interactions (OIDC, DB, Redis)",
-        "scripts": [],
+        "description": "Cross-service wiring: DB provisioning, pgbouncer, SSO issuer, live AI proxy",
+        "scripts": [
+            ("Cross-service integration", "tests/04-integration/run.py"),
+        ],
         "requires_stack": True,
     },
     5: {

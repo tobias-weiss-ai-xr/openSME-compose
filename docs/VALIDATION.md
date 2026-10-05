@@ -13,7 +13,7 @@ How the openSME Compose distribution is validated before release.
 | 1 · Specs | spec compliance (`tests/01-specs`) | ✅ |
 | 2 · Contracts | service/contract validation | ✅ |
 | 3 · Smoke | HTTP endpoints + container health (`tests/03-smoke`) | host |
-| 4 · Integration | service-to-service API checks (reserved) | — |
+| 4 · Integration | cross-service wiring: DB provisioning, pgbouncer, SSO issuer, live AI proxy | host |
 | 5 · E2E | real SSO/OIDC journeys over HTTP (Zitadel Session API, no browser) + portal security-header contract | ✅ |
 | 6 · Security | hardening audit: exposed ports, secrets, TLS, privileges | host |
 | 7 · Bench | `tests/07-bench/run_bench.py` — memory + p50/p95/p99 latency | optional (manual) |
