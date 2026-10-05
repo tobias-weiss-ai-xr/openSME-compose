@@ -64,6 +64,10 @@ MUTABLE_IMAGES = {
     "invoiceninja",     # major-version tag (invoiceninja:5), battletested
     "gotenberg",        # major-version tag (gotenberg:8)
     "tika",             # apache/tika:latest, optional profile
+    "cms",              # crap-cms: upstream publishes :latest only
+                        # (0 GitHub releases as of 2026-10; override via
+                        # CMS_IMAGE once tags exist)
+    "crap-cms",         # see "cms" above (image base name)
     "casdoor",          # optional demo IAM, auth playground only
     "dev-agent",        # built from repo source (role uses a local version tag)
     "predictive-agent",
@@ -105,6 +109,9 @@ IMAGE_OF = {
     "paperless-gotenberg": "gotenberg",
     "paperless-tika": "tika",
     "invoiceninja": "invoiceninja",
+    "nosdesk": "nosdesk",
+    "cms": "crap-cms",
+    "store": "raisfast",
     "dev-agent": "dev-agent",
 }
 
@@ -122,6 +129,9 @@ HEALTHCHECK_BINS = {
     "minio": ["mc"],
     "stalwart": ["bash"],
     "sogo": ["curl"],
+    "nosdesk": ["curl"],
+    "crap-cms": ["wget"],   # alpine busybox wget
+    "raisfast": ["wget"],   # busybox:1.36-musl base
     "paperless-ngx": ["curl"],
     "gotenberg": ["curl"],
     "tika": ["curl"],

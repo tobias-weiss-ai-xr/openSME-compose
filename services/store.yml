@@ -1,0 +1,73 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ═══════════════════════════════════════════════════════════════
+# openSME — RaisFast (store / e-commerce, also serves a blog CMS)
+# ═══════════════════════════════════════════════════════════════
+# Rust single binary: products, cart, orders, payments, blog/pages,
+# embedded React admin. Embedded SQLite (zero external deps) — the
+# database lives in the store-data volume.
+#
+# Include via: COMPOSE_FILE=…:services/store.yml
+# Or via profile: docker compose --profile store up -d
+#
+# EARLY-ALPHA upstream (v0.4.2, pre-1.0): pinned to the release
+# artifact + sha256 in services/store/Dockerfile. Expect breaking
+# changes between versions; take a volume backup before upgrading.
+# First boot prints the generated admin password ONCE to the logs —
+# or set STORE_ADMIN_PASSWORD below. Change it immediately.
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  store:
+    <<: *service-defaults
+    # local build from the pinned upstream release artifact (sha256-
+    # verified in services/store/Dockerfile) — no registry image exists
+    image: raisfast:0.4.2
+    build:
+      context: ./services/store
+      args:
+        RAISFAST_ARCH: ${STORE_ARCH:-x86_64}
+    container_name: opendesk-store
+    restart: unless-stopped
+    profiles: ["store"]
+    environment:
+      # optional: pin the bootstrap admin password instead of the
+      # one-time printed default
+      ADMIN_INITIAL_PASSWORD: ${STORE_ADMIN_PASSWORD:-}
+    volumes:
+      - store-data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.store.rule=Host(`shop.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.store.tls=true"
+      - "traefik.http.routers.store.entrypoints=websecure"
+      - "traefik.http.services.store.loadbalancer.server.port=9898"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9898/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - opendesk-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+volumes:
+  store-data:

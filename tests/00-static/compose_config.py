@@ -45,6 +45,12 @@ MATRIX = [
      ["invoice"], None),
     ("base+paperless", ["docker-compose.yml", "services/paperless.yml"],
      ["paperless"], None),
+    ("base+ticketing", ["docker-compose.yml", "services/ticketing.yml"],
+     ["ticketing"], None),
+    ("base+cms", ["docker-compose.yml", "services/cms.yml"],
+     ["cms"], None),
+    ("base+store", ["docker-compose.yml", "services/store.yml"],
+     ["store"], None),
     ("base+agent", ["docker-compose.yml", "monitoring/dev-agent.yml"],
      ["standalone"], None),
     # Full deploy set for each RAM tier

@@ -107,7 +107,7 @@ up-medium:
 up-all:
 	@echo -e "$(BLUE)── starting openSME (ALL services) ──$(NC)"
 	@$(FULL_COMPOSE) --env-file $(TEST_ENV) \
-		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes \
+		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes --profile ticketing --profile cms --profile store \
 		up -d
 	@echo -e "$(GREEN)✓ Stack started with all optional services$(NC)"
 
@@ -344,6 +344,9 @@ help:
 	@echo "      --profile chat      Synapse (Matrix chat)"
 	@echo "      --profile element   Element-Web (Matrix client)"
 	@echo "      --profile collab    CryptPad (collaborative docs)"
+	@echo "      --profile ticketing Nosdesk helpdesk (tickets + KB)"
+	@echo "      --profile cms       crap-cms (lightweight website CMS)"
+	@echo "      --profile store     RaisFast (e-commerce storefront)"
 	@echo "      --profile notes     Notes/Impress (collaborative editing)"
 	@echo ""
 	@echo -e "  $(GREEN)VPS Tiers$(NC)"

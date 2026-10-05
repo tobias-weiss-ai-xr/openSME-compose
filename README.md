@@ -83,6 +83,9 @@ COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml" docker compose up -d
 | **Collaboration** | [CryptPad](https://cryptpad.org/) — collaborative docs (optional) |
 | **Chat** | [Synapse](https://matrix.org/) + [Element](https://element.io/) — Matrix messaging (optional) |
 | **Notes** | [Impress](https://lasuite.impress/) — collaborative note-taking (optional) |
+| **Ticketing** | [Nosdesk](https://nosdesk.com/) — Rust helpdesk: tickets, kanban, knowledge base (optional) |
+| **Website** | [crap-cms](https://github.com/dkluhzeb/crap-cms) — lightweight Rust CMS, HTMX admin, embedded SQLite (optional) |
+| **Store** | [RaisFast](https://raisfast.com/) — Rust e-commerce: products, cart, orders (optional) |
 | **Database** | PostgreSQL 17 + PgBouncer connection pooling |
 | **Cache** | Redis 7 + Memcached 1.6 |
 | **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
@@ -287,6 +290,9 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `services/synapse.yml` | Synapse (Matrix) | `matrix.*` | For chat (`--profile chat`) |
 | `services/element.yml` | Element-Web | `element.*` | For Matrix client (`--profile element`) |
 | `services/notes.yml` | Notes/Impress + Y-Provider | `notes.*` | For collaborative notes (`--profile notes`) |
+| `services/ticketing.yml` | Nosdesk (helpdesk) | `help.*` | For tickets & KB (`--profile ticketing`) |
+| `services/cms.yml` | crap-cms (website CMS) | `www.*` | For public website (`--profile cms`) |
+| `services/store.yml` | RaisFast (e-commerce) | `shop.*` | For storefront (`--profile store`) |
 | `profiles/soho.yml` | (resource overrides) | — | SOHO tier (4c/8G) |
 | `profiles/small.yml` | (resource overrides) | — | Small tier (8c/24G) |
 | `profiles/medium.yml` | (resource overrides) | — | Medium tier (16c/48G) |
@@ -406,6 +412,9 @@ Environment variables for local development:
 | `OPENCLOUD_URL` | `https://cloud.opensme.org` | OpenCloud link |
 | `MAIL_URL` | *(empty — card hidden)* | Webmail link |
 | `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
+| `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Support / Website / Shop cards |
+| `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON banner array (`info`/`warn`) |
+| `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | AI assistant (OpenAI-compatible `/v1/chat/completions`) |
 
 ### Code quality
 
@@ -725,9 +734,40 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `OC_OIDC_SECRET` | `CHANGEME_*` | OpenCloud ↔ Zitadel OIDC client secret |
 | `TRAEFIK_ACME_EMAIL` | `admin@...` | Let's Encrypt registration email |
 | `TRAEFIK_USERS` | `admin:$$apr1$$...` | Traefik dashboard basic-auth (htpasswd) |
+| `NOSDESK_DB_PASSWORD` | `CHANGEME_*` | Nosdesk ticketing DB password (required for `--profile ticketing`) |
+| `NOSDESK_JWT_SECRET` | `CHANGEME_*` | Nosdesk JWT signing secret (required for `--profile ticketing`) |
+| `NOSDESK_MFA_KEK` | `CHANGEME_*` | Nosdesk MFA key-encryption key — `openssl rand -hex 32` (required for `--profile ticketing`) |
+| `NOSDESK_OIDC_*` | *(empty)* | Nosdesk SSO via Zitadel (issuer/client-id/client-secret) |
+| `STORE_ADMIN_PASSWORD` | *(random)* | RaisFast bootstrap admin password (else printed once to logs) |
+| `CMS_IMAGE` | upstream `:latest` | crap-cms image override — pin once upstream tags releases |
+| `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Portal cards for ticketing / website / store |
+| `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON array of portal banners: `[{'level':'info\|warn','text':'…'}]` |
+| `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | OpenAI-compatible endpoint for the portal AI assistant |
 
 > **⚠️ Change all `CHANGEME_*` passwords before production!**
 > Use `openssl rand -base64 24` to generate secure values.
+
+### Optional components — maturity notes
+
+- **Nosdesk** (`--profile ticketing`): upstream license is **BSL 1.1**
+  (source-available; self-hosting an internal helpdesk is permitted use).
+  SSO is wired via generic OIDC — create an OIDC app in Zitadel and set
+  `NOSDESK_OIDC_*` in `.env`. On **existing** PostgreSQL volumes (created
+  before ticketing was enabled) the per-service roles/grants are only
+  applied by the init scripts on first init — enable ticketing on a fresh
+  volume, or mirror the `nosdesk` block from
+  [`postgres-init/01-create-users.sh`](postgres-init/01-create-users.sh)
+  manually (roles `nosdesk_app`/`nosdesk_admin`, membership grants, DB
+  ownership).
+- **crap-cms** (`--profile cms`): alpha software; upstream publishes
+  `:latest` only (no semver tags yet — pin via `CMS_IMAGE` once they do).
+  First login: `admin@crap.studio` / `admin123` — **change immediately**.
+- **RaisFast** (`--profile store`): alpha (v0.4.2); image is built locally
+  from the sha256-verified upstream release artifact. The admin panel is
+  at `shop.<domain>/admin`; publish the storefront from there (root 404s
+  until a site is published). Take a `store-data` volume backup before
+  upgrading — pre-1.0 releases may migrate the embedded SQLite schema
+  without a rollback path.
 
 ## Makefile
 

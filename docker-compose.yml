@@ -131,6 +131,16 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGEME_postgres}
       POSTGRES_USER: opensme
       POSTGRES_DB: opensme
+      # Per-service DB passwords for postgres-init/01-create-users.sh —
+      # initdb scripts run INSIDE this container and only see env passed
+      # here (the script's :-changeme fallbacks otherwise win, and the
+      # profile-gated service then fails auth against a 'changeme' user).
+      CASDOOR_DB_PASSWORD: ${CASDOOR_DB_PASSWORD:-changeme}
+      SYNAPSE_DB_PASSWORD: ${SYNAPSE_DB_PASSWORD:-changeme}
+      PAPERLESS_DB_PASSWORD: ${PAPERLESS_DB_PASSWORD:-changeme}
+      INVOICENINJA_DB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-changeme}
+      NOTES_DB_PASSWORD: ${NOTES_DB_PASSWORD:-changeme}
+      NOSDESK_DB_PASSWORD: ${NOSDESK_DB_PASSWORD:-changeme}
     # Production tuning for up to 500 users (via CLI args)
     command:
       - "-c"
@@ -303,6 +313,13 @@ services:
       MAIL_URL: ${MAIL_URL:-}
       IDP_URL: https://${ZITADEL_DOMAIN:-auth.opensme.org}
       COLLABORA_URL: ${COLLABORA_URL:-}
+      TICKETING_URL: ${TICKETING_URL:-}
+      CMS_URL: ${CMS_URL:-}
+      SHOP_URL: ${SHOP_URL:-}
+      PORTAL_ANNOUNCEMENTS: ${PORTAL_ANNOUNCEMENTS:-}
+      AI_API_URL: ${AI_API_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
       RUST_LOG: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
