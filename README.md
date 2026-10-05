@@ -6,8 +6,10 @@
 
 **Self-hosted digital workplace for small &amp; medium enterprises.**
 
-Docker Compose-based — from 5 to 500 users. SSO-first: one login for files,
-mail, groupware, documents &amp; chat.
+Docker Compose-based — from 5 to 500 users. **The integration is the
+product**: one stack, one login, one entry point — files, mail, groupware,
+documents, chat, ticketing, store &amp; local AI, wired together and kept
+that way by a contract-test pyramid.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE.md)
 [![CI](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml)
@@ -38,6 +40,27 @@ mail, groupware, documents &amp; chat.
 For 50 users on Google Workspace: **$300–$1,800/month**.
 With openSME on a Hetzner CX22 (~€15/mo): **€15/month total.**
 That's a **95–99% cost reduction** while keeping full data sovereignty.
+
+## The integration is the product
+
+Any single tool on this list is easy to install alone. The hard part —
+and the reason openSME exists — is that everything already works
+**together**, and keeps working together:
+
+- **One stack, one command** — every component shares one `opendesk-net`
+  network, one Traefik TLS edge, one PostgreSQL, one backup/restore path.
+- **One login** — Zitadel OIDC wired into every service that supports it;
+  proven by automated end-to-end login flows in CI, not by screenshots.
+- **One entry point** — the portal: service cards, ⌘K fast-switch palette,
+  company announcements (intercom), and an AI assistant that works with
+  the built-in llama.cpp backend out of the box.
+- **Optional, not separate** — ticketing, CMS, store and AI join the same
+  identity, network, and TLS contracts via compose profiles; enable them
+  and they simply fit in.
+- **Contracts, not hope** — a spec-contract test pyramid (service catalog →
+  compose matrix → boot contracts → e2e) fails the build when an
+  integration silently breaks: image pins, healthcheck binaries, resource
+  budgets, SSO routes. Upgrades can't quietly un-integrate the stack.
 
 ## Single Sign-On by default
 
@@ -1000,9 +1023,10 @@ Scope of that statement, stated honestly:
 ### Professional services — we help you help yourself
 
 Self-hosting a full digital workplace is very doable, but the first
-mile (DNS, TLS, SSO, backups, sizing) is where projects stall. Tobias
-Weiss offers **freelance consulting for SMEs** — built around one
-principle: **help you help yourself**. No lock-in, no black boxes:
+mile (DNS, TLS, SSO, backups, sizing) is where projects stall — and
+integration is exactly the product here. Tobias Weiss offers **freelance
+consulting for SMEs** — built around one principle: **help you help
+yourself**. No lock-in, no black boxes:
 
 - **Guided self-deployment** — we set up your stack together; you drive,
   I navigate. You end up owning a running system *and* the knowledge.
