@@ -6,10 +6,11 @@
 
 **Self-hosted digital workplace for small &amp; medium enterprises.**
 
-Docker Compose-based — from 5 to 500 users. **The integration is the
-product**: one stack, one login, one entry point — files, mail, groupware,
-documents, chat, ticketing, store &amp; local AI, wired together and kept
-that way by a contract-test pyramid.
+openSME is an **open-source project, not a product**: free software under
+Apache-2.0, published free of charge on a public repository. The only
+commercial offering is consulting — a service. One stack, one login, one
+entry point: files, mail, groupware, documents, chat, ticketing, store &amp;
+local AI, wired together and kept that way by a contract-test pyramid.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE.md)
 [![CI](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml)
@@ -41,10 +42,10 @@ For 50 users on Google Workspace: **$300–$1,800/month**.
 With openSME on a Hetzner CX22 (~€15/mo): **€15/month total.**
 That's a **95–99% cost reduction** while keeping full data sovereignty.
 
-## The integration is the product
+## Integration is the point
 
 Any single tool on this list is easy to install alone. The hard part —
-and the reason openSME exists — is that everything already works
+and the reason this project exists — is that everything already works
 **together**, and keeps working together:
 
 - **One stack, one command** — every component shares one `opendesk-net`
@@ -990,30 +991,39 @@ patent grant. No user-count tiers, no paid edition, no strings.
 
 See [LICENSE.md](LICENSE.md) for full terms.
 
-### Open-source status & product liability (EU PLD 2024/2853 / ProdHaftG)
+### openSME is an open-source project — not a product
 
-openSME is **free and open-source software** under Apache-2.0: published
-free of charge on a public repository, with no paid tier, telemetry, or
-data monetization.
+openSME is free and open-source software (Apache-2.0), developed and
+published **as a project, not a product**: free of charge, on a public
+repository, with no paid tier, no commercial distribution, no telemetry,
+and no data monetization.
 
-Directive (EU) 2024/2853 (the new EU product liability regime, to be
-transposed into German law by the reformed Produkthaftungsgesetz
-("ProdHaftG"), applicable to products placed on the market or put into
-service after 9 Dec 2026) **does not apply to free and open-source
-software developed or supplied outside the course of a commercial
-activity** — Art. 3(2); Recital 14: providing software on open
-repositories is not "making available on the market". Accordingly, openSME
-as published here is **not targeted** by the new product liability regime.
+Directive (EU) 2024/2853 (transposed into German law by the reformed
+Produkthaftungsgesetz, "ProdHaftG"; applicable to products placed on the
+market or put into service after 9 Dec 2026) says this expressly:
+
+> *"This Directive does not apply to free and open-source software that
+> is developed or supplied outside the course of a commercial
+> activity."* — Art. 3(2); Recital 14: such software "is by definition
+> not placed on the market", and providing it on open repositories is
+> not "making available on the market".
+
+That is openSME exactly. **The new product liability regime does not
+apply to this project.**
+
+**What is offered commercially: consulting only — never the software.**
+Consulting, workshops, and deployment support are professional
+*services* (contract law), not a product and not a software sale. The
+software stays free for everyone; nothing about the consulting changes
+the status of openSME itself.
 
 Scope of that statement, stated honestly:
 
-- It covers **openSME as supplied free of charge via this public
-  repository**. If you redistribute or sell the software yourself, that
-  supply is *your* commercial activity — and your responsibility.
-- If you fork, modify, redistribute, or embed openSME into your own
-  offering, the resulting product is yours and so is the liability
-  picture around it (Recital 15: downstream integrators, not FOSS
-  developers, are on the hook).
+- If you redistribute or sell openSME yourself, that supply is *your*
+  commercial activity — and your responsibility. Same if you fork,
+  modify, or embed it into your own offering: the result is your
+  product, and the liability picture around it is yours (Recital 15:
+  downstream integrators, not FOSS developers, are on the hook).
 - Independently of product liability, the software is provided
   **"as is"** under the Apache License 2.0 (Sections 7–9: no warranty,
   limited liability).
@@ -1024,9 +1034,9 @@ Scope of that statement, stated honestly:
 
 Self-hosting a full digital workplace is very doable, but the first
 mile (DNS, TLS, SSO, backups, sizing) is where projects stall — and
-integration is exactly the product here. Tobias Weiss offers **freelance
-consulting for SMEs** — built around one principle: **help you help
-yourself**. No lock-in, no black boxes:
+integration is exactly the work this project lives from. Tobias Weiss
+offers **freelance consulting for SMEs** — built around one principle:
+**help you help yourself**. No lock-in, no black boxes:
 
 - **Guided self-deployment** — we set up your stack together; you drive,
   I navigate. You end up owning a running system *and* the knowledge.
@@ -1038,7 +1048,10 @@ yourself**. No lock-in, no black boxes:
   person (or future you) can run it without me.
 
 Transparent, individual rates sized for SME budgets — from a single
-consulting hour to a fixed-price enablement package. Reach me at
+consulting hour to a fixed-price enablement package. To be explicit:
+**what you buy is time, expertise, and enablement — not a product.**
+openSME itself remains 100% free open-source software; there is no paid
+edition, no license fees, and no vendor lock-in. Reach me at
 [hello@opensme.org](mailto:hello@opensme.org) or
 [graphwiz.ai](https://graphwiz.ai).
 
