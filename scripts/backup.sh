@@ -46,6 +46,8 @@ KNOWN_VOLUMES=(
   cryptpad-data cryptpad-blob synapse-data notes-data
   minio-data paperless-data paperless-media paperless-export
   invoiceninja-public invoiceninja-storage
+  nosdesk-uploads cms-data store-data
+  # ai-models deliberately excluded: re-downloadable model cache
 )
 
 # ── Parse arguments ───────────────────────────

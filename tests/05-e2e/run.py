@@ -598,6 +598,9 @@ def main() -> bool:
     matrix_base = f"https://matrix.{domain}"
     notes_base = f"https://notes.{domain}"
     paperless_base = f"https://paperless.{domain}"
+    help_base = f"https://help.{domain}"
+    www_base = f"https://www.{domain}"
+    shop_base = f"https://shop.{domain}"
 
     session = requests.Session()
     session.verify = VERIFY
@@ -692,6 +695,9 @@ def main() -> bool:
             ("synapse", matrix_base + "/_matrix/client/versions"),
             ("notes", notes_base + "/"),
             ("paperless", paperless_base + "/"),
+            ("ticketing", help_base + "/"),
+            ("cms", www_base + "/"),
+            ("store", shop_base + "/"),
         ])
 
     # 7) Synapse SSO wiring

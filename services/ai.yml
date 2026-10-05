@@ -1,0 +1,83 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ═══════════════════════════════════════════════════════════════
+# openSME — llama.cpp server (local AI backend)
+# ═══════════════════════════════════════════════════════════════
+# OpenAI-compatible inference server (/v1/chat/completions) with a
+# built-in web UI at /. CPU inference via llama.cpp — no GPU needed
+# for the default small model; swap AI_HF_MODEL for a bigger one and
+# raise the memory limit if you have VRAM/cores to spare.
+#
+# Include via: COMPOSE_FILE=…:services/ai.yml
+# Or via profile: docker compose --profile ai up -d
+#
+# Wires into the portal automatically:
+#   .env → AI_API_URL=http://ai:8080  (AI_MODEL can stay — the server
+#   ignores the model name and serves the loaded GGUF)
+# Optional: set AI_API_KEY in .env to require a bearer token for chat —
+# the portal sends it automatically; the web UI asks for it in settings.
+#
+# First boot downloads the model (~1 GB) into the ai-models volume —
+# give it a few minutes before the healthcheck turns green.
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  ai:
+    <<: *service-defaults
+    # build-numbered tag (llama.cpp publishes no semver docker tags)
+    image: ${AI_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-b11223}
+    container_name: opendesk-ai
+    restart: unless-stopped
+    profiles: ["ai"]
+    command:
+      - "-hf"
+      - "${AI_HF_MODEL:-Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+    environment:
+      # model download cache lives in the volume (re-downloadable —
+      # excluded from backup.sh on purpose)
+      LLAMA_CACHE: /models/cache
+      HOME: /models
+      # optional: require a bearer key for chat/UI (portal sends AI_API_KEY)
+      LLAMA_API_KEY: ${AI_API_KEY:-}
+    volumes:
+      - ai-models:/models
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai.rule=Host(`ai.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.ai.tls=true"
+      - "traefik.http.routers.ai.entrypoints=websecure"
+      - "traefik.http.services.ai.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # first boot: model download + load; later boots: load only
+      start_period: 15m
+    networks:
+      - opendesk-net
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+volumes:
+  ai-models:

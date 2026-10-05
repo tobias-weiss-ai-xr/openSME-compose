@@ -86,6 +86,7 @@ COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml" docker compose up -d
 | **Ticketing** | [Nosdesk](https://nosdesk.com/) — Rust helpdesk: tickets, kanban, knowledge base (optional) |
 | **Website** | [crap-cms](https://github.com/dkluhzeb/crap-cms) — lightweight Rust CMS, HTMX admin, embedded SQLite (optional) |
 | **Store** | [RaisFast](https://raisfast.com/) — Rust e-commerce: products, cart, orders (optional) |
+| **AI** | [llama.cpp](https://github.com/ggml-org/llama.cpp) — local OpenAI-compatible inference, CPU-first (optional) |
 | **Database** | PostgreSQL 17 + PgBouncer connection pooling |
 | **Cache** | Redis 7 + Memcached 1.6 |
 | **Proxy** | Traefik v3 — automatic HTTPS via Let's Encrypt |
@@ -293,6 +294,7 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `services/ticketing.yml` | Nosdesk (helpdesk) | `help.*` | For tickets & KB (`--profile ticketing`) |
 | `services/cms.yml` | crap-cms (website CMS) | `www.*` | For public website (`--profile cms`) |
 | `services/store.yml` | RaisFast (e-commerce) | `shop.*` | For storefront (`--profile store`) |
+| `services/ai.yml` | llama.cpp server (AI backend) | `ai.*` | For local AI (`--profile ai`) |
 | `profiles/soho.yml` | (resource overrides) | — | SOHO tier (4c/8G) |
 | `profiles/small.yml` | (resource overrides) | — | Small tier (8c/24G) |
 | `profiles/medium.yml` | (resource overrides) | — | Medium tier (16c/48G) |
@@ -414,7 +416,7 @@ Environment variables for local development:
 | `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Support / Website / Shop cards |
 | `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON banner array (`info`/`warn`) |
-| `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | AI assistant (OpenAI-compatible `/v1/chat/completions`) |
+| `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | AI assistant (OpenAI-compatible `/v1/chat/completions`) — `AI_API_URL=http://ai:8080` with `--profile ai` |
 
 ### Code quality
 
@@ -742,7 +744,9 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `CMS_IMAGE` | upstream `:latest` | crap-cms image override — pin once upstream tags releases |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Portal cards for ticketing / website / store |
 | `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON array of portal banners: `[{'level':'info\|warn','text':'…'}]` |
-| `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | OpenAI-compatible endpoint for the portal AI assistant |
+| `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | OpenAI-compatible endpoint for the portal AI assistant — set `AI_API_URL=http://ai:8080` with `--profile ai` |
+| `AI_IMAGE` | `…llama.cpp:server-b11223` | llama.cpp image override (build-numbered tags) |
+| `AI_HF_MODEL` | `Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M` | HuggingFace model auto-downloaded on first boot (~1 GB) |
 
 > **⚠️ Change all `CHANGEME_*` passwords before production!**
 > Use `openssl rand -base64 24` to generate secure values.
@@ -768,6 +772,13 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
   until a site is published). Take a `store-data` volume backup before
   upgrading — pre-1.0 releases may migrate the embedded SQLite schema
   without a rollback path.
+- **llama.cpp** (`--profile ai`): CPU inference by design (swap in a GPU
+  image via `AI_IMAGE` if you have VRAM). The default model (~1 GB GGUF)
+  auto-downloads from HuggingFace on first boot — expect a slow first
+  start; later boots load from the `ai-models` volume (excluded from
+  backups on purpose). Docker tags are build numbers (`server-b11223`),
+  not semver. Set `AI_API_KEY` in production to require a bearer token
+  — the portal sends it; the web UI prompts for it in settings.
 
 ## Makefile
 

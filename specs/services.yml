@@ -217,3 +217,21 @@ services:
     traefik_labels: true
     resource_limits:
       memory: 512M
+
+  ai:
+    # build-numbered tag (no semver docker tags published)
+    image: ghcr.io/ggml-org/llama.cpp:server-b11223
+    compose_file: services/ai.yml
+    required: false
+    profiles: [ai]
+    host_ports: []
+    healthcheck: true
+    networks: [opendesk-net]
+    depends_on: []
+    volumes:
+      - ai-models:/models
+    env:
+      - AI_HF_MODEL
+    traefik_labels: true
+    resource_limits:
+      memory: 2G

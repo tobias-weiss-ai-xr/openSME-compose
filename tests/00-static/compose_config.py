@@ -51,6 +51,8 @@ MATRIX = [
      ["cms"], None),
     ("base+store", ["docker-compose.yml", "services/store.yml"],
      ["store"], None),
+    ("base+ai", ["docker-compose.yml", "services/ai.yml"],
+     ["ai"], None),
     ("base+agent", ["docker-compose.yml", "monitoring/dev-agent.yml"],
      ["standalone"], None),
     # Full deploy set for each RAM tier
