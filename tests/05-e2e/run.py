@@ -419,6 +419,24 @@ def section_portal(result, session, portal_base):
         result.fail("portal / does not mention openSME")
     else:
         result.ok("portal landing page ok")
+
+    # security-header contract (must match the middleware in portal/src/main.rs)
+    want = {
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "content-security-policy": "default-src 'self'",
+    }
+    missing = [
+        f"{k}={v!r}"
+        for k, v in want.items()
+        if v not in (r.headers.get(k) or "")
+    ]
+    (result.ok if not missing else result.fail)(
+        "portal security headers ok" if not missing
+        else f"portal security headers missing/changed: {'; '.join(missing)}"
+    )
+
     try:
         h = session.get(portal_base + "/health", timeout=T)
         ok = h.status_code == 200 and h.json().get("status") == "ok"

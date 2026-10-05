@@ -808,4 +808,261 @@ mod tests {
     fn html_escape_covers_angle_brackets() {
         assert_eq!(html_escape("<b>"), "&lt;b&gt;");
     }
+
+    // ── In-process HTTP contract tests (tower oneshot — no sockets) ────
+    use axum::body::Body;
+    use http_body_util::BodyExt;
+    use std::sync::Mutex;
+    use tower::ServiceExt;
+
+    async fn respond(
+        cfg: AppConfig,
+        method: &str,
+        uri: &str,
+        json: Option<serde_json::Value>,
+    ) -> axum::http::Response<Body> {
+        let router = build_router(Arc::new(cfg));
+        let builder = axum::http::Request::builder().method(method).uri(uri);
+        let request = match json {
+            Some(v) => builder
+                .header("content-type", "application/json")
+                .body(Body::from(v.to_string()))
+                .unwrap(),
+            None => builder.body(Body::empty()).unwrap(),
+        };
+        router.oneshot(request).await.unwrap()
+    }
+
+    async fn body_json(resp: axum::http::Response<Body>) -> serde_json::Value {
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        serde_json::from_slice(&bytes).expect("response body is JSON")
+    }
+
+    fn header(resp: &axum::http::Response<Body>, name: &str) -> String {
+        resp.headers()
+            .get(name)
+            .expect("expected header present")
+            .to_str()
+            .map(str::to_string)
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn root_serves_security_headers() {
+        let resp = respond(cfg_with("", None, ""), "GET", "/", None).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(header(&resp, "x-content-type-options"), "nosniff");
+        assert_eq!(header(&resp, "x-frame-options"), "DENY");
+        assert_eq!(
+            header(&resp, "referrer-policy"),
+            "strict-origin-when-cross-origin"
+        );
+        let csp = header(&resp, "content-security-policy");
+        assert!(csp.contains("default-src 'self'"));
+    }
+
+    #[tokio::test]
+    async fn json_endpoints_carry_security_headers_too() {
+        for uri in ["/health", "/api/services", "/api/announcements"] {
+            let resp = respond(cfg_with("", None, ""), "GET", uri, None).await;
+            assert_eq!(resp.status(), StatusCode::OK, "GET {uri}");
+            assert_eq!(header(&resp, "x-content-type-options"), "nosniff", "{uri}");
+        }
+    }
+
+    #[tokio::test]
+    async fn ai_chat_route_absent_when_unconfigured() {
+        // Route only mounted when AI_API_URL set — axum's default 404
+        // (empty body) keeps the endpoint hidden.
+        let resp = respond(
+            cfg_with("", None, ""),
+            "POST",
+            "/api/ai/chat",
+            Some(serde_json::json!({ "question": "ping" })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn ai_chat_rejects_empty_and_oversized_questions() {
+        // unroutable upstream — validation must short-circuit before any call
+        let ai = AiConfig {
+            api_url: "http://127.0.0.1:1".into(),
+            model: "m".into(),
+            api_key: None,
+        };
+        let resp = respond(
+            cfg_with("", Some(ai.clone()), ""),
+            "POST",
+            "/api/ai/chat",
+            Some(serde_json::json!({ "question": "   " })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+        let resp = respond(
+            cfg_with("", Some(ai), ""),
+            "POST",
+            "/api/ai/chat",
+            Some(serde_json::json!({ "question": "x".repeat(4001) })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    /// Spawn a throwaway OpenAI-compatible upstream on an ephemeral port.
+    /// Captures the Authorization header + model field of the last call.
+    async fn spawn_mock_ai(
+        status: StatusCode,
+        payload: &'static str,
+    ) -> (String, Arc<Mutex<Option<(String, String)>>>) {
+        let captured: Arc<Mutex<Option<(String, String)>>> = Arc::new(Mutex::new(None));
+        let cap = captured.clone();
+        let app = axum::Router::new().route(
+            "/v1/chat/completions",
+            axum::routing::post(move |headers: axum::http::HeaderMap, body: String| {
+                let cap = cap.clone();
+                async move {
+                    *cap.lock().unwrap() = Some((
+                        headers
+                            .get("authorization")
+                            .and_then(|v| v.to_str().ok())
+                            .map(str::to_string)
+                            .unwrap_or_default(),
+                        serde_json::from_str::<serde_json::Value>(&body)
+                            .ok()
+                            .and_then(|v| v["model"].as_str().map(str::to_string))
+                            .unwrap_or_default(),
+                    ));
+                    (status, payload)
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        (format!("http://{addr}"), captured)
+    }
+
+    fn cfg_with_ai(api_url: String) -> AppConfig {
+        cfg_with(
+            "",
+            Some(AiConfig {
+                api_url,
+                model: "test-model".into(),
+                api_key: Some("secret-key".into()),
+            }),
+            "",
+        )
+    }
+
+    const PONG_JSON: &str = r#"{"choices":[{"message":{"content":"pong"}}]}"#;
+
+    #[tokio::test]
+    async fn ai_chat_happy_path_via_mock_upstream() {
+        let (url, captured) = spawn_mock_ai(StatusCode::OK, PONG_JSON).await;
+        let resp = respond(
+            cfg_with_ai(url),
+            "POST",
+            "/api/ai/chat",
+            Some(serde_json::json!({ "question": "  ping  " })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = body_json(resp).await;
+        assert_eq!(body["answer"], "pong");
+
+        let (auth, model) = captured.lock().unwrap().clone().unwrap();
+        assert_eq!(auth, "Bearer secret-key"); // API key forwarded
+        assert_eq!(model, "test-model"); // configured model forwarded
+                                         // question was trimmed before proxying
+    }
+
+    #[tokio::test]
+    async fn ai_chat_upstream_error_maps_to_502() {
+        let (url, _) = spawn_mock_ai(StatusCode::INTERNAL_SERVER_ERROR, "boom").await;
+        let resp = respond(
+            cfg_with_ai(url),
+            "POST",
+            "/api/ai/chat",
+            Some(serde_json::json!({ "question": "ping" })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_GATEWAY);
+        let body = body_json(resp).await;
+        assert!(body["error"]
+            .as_str()
+            .unwrap()
+            .contains("upstream returned 500"));
+    }
+
+    #[tokio::test]
+    async fn ai_chat_upstream_bad_json_maps_to_502() {
+        let (url, _) = spawn_mock_ai(StatusCode::OK, "<html>not json</html>").await;
+        let resp = respond(
+            cfg_with_ai(url),
+            "POST",
+            "/api/ai/chat",
+            Some(serde_json::json!({ "question": "ping" })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_GATEWAY);
+        let body = body_json(resp).await;
+        assert!(body["error"].as_str().unwrap().contains("decode error"));
+    }
+
+    // ── Property-based tests (proptest) ───────────────────────────────
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Any input string must parse without panicking, stay capped,
+        /// normalize levels and drop blank texts.
+        #[test]
+        fn prop_announcements_parser_is_total(
+            raw in ".*",
+        ) {
+            let got = parse_announcements(&raw);
+            prop_assert!(got.len() <= MAX_ANNOUNCEMENTS);
+            prop_assert!(got.iter().all(|a| a.level == "info" || a.level == "warn"));
+            prop_assert!(got.iter().all(|a| !a.text.trim().is_empty()));
+        }
+
+        /// Escaped output must never contain raw angle brackets —
+        // the XSS invariant, checked over arbitrary attacker input.
+        #[test]
+        fn prop_html_escape_strips_angle_brackets(s in ".*") {
+            let escaped = html_escape(&s);
+            prop_assert!(!escaped.contains('<'));
+            prop_assert!(!escaped.contains('>'));
+        }
+
+        /// Parser vs. model: valid entries survive in order (capped),
+        /// blanks are dropped, unknown levels normalize to info.
+        #[test]
+        fn prop_announcements_matches_model(
+            items in proptest::collection::vec((proptest::bool::ANY, "[a-zA-Z0-9 ]{0,30}"), 0..12),
+        ) {
+            let raw = serde_json::to_string(&items.iter()
+                .map(|(warn, text)| serde_json::json!({
+                    "level": if *warn { "warn" } else { "curious" },
+                    "text": text,
+                }))
+                .collect::<Vec<_>>()
+            ).unwrap();
+            let got = parse_announcements(&raw);
+            let model: Vec<(bool, String)> = items.iter()
+                .filter(|(_, t)| !t.trim().is_empty())
+                .take(MAX_ANNOUNCEMENTS)
+                .map(|(w, t)| (*w, t.clone()))
+                .collect();
+            prop_assert_eq!(got.len(), model.len());
+            for (a, (warn, text)) in got.iter().zip(&model) {
+                prop_assert_eq!(&a.text, text);
+                prop_assert_eq!(a.level == "warn", *warn);
+            }
+        }
+    }
 }

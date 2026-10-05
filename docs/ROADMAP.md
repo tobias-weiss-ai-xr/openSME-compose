@@ -4,23 +4,30 @@ Status and direction of the openSME Compose distribution.
 
 ## Current scope (done)
 
-- **MVP runs on Docker Compose v2** using Zendis/openSME ecosystem images
-  (Zitadel SSO, OpenCloud, SOGo+Stalwart, Traefik, PostgreSQL, Redis) plus SME
-  staples: Invoice Ninja and Paperless-ngx.
+- **MVP runs on Docker Compose v2** on public images (Zitadel SSO,
+  OpenCloud, SOGo+Stalwart, Traefik, PostgreSQL, Redis) plus SME staples:
+  Invoice Ninja, Paperless-ngx, CryptPad, Matrix chat, Notes.
 - **3 vertical tiers** (soho / small / medium) + demo profiles; overlay
   system with `COMPOSE_FILE` composition.
-- **7-layer test framework** (static → security) wired into CI, including
-  secret scanning and a **perf-efficiency gate**
-  (`tests/00-static/check_perf.py`).
-- **Performance pass** (perf-efficiency-pass): universal log caps, hardening
-  defaults (`init`, `no-new-privileges`, `cap_drop`), per-tier Postgres/Redis/
-  PgBouncer tuning, boot-ordering `depends_on`, live benchmark harness.
+- **Layered test pyramid** (static → e2e → security) wired into CI,
+  including secret scanning, boot contracts, a compose-matrix gate and a
+  **perf-efficiency gate** (`tests/00-static/check_perf.py`); the portal
+  ships its own unit suite (HTTP contract tests + proptest fuzzing).
+- **Performance pass**: universal log caps, hardening defaults (`init`,
+  `no-new-privileges`, `cap_drop`), per-tier Postgres/Redis/PgBouncer
+  tuning, boot-ordering `depends_on`, live benchmark harness.
+- **Optional business services**: Nosdesk ticketing (`--profile ticketing`),
+  crap-cms website (`--profile cms`), RaisFast store (`--profile store`),
+  local AI via llama.cpp (`--profile ai`) with a portal AI assistant.
+- **Monitoring agents**: dev-agent (reactive, LLM root-cause),
+  dev-maintenance-bot (consent-gated healing with embedded runbook KB),
+  predictive-agent (Kalman/Markov risk scoring), taskfleet orchestration.
+- **SeaweedFS** replaces the dead MinIO community edition behind the same
+  S3 API (`--profile`-less production overlay).
 
 ## In flight
 
-- **dev-maintenance-bot** (OpenSpec change `dev-maintenance-bot`): Go-based
-  sidecar with embedded KB, healing, and privacy-preserving contribution back
-  to the project.
+- Nothing in flight — contributions welcome (see Backlog).
 
 ## Backlog / ideas
 
