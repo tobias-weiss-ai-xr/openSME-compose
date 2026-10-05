@@ -168,9 +168,10 @@ fmt: ## Apply all formatters (rustfmt, gofmt)
 	gofmt -w internal/ .
 	@echo -e "$(GREEN)✅ formats applied$(NC)"
 
-lint-code: ## Format checks + linters (no fixes) — what CI enforces
+lint-code: ## Format checks + linters + unit tests (no fixes) — what CI enforces
 	cd portal && cargo fmt --check
 	cd portal && cargo clippy --all-targets -- -D warnings
+	cd portal && cargo test
 	@if [ -n "$$(gofmt -l . | grep -v node_modules)" ]; then \
 		echo "unformatted Go files: $$(gofmt -l . | grep -v node_modules)"; exit 1; fi
 	go vet ./...

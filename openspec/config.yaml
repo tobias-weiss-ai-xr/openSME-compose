@@ -2,9 +2,9 @@ schema: spec-driven
 
 # Project context: shown to AI when creating artifacts.
 context: |
-  openSME — Docker Compose deployment of openSME for small/medium
-  enterprises. Runs the same Zendis container images as the K3s production
-  deployment, but directly via Docker (no Kubernetes).
+  openSME — self-hosted digital workplace for small/medium enterprises,
+  deployed via Docker Compose (no Kubernetes) from public container
+  registries (ghcr.io/tobias-weiss-ai-xr + upstream images).
 
   Stack: Docker Compose (profiles: soho/small/medium), Traefik, PostgreSQL,
   Zitadel/Casdoor (OIDC SSO), Redis, Stalwart Mail, SOGo Webmail, OpenCloud
@@ -15,17 +15,18 @@ context: |
     docker-compose.yml            core services + profiles/ overlays
     idm/                          identity (zitadel.yml, casdoor.yml)
     mail/                         stalwart.yml, sogo.yml
-    opencloud/                    opencloud.yml, minio.yml
+    opencloud/                    opencloud.yml, minio.yml (SeaweedFS S3)
     services/                     paperless, invoice-ninja, notes, synapse
     monitoring/                   dev-agent, predictive-agent, ollama, taskfleet
-    tests/                        run.py — 7-layer test pyramid (00-static .. 06-security)
+    tests/                        run.py — layered test pyramid (0-static .. 8-k8s)
     ansible/                      docker_host role (soho/small/medium tiers)
 
   Constraints:
     - Public GitHub repo: MUST NOT contain internal hostnames, IPs, domains,
       or secrets (CI secret-scan + leak-scan gates enforce this).
     - Centralized SSO is mandatory — all services authenticate via one OIDC IDM.
-    - Images from registry.opencode.de (Zendis) where available; else public.
+    - Pinned public images only (rolling lines documented in MUTABLE_IMAGES);
+      no private registries.
     - Profiles: soho (4c/8G), small (8c/24G), medium (16c/48G).
     - SMEs need Invoicing, Documents, Mail, Webmail, Files, SSO — NOT edu.
 
@@ -44,7 +45,7 @@ operations:
   apply:
     guidance:
       - Keep changes minimal and scoped to each task
-      - Run the 7-layer test runner (python3 tests/run.py --static) after each task
+      - Run the static test gate (python3 tests/run.py --static) after each task
   archive:
     guidance:
       - Summarize the archive outcome before finishing

@@ -23,8 +23,8 @@ x-service-defaults: &service-defaults
 #     -> compiled document bytes
 #   GET  http://typst-render:8080/healthz
 #
-# Image: openEduSuite fork build of typst (upstream-synced weekly),
-# released per upstream version. See
+# Image: our typst build (weekly upstream-synced fork with the render
+# service on top). See
 # https://github.com/tobias-weiss-ai-xr/typst (render-service/).
 
 services:
