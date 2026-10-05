@@ -19,7 +19,7 @@
 #   stalwart-etc, stalwart-data, sogo-config, sogo-data,
 #   traefik-data, casdoor-data, zitadel-machinekey,
 #   cryptpad-data, cryptpad-blob, synapse-data, notes-data,
-#   minio-data, paperless-data, paperless-media, paperless-export,
+#   seaweedfs-data, paperless-data, paperless-media, paperless-export,
 #   invoiceninja-public, invoiceninja-storage
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
@@ -44,7 +44,7 @@ KNOWN_VOLUMES=(
   stalwart-etc stalwart-data sogo-config sogo-data
   traefik-data casdoor-data zitadel-machinekey
   cryptpad-data cryptpad-blob synapse-data notes-data
-  minio-data paperless-data paperless-media paperless-export
+  seaweedfs-data paperless-data paperless-media paperless-export
   invoiceninja-public invoiceninja-storage
   nosdesk-uploads cms-data store-data
   # ai-models deliberately excluded: re-downloadable model cache
