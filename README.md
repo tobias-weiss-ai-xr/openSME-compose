@@ -8,9 +8,10 @@
 
 openSME is an **open-source project, not a product**: free software under
 Apache-2.0, published free of charge on a public repository. The only
-commercial offering is consulting — a service. One stack, one login, one
-entry point: files, mail, groupware, documents, chat, ticketing, store &amp;
-local AI, wired together and kept that way by a contract-test pyramid.
+commercial offering is consulting — a service. Docker Compose-based, from
+5 to 500 users. One stack, one login, one entry point: files, mail,
+groupware, documents, chat, ticketing, store &amp; local AI, wired together
+and kept that way by a contract-test pyramid.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE.md)
 [![CI](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml)
@@ -29,13 +30,13 @@ local AI, wired together and kept that way by a contract-test pyramid.
 | | Cloud Suite (Google / Microsoft) | Nextcloud | openSME |
 |---|---|---|---|
 | **Data sovereignty** | ❌ Data on vendor servers | ✅ Self-hosted | ✅ Self-hosted |
-| **Per-seat pricing** | 💰 $6–$36/user/mo | Free (self-hosted) | Free ≤50 users |
+| **Per-seat pricing** | 💰 $6–$36/user/mo | Free (self-hosted) | ✅ Free (Apache-2.0) |
 | **Mail server included** | Via add-on | ❌ Plugin needed | ✅ Stalwart (Rust) |
 | **Groupware (calendar/contacts)** | ✅ | ⚠️ Plugins | ✅ SOGo |
 | **Online office editing** | ✅ | ⚠️ Via Collabora | ✅ Collabora built-in |
 | **SSO / IAM** | ✅ | ❌ | ✅ Zitadel |
 | **Single Docker Compose stack** | N/A | ❌ Manual | ✅ One `docker compose up` |
-| **Apache-2.0 — no vendor lock-in** | N/A | ✅ | ✅ |
+| **Open license — no vendor lock-in** | N/A | ✅ (AGPL) | ✅ (Apache-2.0) |
 | **No JVM** | N/A | N/A | ✅ Zitadel is Go-native |
 
 For 50 users on Google Workspace: **$300–$1,800/month**.
@@ -87,7 +88,7 @@ COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml" docker compose up -d
 
 ### Who is this for?
 
-- **Small businesses** (5–50 users) who want Google Workspace functionality
+- **Small businesses** (5–500 users) who want Google Workspace functionality
   without per-seat fees or data leaving their control
 - **Schools &amp; municipalities** required by law to keep data on-premises
 - **Privacy-conscious teams** who need mail, files, calendar, and office in one stack
@@ -102,6 +103,7 @@ COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml" docker compose up -d
 | **Office** | [Collabora](https://www.collaboraoffice.com/) — real-time document editing in the browser |
 | **Mail** | [Stalwart](https://stalw.art/) — modern Rust SMTP/IMAP server |
 | **Groupware** | [SOGo](https://www.sogo.nu/) — webmail, calendar, contacts |
+| **Object storage** | [SeaweedFS](https://github.com/seaweedfs/seaweedfs) — S3-compatible storage for production OpenCloud (optional) |
 | **Invoicing** | [Invoice Ninja](https://invoiceninja.com/) — billing & invoicing (optional) |
 | **Documents** | [Paperless-ngx](https://docs.paperless-ngx.com/) — document management with OCR (optional) |
 | **Collaboration** | [CryptPad](https://cryptpad.org/) — collaborative docs (optional) |
@@ -150,6 +152,7 @@ graph TB
         Postgres["PostgreSQL 17<br/>+ PgBouncer"]
         Redis["Redis 7"]
         Memcached["Memcached 1.6"]
+        SeaweedFS["SeaweedFS<br/>S3 (optional)"]
     end
 
     Client -->|"HTTPS"| Traefik
@@ -177,6 +180,7 @@ graph TB
     style Postgres fill:#1a4fae,stroke:#2f7ff2,color:#fff
     style Redis fill:#163d85,stroke:#55a3fb,color:#e3ecff
     style Memcached fill:#163d85,stroke:#55a3fb,color:#e3ecff
+    style SeaweedFS fill:#163d85,stroke:#55a3fb,color:#e3ecff
 ```
 
 ### Why Zitadel instead of Keycloak?
@@ -270,7 +274,9 @@ All tiers run the **same Compose stack** — scale vertically, no config changes
 | **SOHO** | 1–5 | 4 | 8 GB | 120 GB SSD | Core + Zitadel | Hetzner CX22 |
 | **Small** | 10–25 | 8 | 24 GB | 480 GB SSD | Core + Zitadel + OpenCloud + Paperless | Hetzner CX32 |
 | **Medium** | 40–60 | 16 | 48 GB | 960 GB SSD | Core + all services | Hetzner CX42 |
-| **Enterprise** | 500+ | Individual | | | Contact for sizing |  |
+| **Enterprise** | 500+ | Individual | | | Consulting for sizing available | |
+
+Sizing help for the top end is part of the [consulting offer](#professional-services--we-help-you-help-yourself) — the software itself has no user cap.
 
 ## Performance & Efficiency
 
@@ -306,7 +312,7 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `idm/zitadel.yml` | Zitadel (IAM/SSO) | `auth.*` | For SSO / IAM (default) |
 | `idm/casdoor.yml` | Casdoor (lightweight IAM) | `auth.*` | Alternative IAM (128 MB) |
 | `opencloud/opencloud.yml` | OpenCloud + Collabora | `cloud.*`, `collabora.*` | For file sync & office |
-| `opencloud/minio.yml` | SeaweedFS (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) ||
+| `opencloud/minio.yml` | SeaweedFS (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) |
 | `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
 | `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
 | `services/invoice-ninja.yml` | Invoice Ninja | `invoices.*` | For invoicing (`--profile invoice`) |
@@ -408,8 +414,8 @@ openSME-compose/
 │   ├── stop.sh                # Stop all opensme containers
 │   ├── demo.sh                # One-command demo with random passwords
 │   ├── demo-live.sh           # Deploy to server with Let's Encrypt
-│   ├── backup.sh               # Backup PostgreSQL + Traefik + volumes
-│   └── restore.sh              # Restore from backup
+│   ├── backup.sh              # Backup PostgreSQL + Traefik + volumes
+│   └── restore.sh             # Restore from backup
 ├── postgres-init/
 │   ├── 00-create-databases.sql # Auto-creates 7 databases on first start
 │   └── 01-create-users.sh      # Per-service database users
@@ -512,7 +518,7 @@ The `demo.sh` and `demo-live.sh` scripts generate this automatically.
 If Zitadel fails to connect to PostgreSQL on first start:
 
 ```bash
-docker compose logs opensme-zitadel
+docker compose logs opendesk-zitadel
 # Look for "failed to connect" or "connection refused"
 ```
 
@@ -824,12 +830,12 @@ make status               # Show container status
 make logs                 # Tail logs
 make pull                 # Pull images
 
-# Testing (7-layer pyramid)
-make lint                 # Layer 0: YAML, env, secrets, compose config, perf gate
+# Testing (layered pyramid)
+make lint                 # Layer 0: YAML, env, secrets, boot contracts, compose matrix, perf gate
 make container            # Layer 2: container health
 make smoke                # Layer 3: HTTP/SSL/port smoke
-make test                 # Layers 0-3
-make test-all             # Layers 0-6 (full suite)
+make test                 # Layers 0–3
+make test-all             # Layers 0–6 (full suite incl. e2e SSO + security audit)
 
 # Backup / Restore
 make backup               # Full backup (PG + Traefik + volumes)
@@ -915,6 +921,10 @@ mail.opensme.org.     IN A   <your-server-ip>
 
 Or use a wildcard: `*.opensme.org. IN A <your-server-ip>`.
 
+Optional services add more hostnames — `pad.*`, `notes.*`, `matrix.*`,
+`element.*`, `paperless.*`, `invoices.*`, `help.*`, `www.*`, `shop.*`,
+`ai.*` — all covered by the wildcard, otherwise add per-service A records.
+
 For the **live demo** (`home.opensme.org`), you only need:
 
 ```
@@ -932,7 +942,7 @@ cloud.home.opensme.org.  IN A   <your-server-ip>
 2. **Generate a Zitadel master key**: `head -c 32 /dev/urandom | base64 > idm/secrets/masterkey && chmod 600 idm/secrets/masterkey`
 3. **Set a strong `TRAEFIK_USERS`** htpasswd: `htpasswd -nb admin 'YOUR_PASSWORD'`
 4. **Close unnecessary ports** — only 80, 443 should be public. PostgreSQL (5432),
-   Redis (6379), etc. must be on `opensme-net` only, never published.
+   Redis (6379), etc. must be on `opendesk-net` only, never published.
 5. **Enable firewall** (UFW or equivalent):
    ```bash
    sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw enable
@@ -982,6 +992,12 @@ Images are pinned to major versions for stability:
 | OpenCloud | `opencloudeu/opencloud-rolling:6.0.0` | 6.0.x |
 | Collabora | `collabora/code:24.04.13.3.1` | 24.04.x |
 | Traefik | `traefik:v3.3` | 3.3.x |
+| SeaweedFS | `chrislusf/seaweedfs:3.99` | 3.99.x |
+| llama.cpp | `ghcr.io/ggml-org/llama.cpp:server-b11223` | build `b11223` |
+
+Pin overrides live in `.env` (`ZITADEL_IMAGE`, `TRAEFIK_IMAGE`, `AI_IMAGE`,
+…). The static suite fails the build when a core image drifts to `:latest`.
+Rolling lines (Zitadel, OpenCloud) are documented exceptions.
 
 ## License
 
@@ -1067,13 +1083,17 @@ Built with:
 - [Stalwart](https://stalw.art/) — Modern mail server (Rust)
 - [SOGo](https://www.sogo.nu/) — Groupware &amp; webmail
 - [PostgreSQL](https://www.postgresql.org/) — Relational database
+- [SeaweedFS](https://github.com/seaweedfs/seaweedfs) — S3-compatible object storage
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) — Local LLM inference
 
 ## Documentation
 
+- [Architecture (ARC-42)](docs/ARC42.md) — architecture documentation
 - [Performance &amp; efficiency](docs/PERFORMANCE.md) — per-tier tuning, budgets, benchmark protocol
 - [Perf baselines](docs/perf/baselines.md) — measured resource numbers per tier
 - [Roadmap](docs/ROADMAP.md) — current scope, in-flight work, backlog
 - [Validation](docs/VALIDATION.md) — test layers, CI gates, release checklist
+- [Test suite](tests/README.md) — the layered test pyramid, layer by layer
 
 <div align="center">
 
