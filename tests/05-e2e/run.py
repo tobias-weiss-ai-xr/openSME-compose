@@ -48,6 +48,7 @@ import argparse
 import base64
 import hashlib
 import io
+import json
 import os
 import re
 import secrets
@@ -55,6 +56,7 @@ import socket
 import subprocess
 import sys
 import tarfile
+import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -157,7 +159,7 @@ def authorize_url(disc, client_id, callback, scope="openid profile email"):
             "code_challenge_method": "S256",
         }
     )
-    return f"{disc['authorization_endpoint']}?{qs}", verifier, state
+    return f"{disc['authorization_endpoint']}?{qs}", verifier, state, nonce
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -232,6 +234,17 @@ def bootstrap_app(session, idp_base, pat, callback, post_logout):
         if r.status_code != 200:
             raise E2EError(f"project add failed: HTTP {r.status_code} {r.text[:120]}")
         pid = r.json().get("id")
+    else:
+        # Leftover from a crashed earlier run: remove stale apps so app-add
+        # can't 409 (an old app's client id would also mismatch our PKCE
+        # callback, and its secret is unrecoverable).
+        r = mgmt(session, idp_base, pat, "POST",
+                 f"/management/v1/projects/{pid}/apps/_search", {})
+        if r.status_code == 200:
+            for app in r.json().get("result", []):
+                if app.get("name") == "e2e-sso":
+                    mgmt(session, idp_base, pat, "DELETE",
+                         f"/management/v1/projects/{pid}/apps/{app['id']}")
     body = {
         "name": "e2e-sso",
         "redirectUris": [callback],
@@ -407,7 +420,7 @@ def section_discovery(result, session, idp_base):
     return disc
 
 
-def section_portal(result, session, portal_base):
+def section_portal(result, session, portal_base, ai_configured=False):
     try:
         r = session.get(portal_base + "/", timeout=T)
     except requests.RequestException:
@@ -449,6 +462,39 @@ def section_portal(result, session, portal_base):
             f"portal /api/services: {len(services)} service(s)" if isinstance(services, list)
             else f"portal /api/services: HTTP {s.status_code}"
         )
+
+        # announcements consumer contract: array of {level in info|warn,
+        # non-empty text}, capped — this is what app.js renders into HTML
+        a = session.get(portal_base + "/api/announcements", timeout=T)
+        ann = a.json().get("announcements") if a.status_code == 200 else None
+        if not isinstance(ann, list):
+            result.fail(f"portal /api/announcements: HTTP {a.status_code}")
+        else:
+            bad = [
+                f"item {i}: level={x.get('level')!r} text={bool(x.get('text', '').strip())}"
+                for i, x in enumerate(ann)
+                if not isinstance(x, dict)
+                or x.get("level") not in ("info", "warn")
+                or not str(x.get("text", "")).strip()
+            ]
+            capped = len(ann) <= 8
+            (result.ok if not bad and capped else result.fail)(
+                f"portal /api/announcements schema ok ({len(ann)} item(s))"
+                if not bad and capped
+                else f"portal /api/announcements bad: {'; '.join(bad) or 'cap exceeded'}"
+            )
+
+        # AI card gating: the endpoint (and its UI card) must stay hidden
+        # unless the operator configured AI_API_URL
+        has_card = "id=\"ai-card\"" in r.text
+        if has_card == ai_configured:
+            result.ok("AI card visibility matches configuration"
+                      if has_card else "AI card hidden (AI unconfigured)")
+        else:
+            result.fail(
+                "AI card visible but AI_API_URL unset (must stay hidden)"
+                if has_card else "AI_API_URL set but no ai-card rendered"
+            )
     except (requests.RequestException, ValueError) as e:
         result.fail(f"portal API: {e.__class__.__name__}")
 
@@ -456,7 +502,7 @@ def section_portal(result, session, portal_base):
 def run_auth_code_flow(result, session, disc, client_id, csec, idp_base,
                        lc_pat, client_uid, login_name, login_uid, pw, callback):
     """Step 3: full authorization-code + PKCE round trip. Returns id_token + session."""
-    authz, verifier, state = authorize_url(disc, client_id, callback)
+    authz, verifier, state, nonce = authorize_url(disc, client_id, callback)
     qs, sess = api_login(session, idp_base, lc_pat, client_uid, authz, login_uid, pw)
     if qs.get("state", [None])[0] != state:
         raise E2EError("state mismatch at callback")
@@ -497,14 +543,109 @@ def run_auth_code_flow(result, session, disc, client_id, csec, idp_base,
     if stem.lower() not in str(preferred).lower():
         raise E2EError(f"userinfo subject {preferred!r} does not match {stem!r}")
     result.ok(f"userinfo authenticated as {preferred}")
-    return idt, sess
+    return idt, sess, nonce
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Journey: issued ID token is a correctly signed, correctly scoped JWT
+# ─────────────────────────────────────────────────────────────────────────────
+
+_B64URL = "-_"
+
+
+def _b64u_int(s: str) -> int:
+    return int.from_bytes(
+        base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)), "big"
+    )
+
+
+def _b64u_json(s: str) -> dict:
+    return json.loads(base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)))
+
+
+_SHA256_DIGESTINFO = bytes.fromhex("3031300d060960864801650304020105000420")
+
+
+def _rsa_rs256_verify(jwk: dict, signing_input: bytes, sig: bytes) -> bool:
+    """RS256 (RSASSA-PKCS1-v1_5 + SHA-256) verification with pure stdlib:
+    s^e mod n must reproduce 00 01 FF..00 || DigestInfo || H(signing_input)."""
+    n, e = _b64u_int(jwk["n"]), _b64u_int(jwk["e"])
+    k = (n.bit_length() + 7) // 8
+    if len(sig) != k:
+        return False
+    em = pow(_b64u_int(base64.urlsafe_b64encode(sig).decode().rstrip("=")), e, n)
+    block = em.to_bytes(k, "big")
+    if not block.startswith(b"\x00\x01"):
+        return False
+    pad_end = block.index(b"\x00", 2)
+    if pad_end < 11 or any(b != 0xFF for b in block[2:pad_end]):
+        return False
+    digest_info = _SHA256_DIGESTINFO + hashlib.sha256(signing_input).digest()
+    return block[pad_end + 1:] == digest_info
+
+
+def verify_id_token(result: Result, session, disc: dict, idt: str,
+                    client_id: str, nonce: str) -> None:
+    """User story: 'As a relying party, I can trust the issued ID token.'
+    Verifies JWS header (RS256 + kid), the RSA signature against the live
+    JWKS, and the iss/aud/exp/iat/nonce claims — no extra dependency."""
+    try:
+        h_b64, p_b64, s_b64 = idt.split(".")
+        header = _b64u_json(h_b64)
+    except (ValueError, json.JSONDecodeError):
+        result.fail("id_token is not a decodable JWS")
+        return
+    if header.get("alg") != "RS256":
+        result.fail(f"id_token alg is {header.get('alg')!r}, expected RS256")
+        return
+    if not header.get("kid"):
+        result.fail("id_token header has no kid")
+        return
+
+    try:
+        jwks = session.get(disc["jwks_uri"], timeout=T).json()
+    except (requests.RequestException, ValueError):
+        result.fail("JWKS unreachable for signature verification")
+        return
+    key = next((k for k in jwks.get("keys", [])
+                if k.get("kid") == header["kid"] and k.get("kty") == "RSA"), None)
+    if key is None:
+        result.fail(f"JWKS has no RSA key for kid {header['kid']!r}")
+        return
+
+    sig = base64.urlsafe_b64decode(s_b64 + "=" * (-len(s_b64) % 4))
+    if not _rsa_rs256_verify(key, f"{h_b64}.{p_b64}".encode(), sig):
+        result.fail("id_token RSA signature does NOT verify against JWKS")
+        return
+    result.ok("id_token signature verifies against live JWKS (RS256)")
+
+    claims = _b64u_json(p_b64)
+    now = int(time.time())
+    checks = [
+        (claims.get("iss", "").rstrip("/") == disc["issuer"].rstrip("/"),
+         f"iss={claims.get('iss')!r} != discovery issuer"),
+        (client_id in (claims.get("aud") if isinstance(claims.get("aud"), list)
+                       else [claims.get("aud")]),
+         f"aud={claims.get('aud')!r} does not include client"),
+        (isinstance(claims.get("exp"), int) and claims["exp"] > now,
+         "token expired"),
+        (isinstance(claims.get("iat"), int) and claims["iat"] <= now + 120,
+         f"iat in the future ({claims.get('iat')})"),
+        (claims.get("nonce") == nonce, "nonce claim missing/mismatched"),
+        (bool(claims.get("sub")), "no subject claim"),
+    ]
+    bad = [msg for ok, msg in checks if not ok]
+    (result.ok if not bad else result.fail)(
+        "id_token claims ok (iss/aud/exp/iat/nonce/sub)" if not bad
+        else f"id_token claims bad: {'; '.join(bad)}"
+    )
 
 
 def section_sso_reuse(result, session, disc, client_id, callback, idp_base,
                       lc_pat, client_uid, sess):
     """Step 4: a second authorize for the same user is finalized with the
     existing IdP session — no second password check anywhere."""
-    authz, _, _ = authorize_url(disc, client_id, callback)
+    authz, _, _, _ = authorize_url(disc, client_id, callback)
     h = lc_headers(lc_pat, client_uid)
     r = session.get(authz, headers=h, allow_redirects=False, timeout=T)
     if r.status_code not in REDIRECTS or "Location" not in r.headers:
@@ -529,7 +670,7 @@ def section_logout(result, session, idp_base, lc_pat, client_uid, sess, client_i
     if not terminate(session, idp_base, lc_pat, client_uid, sess["id"], sess["token"]):
         result.fail("session termination API rejected the request")
         return
-    authz, _, _ = authorize_url(disc, client_id, callback)
+    authz, _, _, _ = authorize_url(disc, client_id, callback)
     h = lc_headers(lc_pat, client_uid)
     r = session.get(authz, headers=h, allow_redirects=False, timeout=T)
     m = re.search(r"authRequest=([A-Za-z0-9_:-]+)", r.headers.get("Location", ""))
@@ -553,6 +694,29 @@ def section_apps(result, session, urls):
                 result.fail(f"{label}: HTTP {r.status_code}")
         except requests.RequestException:
             result.skip(f"{label} not running")
+
+
+def section_sogo_sso(result, session, webmail_base, idp_base):
+    """Groupware journey: opening the webmail app must land on the central
+    SSO (same contract as the synapse check)."""
+    for path in ("/sogo/", "/"):
+        try:
+            r = session.get(webmail_base + path, allow_redirects=False, timeout=T)
+        except requests.RequestException:
+            result.skip("sogo not running")
+            return
+        if r.status_code == 404:
+            continue  # wrong path — try root
+        loc = r.headers.get("Location", "")
+        if r.status_code in REDIRECTS and loc.startswith(idp_base):
+            result.ok("sogo SSO redirect targets the IdP")
+            return
+        if r.status_code == 200:
+            result.warn("sogo reachable but serves a local login (SSO not enforced)")
+            return
+        result.warn(f"sogo probe: HTTP {r.status_code} {loc[:60]}")
+        return
+    result.skip("sogo not running")
 
 
 def section_synapse_sso(result, session, matrix_base, idp_base):
@@ -613,6 +777,7 @@ def main() -> bool:
         else f"https://{cfg('PORTAL_DOMAIN', f'portal.{domain}')}"
     )
     cloud_base = f"https://{cfg('OPENCLOUD_DOMAIN', f'cloud.{domain}')}"
+    webmail_base = f"https://{cfg('SOGO_DOMAIN', f'webmail.{domain}')}"
     matrix_base = f"https://matrix.{domain}"
     notes_base = f"https://notes.{domain}"
     paperless_base = f"https://paperless.{domain}"
@@ -633,8 +798,8 @@ def main() -> bool:
     # 1) IdP discovery
     disc = section_discovery(result, session, idp_base)
 
-    # 2) Portal
-    section_portal(result, session, portal_base)
+    # 2) Portal (AI card gating depends on AI_API_URL configuration)
+    section_portal(result, session, portal_base, ai_configured=bool(cfg("AI_API_URL")))
 
     # 3-5) SSO flows
     flows_ok = bool(disc) and not args.skip_flows
@@ -682,15 +847,19 @@ def main() -> bool:
         flows_ok = False
 
     sess = None
+    idt = nonce = None
     if flows_ok:
         try:
-            _, sess = run_auth_code_flow(
+            idt, sess, nonce = run_auth_code_flow(
                 result, session, disc, client_id, csec, idp_base,
                 lc_pat, client_uid, login_name, login_uid, pw, callback,
             )
         except E2EError as e:
             result.fail(f"auth-code flow: {e}")
             flows_ok = False
+
+    if flows_ok and idt:
+        verify_id_token(result, session, disc, idt, client_id, nonce)
 
     if flows_ok and sess:
         if section_sso_reuse(result, session, disc, client_id, callback, idp_base,
@@ -716,11 +885,13 @@ def main() -> bool:
             ("ticketing", help_base + "/"),
             ("cms", www_base + "/"),
             ("store", shop_base + "/"),
+            ("webmail", webmail_base + "/sogo/"),
         ])
 
-    # 7) Synapse SSO wiring
+    # 7) Synapse + SOGo SSO wiring
     if not args.skip_apps:
         section_synapse_sso(result, session, matrix_base, idp_base)
+        section_sogo_sso(result, session, webmail_base, idp_base)
 
     return result.summary()
 
