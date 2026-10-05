@@ -179,24 +179,32 @@ needed — logins are performed programmatically through the Zitadel v2
 Session API (the same API the hosted Login v2 UI uses), so the suite works
 against the React-based Login v2 UI where form scraping cannot.
 
-What is covered:
+What is covered (full story catalog with Given/When/Then:
+[docs/E2E-JOURNEYS.md](../docs/E2E-JOURNEYS.md)):
 
 1. **IdP discovery** — `/.well-known/openid-configuration` + JWKS
 2. **Portal** — landing page, `/health`, `/api/services`, security-header
    contract (CSP, nosniff, frame-deny, referrer-policy — mirrors the
-   middleware contract-tested in `portal/src/main.rs`)
+   middleware contract-tested in `portal/src/main.rs`), announcements
+   consumer schema, AI card gating (hidden unless `AI_API_URL` set)
 3. **SSO login flow** — authorization-code + PKCE, logged in via the v2
    Session API (`POST /v2/sessions` + password check + auth-request
    finalize) using the seeded login-client PAT. A throw-away OIDC app
    (`e2e-sso` project) is bootstrapped via the Zitadel Management API
    using the seeded machine-user PAT (`docker compose cp
-   zitadel:/machinekey/pat -`) and removed afterwards
+   zitadel:/machinekey/pat -`) and removed afterwards; leftover apps
+   from crashed runs are cleaned up (bootstrap is idempotent)
+   **+ ID-token verification**: the issued token's RS256 signature is
+   verified against the live JWKS (pure-stdlib RSA), and its
+   iss/aud/exp/iat/nonce/sub claims are checked
 4. **Single sign-on** — a second authorize is finalized with the existing
    IdP session; no second credential check
 5. **Logout** — the session is terminated (`DELETE /v2/sessions/{id}`) and
    the dead session must be rejected
-6. **App reachability** — opencloud, synapse, notes, paperless (when running)
-7. **Synapse SSO wiring** — `/_matrix/client/v3/login/sso/redirect` targets the IdP
+6. **App reachability** — opencloud, synapse, notes, paperless, ticketing,
+   cms, store, webmail (when running)
+7. **SSO wiring** — synapse `/_matrix/client/v3/login/sso/redirect` and
+   SOGo webmail must redirect to the IdP, not to their own login pages
 
 Configuration (env vars win over `.env`):
 
