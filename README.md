@@ -306,7 +306,7 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `idm/zitadel.yml` | Zitadel (IAM/SSO) | `auth.*` | For SSO / IAM (default) |
 | `idm/casdoor.yml` | Casdoor (lightweight IAM) | `auth.*` | Alternative IAM (128 MB) |
 | `opencloud/opencloud.yml` | OpenCloud + Collabora | `cloud.*`, `collabora.*` | For file sync & office |
-| `opencloud/minio.yml` | MinIO (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) |
+| `opencloud/minio.yml` | SeaweedFS (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) ||
 | `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
 | `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
 | `services/invoice-ninja.yml` | Invoice Ninja | `invoices.*` | For invoicing (`--profile invoice`) |
@@ -365,7 +365,7 @@ openSME-compose/
 │   └── casdoor-config/         # Casdoor config template
 ├── opencloud/
 │   ├── opencloud.yml           # Overlay: OpenCloud + Collabora (files & office)
-│   ├── minio.yml              # Overlay: MinIO S3 storage
+│   ├── minio.yml              # Overlay: SeaweedFS S3 storage (alias `minio`)
 │   └── opencloud-entrypoint.sh  # Auto-init on first run
 ├── mail/
 │   ├── stalwart.yml            # Overlay: Stalwart mail server

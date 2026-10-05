@@ -22,7 +22,7 @@ classes of bugs that previously blocked real deployments are caught in CI:
                        and use --tlsMode external (TLS terminated by Traefik).
   7. opencloud-entrypoint
                        openCloud must boot via /entrypoint.sh (not /bin/sh).
-  8. minio-traefik     MinIO routers must pin an explicit service (avoid the
+  8. seaweedfs-traefik  S3 router must pin an explicit service (avoids the
                        "cannot be linked automatically with multiple Services"
                        Traefik error).
   9. healthcheck-bins  Healthchecks may only reference binaries known to exist
@@ -50,13 +50,12 @@ from conftest import ComposeLoader, Result, ROOT
 # Core services: a :latest update silently changes config/boot models.
 CORE_PINNED = {
     "traefik", "postgres", "redis", "memcached", "pgbouncer",
-    "stalwart", "zitadel", "collabora", "portal", "minio",
+    "stalwart", "zitadel", "collabora", "portal", "seaweedfs",
 }
 
 # Images that legitimately track a rolling line (documented; their own
 # migration/boot story handles upgrades). Adding more here needs intent.
 MUTABLE_IMAGES = {
-    "minio",            # RELEASE-speed rolling; self-contained S3 daemon
     "opencloud",        # opencloudeu/opencloud-rolling: the free community
                         # line publishes :latest only (LTS is a paid offering)
     "sogo",             # salvoxia/sogo:latest is the only maintained tag
@@ -88,7 +87,7 @@ SETUID_IMAGES = {
     "gotenberg", "paperless-ngx", "tika", "opencloud", "collabora", "zitadel",
 }
 # Images that run as root by design and manage their own privileges.
-CAP_DROP_ALL_OK = {"traefik", "minio", "portal", "dev-agent"}
+CAP_DROP_ALL_OK = {"traefik", "seaweedfs", "portal", "dev-agent"}
 
 # Intentionally simplistic image<->service mapping used by the checks below.
 # Keyed by service name as defined in the compose files.
@@ -102,7 +101,7 @@ IMAGE_OF = {
     "zitadel": "zitadel",
     "opencloud": "opencloud",
     "collabora": "collabora",
-    "minio": "minio",
+    "seaweedfs": "seaweedfs",
     "stalwart": "stalwart",
     "sogo": "sogo",
     "paperless-ngx": "paperless-ngx",
@@ -127,7 +126,7 @@ HEALTHCHECK_BINS = {
     "zitadel": ["zitadel", "/app/zitadel", "busybox"],  # busybox volume-injected (distroless)
     "opencloud": ["curl"],
     "collabora": ["curl"],
-    "minio": ["mc"],
+    "seaweedfs": ["netstat"],   # busybox applet in chrislusf/seaweedfs (alpine)
     "stalwart": ["bash"],
     "sogo": ["curl"],
     "nosdesk": ["curl"],
@@ -325,20 +324,17 @@ def main():
             if not ok_cmd:
                 result.fail("opencloud: command must be ['server']")
 
-    # ── 8. MinIO explicit Traefik services ─────────────────────────────
-    result.info("Check 8: MinIO routers pin explicit Traefik services")
-    minio = services.get("minio")
-    if minio:
-        labels = " ".join(minio["data"].get("labels") or [])
-        ok_api = "routers.minio.service=minio-api" in labels
-        ok_console = "routers.minio-console.service=minio-console" in labels
-        if ok_api and ok_console:
-            result.ok("minio: routers pin minio-api / minio-console services")
+    # ── 8. SeaweedFS explicit Traefik service ──────────────────────
+    result.info("Check 8: SeaweedFS (S3 overlay) router pins explicit service")
+    seaweedfs = services.get("seaweedfs")
+    if seaweedfs:
+        labels = " ".join(seaweedfs["data"].get("labels") or [])
+        if "routers.minio.service=minio-api" in labels:
+            result.ok("seaweedfs: router minio pins minio-api service")
         else:
             result.fail(
-                "minio: routers must explicitly pin traefik services "
-                "(routers.minio.service=minio-api, "
-                "routers.minio-console.service=minio-console) to avoid the "
+                "seaweedfs: router must explicitly pin traefik service "
+                "(traefik.http.routers.minio.service=minio-api) to avoid the "
                 "'cannot be linked automatically with multiple Services' error"
             )
 
