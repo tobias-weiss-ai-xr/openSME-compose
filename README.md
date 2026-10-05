@@ -973,6 +973,57 @@ deployments require a commercial license.
 See [LICENSE.md](LICENSE.md) for full terms. Commercial licenses available at
 [graphwiz.ai](https://graphwiz.ai) or via [hello@opensme.org](mailto:hello@opensme.org).
 
+### Open-source status & product liability (EU PLD 2024/2853 / ProdHaftG)
+
+The **Community Edition of openSME is free and open-source software**:
+AGPL v3, published free of charge on a public repository, with no paid
+tier, telemetry, or data monetization.
+
+Directive (EU) 2024/2853 (the new EU product liability regime, to be
+transposed into German law by the reformed Produkthaftungsgesetz
+("ProdHaftG"), applicable to products placed on the market or put into
+service after 9 Dec 2026) **does not apply to free and open-source
+software developed or supplied outside the course of a commercial
+activity** — Art. 3(2); Recital 14: providing software on open
+repositories is not "making available on the market". Accordingly, the
+Community Edition as published here is **not targeted** by the new
+product liability regime.
+
+Scope of that statement, stated honestly:
+
+- It covers the **AGPL Community Edition as supplied free of charge via
+  this public repository**. The separately licensed **Enterprise Edition**
+  (supplied for a fee) is a commercial product and a different matter.
+- If you fork, modify, redistribute, or embed openSME into your own
+  offering, the resulting product is yours and so is the liability
+  picture around it (Recital 15: downstream integrators, not FOSS
+  developers, are on the hook).
+- Independently of product liability, the software is provided
+  **"as is"** under AGPL v3 §§ 15–16 (no warranty, limited liability).
+- This is **project documentation, not legal advice** — for your
+  specific deployment, consult counsel.
+
+### Professional services — we help you help yourself
+
+Self-hosting a full digital workplace is very doable, but the first
+mile (DNS, TLS, SSO, backups, sizing) is where projects stall. Tobias
+Weiss offers **freelance consulting for SMEs** — built around one
+principle: **help you help yourself**. No lock-in, no black boxes:
+
+- **Guided self-deployment** — we set up your stack together; you drive,
+  I navigate. You end up owning a running system *and* the knowledge.
+- **Workshops** — SSO/OIDC with Zitadel, AI integration, backup &
+  recovery drills, operations handover for your admin.
+- **Reviews** — security, resource sizing, and architecture sanity
+  checks of your existing deployment, with a prioritized fix list.
+- **Documentation & handover** — your setup written down so the next
+  person (or future you) can run it without me.
+
+Transparent, individual rates sized for SME budgets — from a single
+consulting hour to a fixed-price enablement package. Reach me at
+[hello@opensme.org](mailto:hello@opensme.org) or
+[graphwiz.ai](https://graphwiz.ai).
+
 ## Credits
 
 Built with:
