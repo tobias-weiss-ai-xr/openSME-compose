@@ -31,3 +31,6 @@ CREATE DATABASE invoiceninja_db;
 
 -- ── Notes/Impress (collaborative notes, --profile notes) ──
 CREATE DATABASE notes_db;
+
+-- ── Nosdesk (ticketing/helpdesk, --profile ticketing) ──
+CREATE DATABASE nosdesk_db;

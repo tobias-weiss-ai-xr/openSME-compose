@@ -1,0 +1,70 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ═══════════════════════════════════════════════════════════════
+# openSME — crap-cms (lightweight website CMS)
+# ═══════════════════════════════════════════════════════════════
+# Rust single binary: schema-in-Lua content collections, HTMX admin
+# UI, embedded SQLite (WAL + FTS). Zero external dependencies — the
+# database lives in the cms-data volume.
+#
+# Include via: COMPOSE_FILE=…:services/cms.yml
+# Or via profile: docker compose --profile cms up -d
+#
+# FIRST LOGIN (until changed): http://www.<domain>/admin
+#   admin@crap.studio / admin123  ← change immediately!
+# Admin UI: /admin · Public site: /
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  cms:
+    <<: *service-defaults
+    # upstream publishes :latest only today (no semver tags yet — 0
+    # GitHub releases as of 2026-10); allowlisted as mutable in
+    # tests/00-static/check_boot.py. Override to pin once tags exist.
+    image: ${CMS_IMAGE:-ghcr.io/dkluhzeb/crap-cms:latest}
+    container_name: opendesk-cms
+    restart: unless-stopped
+    profiles: ["cms"]
+    # scaffold the config dir on first boot, then serve (default cmd)
+    # from the same directory — config + SQLite db + uploads all under
+    # /config (cms-data volume)
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "test -f /config/crap.toml || crap-cms init --no-input /config; exec crap-cms -C /config serve"
+    volumes:
+      - cms-data:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cms.rule=Host(`www.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.cms.tls=true"
+      - "traefik.http.routers.cms.entrypoints=websecure"
+      - "traefik.http.services.cms.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - opendesk-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+volumes:
+  cms-data:

@@ -1,0 +1,86 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ═══════════════════════════════════════════════════════════════
+# openSME — Nosdesk (ticketing / helpdesk)
+# ═══════════════════════════════════════════════════════════════
+# Rust (Actix-web) helpdesk: tickets, kanban projects, knowledge
+# base. Generic OIDC support wires to Zitadel SSO (see README).
+#
+# Include via: COMPOSE_FILE=docker-compose.yml:services/ticketing.yml
+# Or via profile: docker compose --profile ticketing up -d
+#
+# Requires: PostgreSQL (core, nosdesk_db), Redis (core)
+# Note: upstream license is BSL 1.1 (source-available; self-hosting
+# an internal helpdesk is permitted use — review before offering
+# ticketing as a paid service).
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  nosdesk:
+    <<: *service-defaults
+    image: ${NOSDESK_IMAGE:-ghcr.io/nosdesk/nosdesk:1.0.12}
+    container_name: opendesk-nosdesk
+    restart: unless-stopped
+    profiles: ["ticketing"]
+    environment:
+      # Fail fast on placeholder secrets — upstream refuses boot with
+      # example values in production; :? surfaces the exact var here.
+      JWT_SECRET: ${NOSDESK_JWT_SECRET:?NOSDESK_JWT_SECRET must be set in .env}
+      MFA_KEK_V1: ${NOSDESK_MFA_KEK:?NOSDESK_MFA_KEK must be set in .env}
+      DATABASE_URL: postgres://nosdesk_user:${NOSDESK_DB_PASSWORD:?NOSDESK_DB_PASSWORD must be set in .env}@postgres:5432/nosdesk_db
+      # Upstream split: migrations run as the instance admin (CREATE ROLE/
+      # extensions), runtime uses the restricted nosdesk_user pool above.
+      MIGRATION_DATABASE_URL: postgres://opensme:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/nosdesk_db
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/2
+      ENVIRONMENT: production
+      HOST: 0.0.0.0
+      PORT: "8080"
+      FRONTEND_URL: https://help.${OPENSME_DOMAIN:-opensme.org}
+      # ── Optional SSO via Zitadel (create an OIDC app first, see README) ──
+      OIDC_ISSUER_URL: ${NOSDESK_OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${NOSDESK_OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${NOSDESK_OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: https://help.${OPENSME_DOMAIN:-opensme.org}/auth/oidc/callback
+      OIDC_DISPLAY_NAME: openSME SSO
+    volumes:
+      - nosdesk-uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ticketing.rule=Host(`help.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.ticketing.tls=true"
+      - "traefik.http.routers.ticketing.entrypoints=websecure"
+      - "traefik.http.services.ticketing.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - opendesk-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+volumes:
+  nosdesk-uploads:

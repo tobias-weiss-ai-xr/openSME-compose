@@ -108,6 +108,9 @@ OC_ADMIN_PASSWORD=$(pw)
 OC_OIDC_SECRET=$(pw)
 OC_S3_SECRET_KEY=$(pw)
 COLLABORA_PASSWORD=$(pw)
+NOSDESK_DB_PASSWORD=$(pw)
+NOSDESK_JWT_SECRET=$(pw)
+NOSDESK_MFA_KEK=$(openssl rand -hex 32)
 
 # Traefik dashboard
 TRAEFIK_USERS=${TRAEFIK_HASH_ESC}
@@ -127,6 +130,20 @@ fi
 if ! grep -q '^REDIS_PASSWORD=' .env; then
   printf '\nREDIS_PASSWORD=%s\n' "$(pw)" >> .env
   ok "Appended REDIS_PASSWORD to existing .env (new required var)"
+fi
+# hex, not base64: NOSDESK_DB_PASSWORD is embedded in a postgres:// URL —
+# base64 '/' and '+' would break URL parsing
+if ! grep -q '^NOSDESK_DB_PASSWORD=' .env; then
+  printf 'NOSDESK_DB_PASSWORD=%s\n' "$(openssl rand -hex 24)" >> .env
+  ok "Appended NOSDESK_DB_PASSWORD to existing .env (new required var)"
+fi
+if ! grep -q '^NOSDESK_JWT_SECRET=' .env; then
+  printf 'NOSDESK_JWT_SECRET=%s\n' "$(pw)" >> .env
+  ok "Appended NOSDESK_JWT_SECRET to existing .env (new required var)"
+fi
+if ! grep -q '^NOSDESK_MFA_KEK=' .env; then
+  printf 'NOSDESK_MFA_KEK=%s\n' "$(openssl rand -hex 32)" >> .env
+  ok "Appended NOSDESK_MFA_KEK to existing .env (new required var)"
 fi
 # Older .env files stored a bare apr1 hash; Traefik basicauth needs
 # 'user:hash' — regenerate so the dashboard is actually usable.
