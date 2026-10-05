@@ -112,6 +112,7 @@ IMAGE_OF = {
     "nosdesk": "nosdesk",
     "cms": "crap-cms",
     "store": "raisfast",
+    "ai": "llama.cpp",
     "dev-agent": "dev-agent",
 }
 
@@ -132,6 +133,7 @@ HEALTHCHECK_BINS = {
     "nosdesk": ["curl"],
     "crap-cms": ["wget"],   # alpine busybox wget
     "raisfast": ["wget"],   # busybox:1.36-musl base
+    "llama.cpp": ["curl"],  # ubuntu-based ggml image
     "paperless-ngx": ["curl"],
     "gotenberg": ["curl"],
     "tika": ["curl"],
