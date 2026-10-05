@@ -9,7 +9,7 @@
 Docker Compose-based — from 5 to 500 users. SSO-first: one login for files,
 mail, groupware, documents &amp; chat.
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE.md)
 [![CI](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml/badge.svg)](https://github.com/tobias-weiss-ai-xr/openSME-compose/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/DockerCompose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose)
 [![Traefik](https://img.shields.io/badge/Reverse_Proxy-Traefik_v3-24a7c0?logo=traefikproxy&logoColor=white)](https://traefik.io/)
@@ -32,7 +32,7 @@ mail, groupware, documents &amp; chat.
 | **Online office editing** | ✅ | ⚠️ Via Collabora | ✅ Collabora built-in |
 | **SSO / IAM** | ✅ | ❌ | ✅ Zitadel |
 | **Single Docker Compose stack** | N/A | ❌ Manual | ✅ One `docker compose up` |
-| **AGPL — no vendor lock-in** | N/A | ✅ | ✅ |
+| **Apache-2.0 — no vendor lock-in** | N/A | ✅ | ✅ |
 | **No JVM** | N/A | N/A | ✅ Zitadel is Go-native |
 
 For 50 users on Google Workspace: **$300–$1,800/month**.
@@ -167,7 +167,7 @@ graph TB
 | **Machine-to-machine** | Separate client config | First-class citizen |
 | **Audit logging** | Via extensions | Built-in event log |
 | **Multi-tenancy** | Realms (manual) | Organisations (per-tenant) |
-| **License** | Apache 2.0 | Apache 2.0 (AGPL-adjacent) |
+| **License** | Apache 2.0 | Apache 2.0 |
 
 Zitadel replaces both Keycloak *and* OpenLDAP in a single container,
 halving the service count for the IAM layer.
@@ -961,23 +961,17 @@ Images are pinned to major versions for stability:
 
 ## License
 
-**Free for organizations with up to 50 users** (AGPL v3). Larger
-deployments require a commercial license.
+Licensed under the **Apache License 2.0** — free for personal and
+commercial use, modification, and redistribution, with an explicit
+patent grant. No user-count tiers, no paid edition, no strings.
 
-| Tier | Users | License |
-|---|---|---|
-| **Community** | ≤ 50 | ✅ Free (AGPL v3) |
-| **Medium** | 50–500 | 💰 Commercial |
-| **Enterprise** | 500+ | 💰 Individual |
-
-See [LICENSE.md](LICENSE.md) for full terms. Commercial licenses available at
-[graphwiz.ai](https://graphwiz.ai) or via [hello@opensme.org](mailto:hello@opensme.org).
+See [LICENSE.md](LICENSE.md) for full terms.
 
 ### Open-source status & product liability (EU PLD 2024/2853 / ProdHaftG)
 
-The **Community Edition of openSME is free and open-source software**:
-AGPL v3, published free of charge on a public repository, with no paid
-tier, telemetry, or data monetization.
+openSME is **free and open-source software** under Apache-2.0: published
+free of charge on a public repository, with no paid tier, telemetry, or
+data monetization.
 
 Directive (EU) 2024/2853 (the new EU product liability regime, to be
 transposed into German law by the reformed Produkthaftungsgesetz
@@ -985,21 +979,21 @@ transposed into German law by the reformed Produkthaftungsgesetz
 service after 9 Dec 2026) **does not apply to free and open-source
 software developed or supplied outside the course of a commercial
 activity** — Art. 3(2); Recital 14: providing software on open
-repositories is not "making available on the market". Accordingly, the
-Community Edition as published here is **not targeted** by the new
-product liability regime.
+repositories is not "making available on the market". Accordingly, openSME
+as published here is **not targeted** by the new product liability regime.
 
 Scope of that statement, stated honestly:
 
-- It covers the **AGPL Community Edition as supplied free of charge via
-  this public repository**. The separately licensed **Enterprise Edition**
-  (supplied for a fee) is a commercial product and a different matter.
+- It covers **openSME as supplied free of charge via this public
+  repository**. If you redistribute or sell the software yourself, that
+  supply is *your* commercial activity — and your responsibility.
 - If you fork, modify, redistribute, or embed openSME into your own
   offering, the resulting product is yours and so is the liability
   picture around it (Recital 15: downstream integrators, not FOSS
   developers, are on the hook).
 - Independently of product liability, the software is provided
-  **"as is"** under AGPL v3 §§ 15–16 (no warranty, limited liability).
+  **"as is"** under the Apache License 2.0 (Sections 7–9: no warranty,
+  limited liability).
 - This is **project documentation, not legal advice** — for your
   specific deployment, consult counsel.
 
