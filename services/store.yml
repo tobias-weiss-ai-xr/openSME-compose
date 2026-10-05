@@ -37,7 +37,7 @@ services:
       context: ./services/store
       args:
         RAISFAST_ARCH: ${STORE_ARCH:-x86_64}
-    container_name: opendesk-store
+    container_name: opensme-store
     restart: unless-stopped
     profiles: ["store"]
     environment:
@@ -61,7 +61,7 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:

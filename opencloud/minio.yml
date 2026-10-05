@@ -32,7 +32,7 @@ services:
   seaweedfs:
     <<: *service-defaults
     image: chrislusf/seaweedfs:3.99
-    container_name: opendesk-seaweedfs
+    container_name: opensme-seaweedfs
     restart: unless-stopped
     stop_grace_period: 60s
     cap_drop:
@@ -58,7 +58,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      opendesk-net:
+      opensme-net:
         aliases:
           - minio
     deploy:

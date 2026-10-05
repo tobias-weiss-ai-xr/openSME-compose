@@ -25,7 +25,7 @@ services:
   paperless-ngx:
     <<: *service-defaults
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
-    container_name: opendesk-paperless
+    container_name: opensme-paperless
     restart: unless-stopped
     # s6-overlay must be PID 1; the shared anchor's `init: true` (tini) breaks it
     init: false
@@ -61,7 +61,7 @@ services:
       - paperless-export:/usr/src/paperless/export
       - ./services/paperless-consume:/consume:ro
     networks:
-      - opendesk-net
+      - opensme-net
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,7 +96,7 @@ services:
   paperless-gotenberg:
     <<: *service-defaults
     image: gotenberg/gotenberg:latest
-    container_name: opendesk-gotenberg
+    container_name: opensme-gotenberg
     restart: unless-stopped
     profiles: ["paperless"]
     tmpfs:
@@ -104,7 +104,7 @@ services:
     command:
       - "gotenberg"
     networks:
-      - opendesk-net
+      - opensme-net
     healthcheck:
       test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:3000/health || exit 1"]
       interval: 30s
@@ -122,7 +122,7 @@ services:
   paperless-tika:
     <<: *service-defaults
     image: ${TIKA_IMAGE:-apache/tika:latest}
-    container_name: opendesk-tika
+    container_name: opensme-tika
     restart: unless-stopped
     profiles: ["tika"]
     shm_size: 256M
@@ -135,7 +135,7 @@ services:
         -XX:+UseG1GC
         -XX:MaxGCPauseMillis=200
     networks:
-      - opendesk-net
+      - opensme-net
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9998/tika || exit 1"]
       interval: 30s

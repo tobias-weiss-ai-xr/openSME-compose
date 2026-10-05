@@ -11,7 +11,7 @@ services:
     required: false  # overlay — included via COMPOSE_FILE
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres]
     volumes:
       - zitadel-machinekey:/machinekey
@@ -30,7 +30,7 @@ services:
     required: false  # overlay — alternative to Zitadel
     host_ports: []
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     depends_on: [postgres]
     volumes:
       - casdoor-data:/data

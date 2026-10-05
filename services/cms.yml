@@ -32,7 +32,7 @@ services:
     # GitHub releases as of 2026-10); allowlisted as mutable in
     # tests/00-static/check_boot.py. Override to pin once tags exist.
     image: ${CMS_IMAGE:-ghcr.io/dkluhzeb/crap-cms:latest}
-    container_name: opendesk-cms
+    container_name: opensme-cms
     restart: unless-stopped
     profiles: ["cms"]
     # scaffold the config dir on first boot, then serve (default cmd)
@@ -58,7 +58,7 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - opendesk-net
+      - opensme-net
     deploy:
       resources:
         limits:

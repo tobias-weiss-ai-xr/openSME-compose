@@ -14,7 +14,7 @@ services:
     required: false
     host_ports: []  # internal only (accessed via Docker network)
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - dev-agent-state:/state
@@ -32,7 +32,7 @@ services:
     required: false
     host_ports: []  # internal only (accessed via Docker network)
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - predictive-agent-state:/state
@@ -51,7 +51,7 @@ services:
     required: false
     host_ports: []  # internal only (accessed via Docker network)
     healthcheck: true
-    networks: [opendesk-net]
+    networks: [opensme-net]
     volumes:
       - ollama-models:/root/.ollama
     env: []
@@ -66,7 +66,7 @@ services:
     profiles: [taskfleet]
     host_ports: []
     healthcheck: false  # on-demand, not a daemon
-    networks: [opendesk-net]
+    networks: [opensme-net]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - taskfleet-state:/state
