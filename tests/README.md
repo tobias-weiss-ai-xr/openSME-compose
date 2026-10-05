@@ -23,8 +23,9 @@ tests/
 │   └── validate_contracts.py    #   contracts/ rules (env, ports, health, networks, security)
 ├── 03-smoke/                    # Layer 3: Smoke tests (requires running stack)
 │   └── run.py                   #   HTTP endpoints, container health
-├── 04-integration/              # Layer 4: Integration tests (reserved)
-│   └── (not yet implemented)
+├── 04-integration/              # Layer 4: Cross-service integration contracts
+│   └── run.py                   #   DB provisioning, pgbouncer, SSO issuer, live AI proxy
+│                                #   (skips when a participating service isn't running)
 ├── 05-e2e/                      # Layer 5: E2E tests — SSO/OIDC flows (requires running stack)
 │   └── run.py                   #   Zitadel login flow, SSO reuse, logout, app checks,
 │                                #   portal landing page + security-header contract
@@ -92,6 +93,10 @@ python3 tests/run.py --layer 0,1,2
 # Run smoke tests (requires running stack)
 python3 tests/run.py --smoke --domain opensme.org
 
+# Run cross-service integration contracts (requires running stack, same
+# COMPOSE_FILE selection as the stack)
+COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml:..." python3 tests/04-integration/run.py
+
 # Run security audit
 python3 tests/run.py --security
 
@@ -116,12 +121,32 @@ make contracts     # Layer 2: contract validation
 make test-static   # Layers 0-2 (all static checks)
 make container     # container health table (requires stack)
 make smoke         # Layer 3: HTTP smoke (requires stack)
+make integration   # Layer 4: cross-service wiring (requires stack)
 make e2e           # Layer 5: SSO/OIDC e2e flows (requires stack)
 make security      # Layer 6: security audit
 make bench         # Layer 7: live benchmark (optional)
 make test          # Layers 0-3 (static + container + smoke)
-make test-all      # Layers 0-6 (full suite incl. e2e)
+make test-all      # Layers 0-6 (full suite incl. e2e + integration)
 ```
+
+## Integration contracts (`04-integration/`)
+
+Where Layer 3 checks single-service reachability from the host, Layer 4
+verifies the **wiring between services** — probed from inside the compose
+network or through the edge:
+
+1. **Databases** — postgres provisions a database for every DB-backed
+   service that is running (mirrors `postgres-init/00-create-databases.sql`)
+2. **pgbouncer** — answers the PostgreSQL protocol inside the network
+   (DNS + pool, probed via `pg_isready` from the postgres container)
+3. **SSO issuer consistency** — `OC_OIDC_ISSUER` from opencloud's runtime
+   env equals the issuer zitadel actually serves via OIDC discovery
+4. **AI proxy round-trip** — `POST /api/ai/chat` succeeds end-to-end
+   against the live llama.cpp backend (the deployed twin of the in-process
+   contract tests in `portal/src/main.rs`)
+
+Every check skips gracefully when a participating service isn't running,
+so the layer stays meaningful for any `COMPOSE_FILE` subset.
 
 ## Portal unit tests (`portal/`)
 

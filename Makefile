@@ -229,8 +229,8 @@ smoke:
 	@$(PYTHON) tests/03-smoke/run.py $(DOMAIN) 2>&1
 
 integration:
-	@echo -e "$(BLUE)── layer 4: integration ──$(NC)"
-	@echo -e "$(YELLOW)⚠ integration tests not yet implemented$(NC)"
+	@echo -e "$(BLUE)── layer 4: cross-service integration ──$(NC)"
+	@$(PYTHON) tests/04-integration/run.py 2>&1
 
 e2e:
 	@echo -e "$(BLUE)── layer 5: e2e — SSO flows (requires running stack) ──$(NC)"
