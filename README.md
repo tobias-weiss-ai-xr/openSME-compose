@@ -316,6 +316,7 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `opencloud/minio.yml` | SeaweedFS (S3 storage) | `minio.*` | For production (not needed for `ocis` storage) |
 | `mail/stalwart.yml` | Stalwart Mail Server | `mail.*` | For email |
 | `mail/sogo.yml` | SOGo Groupware | `webmail.*` | For webmail / calendar |
+| `mail/mailcow-dockerized` (submodule) | Full mailcow stack (mail + groupware) | `mail.*` | The all-in-one mail option — see below |
 | `services/invoice-ninja.yml` | Invoice Ninja | `invoices.*` | For invoicing (`--profile invoice`) |
 | `services/paperless.yml` | Paperless-ngx + Gotenberg + Tika | `paperless.*` | For document management (`--profile paperless`) |
 | `services/cryptpad.yml` | CryptPad | `pad.*` | For collaborative docs (`--profile collab`) |
@@ -336,6 +337,28 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `monitoring/predictive-agent.yml` | predictive-agent | — | Predictive health (Kalman/Markov) |
 | `monitoring/ollama.yml` | Ollama | — | Local LLM for agents |
 | `monitoring/taskfleet.yml` | taskfleet | — | Parallel LLM task orchestration |
+
+### Mailcow (full mail server, git submodule)
+
+For a complete mail + groupware stack in one move, openSME ships the
+upstream [mailcow-dockerized](https://github.com/mailcow/mailcow-dockerized)
+as a pinned git submodule (`mail/mailcow-dockerized` — GPL-3.0 in its own
+tree, nothing copied into this repository). It supersedes the thin
+Stalwart+SOGo overlays when you want Dovecot/Postfix/Rspamd/SOGo with a
+batteries-included admin UI:
+
+```bash
+git submodule update --init mail/mailcow-dockerized
+scripts/mailcow.sh up mail.example.org    # renders conf, boots, wires Traefik
+scripts/mailcow.sh down                   # unwires router, stops — core untouched
+```
+
+TLS stays at the openSME Traefik; mailcow's own ACME is disabled and the
+UI is only reachable through the edge. Secrets live in the gitignored
+`mail/mailcow.conf` (rendered from `.env`). On hosts booted with
+`ipv6.disable=1` the wrapper automatically patches mailcow's dual-stack
+listeners to IPv4. Note ~2 GB extra RAM with the demo-lean defaults
+(ClamAV / full-text search off); E2E journey: `tests/05-e2e/mailcow_journey.py`.
 
 ### Docker Compose file order
 

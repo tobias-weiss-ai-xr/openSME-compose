@@ -58,6 +58,32 @@ SCAN_DIRS = ["docker-compose.yml", "idm/", "opencloud/", "mail/", "services/",
 SCAN_EXTS = {".yml", ".yaml", ".sh", ".py", ".md", ".env", ".env.example", ".env.demo"}
 
 
+def _submodule_paths() -> set[Path]:
+    """Absolute paths of registered git submodules (from .gitmodules)."""
+    paths = set()
+    gm = ROOT / ".gitmodules"
+    if gm.exists():
+        for line in gm.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("path = "):
+                paths.add((ROOT / line[len("path = "):].strip()).resolve())
+    return paths
+
+
+_SUBMODULES: set[Path] | None = None
+
+
+def _in_submodule(fp: Path) -> bool:
+    global _SUBMODULES
+    if _SUBMODULES is None:
+        _SUBMODULES = _submodule_paths()
+    try:
+        rel = fp.resolve()
+        return any(rel.is_relative_to(sm) for sm in _SUBMODULES)
+    except (ValueError, OSError):
+        return False
+
+
 def scan_file(filepath: Path) -> list[tuple[int, str, str]]:
     """Scan a file for secrets. Returns list of (line_number, pattern_name, line)."""
     findings = []
@@ -121,6 +147,12 @@ def main():
             for ext in SCAN_EXTS:
                 for fp in path.rglob(f"*{ext}"):
                     if ".git" in fp.parts:
+                        continue
+                    # git submodules carry THEIR OWN tree (e.g. mailcow's
+                    # upstream source with test-fixture strings) — their
+                    # licensing/security review is the upstream's job, not
+                    # this repo's secret scan
+                    if _in_submodule(fp):
                         continue
                     findings = scan_file(fp)
                     files_scanned += 1

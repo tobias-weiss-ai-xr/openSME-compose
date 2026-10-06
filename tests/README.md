@@ -241,6 +241,15 @@ What is covered (full story catalog with Given/When/Then:
    card appears, round trip answers, upstream contract proven from the
    mock's request log, empty questions rejected, stack restored. CI runs
    it after the main suite.
+17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
+   drives the vendored mailcow-dockerized submodule via
+   `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP
+   announce on :25, STARTTLS submission, IMAPS, a REAL delivery round
+   trip (API-provisioned mailbox → authenticated SMTP → message in
+   INBOX over IMAPS, pure stdlib), SOGo webmail, and proof that the
+   REST API is never served at the public edge. Skips cleanly when the
+   submodule/stack isn't provisioned; dedicated CI workflow
+   (`.github/workflows/mailcow.yml`) pays for the heavy image pull.
 
 Configuration (env vars win over `.env`):
 

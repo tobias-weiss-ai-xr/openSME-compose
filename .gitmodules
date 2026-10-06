@@ -1,0 +1,6 @@
+[submodule "mailcow"]
+	path = mail/mailcow-dockerized
+	url = https://github.com/mailcow/mailcow-dockerized.git
+	# mailcow writes its config/data INSIDE the submodule tree; don't let
+	# that mark the submodule dirty in the superproject
+	ignore = dirty
