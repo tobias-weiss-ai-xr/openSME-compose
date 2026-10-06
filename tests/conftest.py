@@ -492,15 +492,17 @@ def ensure_portal_routed(session, portal_base: str, log=print) -> bool:
     Traefik's bare "404 page not found" until the provider resyncs.
 
     Self-heal ladder:
-      1. wait up to 60s for /health to turn 200 (benign boot delay)
+      1. wait up to 75s for /health to turn 200 (benign boot delay —
+         and every traefik (re)start fires a storm of LE ACME lookups
+         for the .local demo routers that delays readiness)
       2. `docker restart opensme-traefik` (forced provider resync) and
-         wait again up to 60s
+         wait again up to 90s (covers the post-restart ACME storm)
     Returns True only when /health is 200 via the public route.
     """
-    if wait_http_ok(session, portal_base + "/health"):
+    if wait_http_ok(session, portal_base + "/health", deadline_s=75):
         return True
     log("portal not routed via traefik — forcing provider resync (traefik restart)")
     import subprocess as _sp
     _sp.run(["docker", "restart", "opensme-traefik"],
             capture_output=True, timeout=120)
-    return wait_http_ok(session, portal_base + "/health")
+    return wait_http_ok(session, portal_base + "/health", deadline_s=90)

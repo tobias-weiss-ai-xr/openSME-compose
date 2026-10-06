@@ -38,15 +38,15 @@ import urllib3
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from conftest import Result, ensure_portal_routed, wait_http_ok
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from conftest import Result, ensure_portal_routed
+from cloud_mock_support import CLOUD_NAME, CLOUD_PORT, start_cloud_standin, stop_cloud_standin
 
 import requests
 
 T = 15
 LOCALISH_SUFFIXES = (".local", ".localhost", ".test")
 DEMO_SET = "docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml:profiles/demo.dev.yml"
-CLOUD_NAME = "opensme-e2e-cloud"
-CLOUD_PORT = 8099
 LINK_LOCAL = ".".join(["169", "254", "169", "254"])  # assembled: no RFC1918 literals
 
 
@@ -80,51 +80,6 @@ def wait_portal(session, portal_base, deadline_s=90):
         except requests.RequestException:
             pass
         time.sleep(2)
-    return False
-
-
-def start_cloud_standin(tmpdir: Path) -> bool:
-    """Run a container named opensme-e2e-cloud on the compose network."""
-    subprocess.run(["docker", "rm", "-f", CLOUD_NAME],
-                   capture_output=True, timeout=60)
-    # create the container with files baked in
-    run = subprocess.run(
-        ["docker", "run", "-d", "--name", CLOUD_NAME,
-         "--network", "opensme-net",
-         "python:3-alpine", "sleep", "600"],
-        capture_output=True, text=True, timeout=120)
-    if run.returncode != 0:
-        return False
-    subprocess.run(["docker", "exec", CLOUD_NAME, "mkdir", "-p", "/srv"],
-                   capture_output=True, timeout=60)
-    subprocess.run(["docker", "cp", str(Path(__file__).parent / "cloud_mock.py"),
-                    f"{CLOUD_NAME}:/srv/cloud_mock.py"],
-                   capture_output=True, timeout=60)
-    # a clean PDF-ish file and one with a hostile NAME
-    (tmpdir / "Angebot_2026.pdf").write_bytes(b"%PDF-1.4\n% e2e attachment\n" + b"x" * 4096)
-    (tmpdir / "Rechnung<script>.pdf").write_bytes(b"%PDF-1.4\n% hostile name\n")
-    subprocess.run(["docker", "cp", str(tmpdir / "Angebot_2026.pdf"),
-                    f"{CLOUD_NAME}:/srv/Angebot_2026.pdf"],
-                   capture_output=True, timeout=60)
-    subprocess.run(["docker", "cp", str(tmpdir / "Rechnung<script>.pdf"),
-                    f"{CLOUD_NAME}:/srv/Rechnung<script>.pdf"],
-                   capture_output=True, timeout=60)
-    start = subprocess.run(
-        ["docker", "exec", "-d", CLOUD_NAME, "python3", "/srv/cloud_mock.py",
-         str(CLOUD_PORT)],
-        capture_output=True, timeout=60)
-    if start.returncode != 0:
-        return False
-    # wait for it to accept connections (from inside the net namespace)
-    for _ in range(20):
-        probe = subprocess.run(
-            ["docker", "exec", CLOUD_NAME, "python3", "-c",
-             f"import socket;s=socket.create_connection(('127.0.0.1',{CLOUD_PORT}),2);"
-             "s.close()"],
-            capture_output=True, timeout=30)
-        if probe.returncode == 0:
-            return True
-        time.sleep(0.5)
     return False
 
 
@@ -306,8 +261,7 @@ def main() -> int:
                      f"escaped={'Rechnung&lt;script&gt;.pdf' in page2.text}"
             )
     finally:
-        subprocess.run(["docker", "rm", "-f", CLOUD_NAME],
-                       capture_output=True, timeout=60)
+        stop_cloud_standin()
         shutil.rmtree(tmpdir, ignore_errors=True)
         try:
             recreate_portal({})

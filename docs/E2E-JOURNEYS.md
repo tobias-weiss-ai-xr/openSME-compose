@@ -282,7 +282,54 @@ restarts — that is Epic P's territory for DATA, not chat.
 The portal stores a metadata SNAPSHOT at send time (the attachment stays
 in the cloud — the portal never proxies file bodies).
 
-## Epic P — Mail, for real: mailcow delivers actual mail
+## Epic V — Portability: bring your own domain
+
+> *Als SME-Betreiber will ich den Stack auf meine eigene Domain bringen,
+> ohne den Code anzufassen — nur .env-Werte ändern.*
+
+| # | User story | Test |
+|---|------------|------|
+| V1 | Mein Portal läuft unter meiner Domain | portal recreated with `PORTAL_DOMAIN=portal.meine-firma.test` answers 200 on the NEW host (DNS fallback maps `*.test` to loopback) and the footer shows the new domain |
+| V2 | Die Migration ersetzt die alte Adresse — sie ist keine Kopie | `https://portal.opensme.local` stops routing (traefik 404) after the recreate |
+| V3 | Abgeleitete Defaults folgen meiner Domain | the intercom default allowlist is `cloud.<domain>`: a cloud stand-in aliased `cloud.meine-firma.test` on the compose network is ACCEPTED as attachment source |
+| V4 | Der Rollback ist derselbe Weg zurück | recreate with the original env → old domain answers again, new domain is gone |
+
+The journey migrates the PORTAL (compose labels re-interpolate at
+recreate time, so the traefik router follows). A full-stack domain move
+(IdP issuer, cloud, mail) is a `.env` + fresh-boot affair — out of scope
+for a CI-priced journey, documented honestly here.
+
+## Epic W — Observability & log hygiene
+
+> *Als Operator will ich sehen, was der Stack tut — und ich will
+> gleichzeitig wissen, dass die Logs keine Secrets ausspucken.*
+
+| # | User story | Test |
+|---|------------|------|
+| W1 | Jeder Dienst verrät seinen Zustand | every running `opensme-*` container with a healthcheck reports `healthy` (containers younger than their start period are skipped, not failed) |
+| W2 | Secrets landen nicht in den Logs | every `*PASS*/*SECRET*/*TOKEN*/*KEY*/*SALT*` value from `.env` (≥10 chars) is absent from the last 4000 log lines of EVERY opensme container |
+| W3 | Das Portal loggt strukturiert (RFC 3339, Level) | the portal's recent log lines carry a RFC-3339 timestamp + level prefix (tracing format), so aggregation works out of the box |
+
+Read-only journey — recreates nothing, safe to run anywhere.
+
+## Epic X — Idempotency: the second boot is a no-op
+
+> *Als Betreiber will ich `scripts/demo.sh` (oder den Deploy-Weg) einfach
+> nochmal fahren können — ohne Duplikate, ohne kaputte Secrets, ohne
+> Überraschungen.*
+
+| # | User story | Test |
+|---|------------|------|
+| X1 | Ein Zweitboot mit bestehendem `.env` ist ungeschrieben | the existing `.env` is byte-identical after a second `scripts/demo.sh` run (no silent re-rotation, "using existing .env" path) |
+| X2 | Der Zweitboot erzeugt keine Duplikate in Zitadel | an OIDC app created BEFORE the second boot still exists EXACTLY ONCE after it (same id, no copy) |
+| X3 | Der Automation-Machineuser arbeitet weiter | the seeded PAT (refreshed by the second boot's `zitadel setup`) still authenticates: `POST /auth/v1/users/me` → 200 |
+| X4 | Der Stack ist danach gesund | portal, IdP and cloud answer 200 on their health/public routes after the second boot |
+
+This is the boot-strapping promise as a test: setup steps and seeding
+are idempotent, volumes hold state, and a re-run converges instead of
+diverging.
+
+## Epic MA — Mail, for real: mailcow delivers actual mail
 
 > *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
 > als Git-Submodule gepinnt) wie ein Nutzer UND wie ein Auditor fahren:
@@ -290,13 +337,13 @@ in the cloud — the portal never proxies file bodies).
 
 | # | User story | Journey test |
 |---|------------|--------------|
-| P1 | Die Admin-UI lädt über den openSME-Traefik | `tests/05-e2e/mailcow_journey.py` — `https://mail.<domain>/` serves the mailcow UI |
-| P2 | SMTP kündigt sich sauber an :25 an | EHLO → 250 with the mailcow banner |
-| P3 | Submission auf :587 verhandelt STARTTLS | smtplib STARTTLS handshake succeeds |
-| P4 | IMAPS auf :993 verhandelt TLS | stdlib TLS handshake succeeds |
-| P5 | **Zustell-Roundtrip**: Mailbox rein, Post an sich selbst, INBOX raus | REST API provisions domain+mailbox (deterministic password via `edit/mailbox`) → authenticated SMTP submission → message found in INBOX over IMAPS — pure stdlib (`smtplib`/`imaplib`) |
-| P6 | SOGo-Webmail antwortet | `/SOGo/` reachable through the same edge |
-| P7 | Die REST-API wird NIEMALS an der Öffentlichkeit serviert | `/api/v1/...` via Traefik → 401/403/404 (the allowlist covers localhost only) |
+| MA1 | Die Admin-UI lädt über den openSME-Traefik | `tests/05-e2e/mailcow_journey.py` — `https://mail.<domain>/` serves the mailcow UI |
+| MA2 | SMTP kündigt sich sauber an :25 an | EHLO → 250 with the mailcow banner |
+| MA3 | Submission auf :587 verhandelt STARTTLS | smtplib STARTTLS handshake succeeds |
+| MA4 | IMAPS auf :993 verhandelt TLS | stdlib TLS handshake succeeds |
+| MA5 | **Zustell-Roundtrip**: Mailbox rein, Post an sich selbst, INBOX raus | REST API provisions domain+mailbox (deterministic password via `edit/mailbox`) → authenticated SMTP submission → message found in INBOX over IMAPS — pure stdlib (`smtplib`/`imaplib`) |
+| MA6 | SOGo-Webmail antwortet | `/SOGo/` reachable through the same edge |
+| MA7 | Die REST-API wird NIEMALS an der Öffentlichkeit serviert | `/api/v1/...` via Traefik → 401/403/404 (the allowlist covers localhost only) |
 
 Integration facts (deliberately honest):
 
@@ -359,6 +406,15 @@ python3 tests/05-e2e/persistence.py opensme.local
 
 # intercom journey (recreates the portal with an attachment-source mock):
 python3 tests/05-e2e/intercom.py opensme.local
+
+# portability journey (recreates the portal under another domain):
+python3 tests/05-e2e/portability.py opensme.local
+
+# observability journey (read-only health + log-secrets audit):
+python3 tests/05-e2e/observability.py opensme.local
+
+# idempotency journey (runs scripts/demo.sh a second time — slow):
+python3 tests/05-e2e/idempotency.py opensme.local
 
 # mailcow journey (requires the submodule + `scripts/mailcow.sh up`):
 git submodule update --init mail/mailcow-dockerized
