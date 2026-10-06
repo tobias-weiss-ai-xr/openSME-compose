@@ -241,6 +241,17 @@ What is covered (full story catalog with Given/When/Then:
    card appears, round trip answers, upstream contract proven from the
    mock's request log, empty questions rejected, stack restored. CI runs
    it after the main suite.
+17. **Burst** — `tests/05-e2e/burst.py`: 320 concurrent requests across
+   the portal surfaces, zero 5xx, p95 within budget, catalog consistent
+   under load. CI runs it after the AI journey.
+18. **Hygiene** — `tests/05-e2e/hygiene.py`: no placeholder credentials
+   in any running container env, the IdP rejects anonymous management
+   writes, the cloud rejects forged bearer tokens. CI runs it after the
+   burst journey.
+19. **Persistence** — `tests/05-e2e/persistence.py`: `up -d` churns
+   nothing, a marker row survives a full `down` + `up -d` round trip
+   (volumes hold state), and the stack is functional again afterwards.
+   CI runs it last because it restarts the whole stack.
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP

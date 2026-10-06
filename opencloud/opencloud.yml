@@ -80,7 +80,9 @@ services:
       NOTIFICATIONS_SMTP_TLS_INSECURE: ${OC_SMTP_TLS_INSECURE:-true}
       NOTIFICATIONS_SMTP_AUTHENTICATION: ${OC_SMTP_AUTHENTICATION:-login}
       NOTIFICATIONS_SMTP_USERNAME: ${OC_SMTP_USERNAME:-noreply@${OPENSME_DOMAIN:-opensme.org}}
-      NOTIFICATIONS_SMTP_PASSWORD: ${OC_SMTP_PASSWORD:-CHANGEME_smtp}
+      # empty default: mail is an opt-in feature — a CHANGEME placeholder
+      # would sit in the live container env of every SMTP-less deployment
+      NOTIFICATIONS_SMTP_PASSWORD: ${OC_SMTP_PASSWORD:-}
       # Performance tuning
       OC_PERMISSIONS_SSH_KEY_AGE_MAX: 0
       OC_STORAGE_USERS_MAX_CONCURRENCY: 10
