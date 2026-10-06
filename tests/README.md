@@ -215,6 +215,17 @@ What is covered (full story catalog with Given/When/Then:
    portal with a `PORTAL_ANNOUNCEMENTS` override (one benign + one XSS
    payload), asserts the notice is visible AND escaped, then withdraws
    it and asserts silence. Run by CI after the main suite.
+10. **Files & collaboration** — opencloud web UI loads, unauthenticated
+   WebDAV is denied (auth wall), and the IdP wiring of the cloud's OIDC
+   client is probed honestly (warn when unregistered)
+11. **Resilience** — `tests/05-e2e/resilience.py` bounces postgres
+   (IdP + portal must reconnect) and stops zitadel (portal + cloud must
+   degrade, not fall over; the IdP must recover). CI runs it after the
+   main suite.
+12. **Backup** — `tests/05-e2e/backup.py` runs `scripts/backup.sh` and
+   audits the artifacts: non-empty gzip'd SQL dump with real tables
+   (IdP database included), valid Traefik tar, full gzip CRC. CI runs it
+   after the main suite.
 
 Configuration (env vars win over `.env`):
 

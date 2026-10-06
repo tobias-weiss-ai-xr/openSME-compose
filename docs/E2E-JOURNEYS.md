@@ -117,6 +117,46 @@ with a `PORTAL_ANNOUNCEMENTS` override and restores it afterwards — the
 only journey that drives the stack's lifecycle, because that is exactly
 what an operator broadcast does.
 
+## Epic I — Files & collaboration: the cloud is walled
+
+> *Als Nutzer lege ich Dateien in der Cloud ab — und als Auditor stelle
+> ich fest, dass niemand ohne Login an sie herankommt.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| I1 | Als Nutzer lädt die Cloud-Weboberfläche | `section_opencloud` — UI 200 with product marker |
+| I2 | Als Angreifer komme ich ohne Credentials nicht an Dateien | unauthenticated WebDAV → 401/403 (auth wall holds) |
+| I3 | Als Betreiber sehe ich ehrlich, ob Cloud-Login ans IdP angebunden ist | OIDC wiring probe — **warn** when the client isn't registered (the demo subset currently ships without it — web UI loads, login would fail; register the `opencloud` app for the full demo) |
+
+## Epic J — Resilience: the stack heals itself
+
+> *Als Betreiber übersteht mein Stack einen DB-Neustart und einen
+> IdP-Ausfall, ohne dass Nutzer etwas davon merken.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| J1 | Als Nutzer merke ich nichts, wenn die Datenbank bounced | `tests/05-e2e/resilience.py` — `restart postgres` → IdP, portal reconnect and get healthy |
+| J2 | Als Nutzer arbeite ich weiter, wenn der IdP ausfällt | `stop zitadel` → portal + cloud STAY up (degradation, not outage) → `start zitadel` → discovery serves again |
+
+This is the second lifecycle-driving journey — it bounces real containers
+and restores the stack in `finally`, so a crash can't leave it broken.
+
+## Epic K — Backup & recovery: provable restore points
+
+> *Als Betreiber kann ich nachweisen, dass mein Backup ein echter
+> Restore-Punkt ist — kein Placebo.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| K1 | Als Betreiber erzeugt `scripts/backup.sh` nicht-leere, gültige Artefakte | `tests/05-e2e/backup.py` — runs the operator's own tooling, audits output |
+| K2 | Der SQL-Dump enthält echte Tabellen — inklusive der IdP-Datenbank | gzip'd dump: size, `CREATE TABLE` count, zitadel db present |
+| K3 | Das Traefik-Archiv (ACME/TLS-Material) ist ein gültiges tar | tar listing non-empty; full gzip CRC verified |
+
+This journey caught a real bug: `backup.sh` used `compose run` (a second,
+serverless container) for the SQL dump — it silently produced **empty**
+dumps, and its default mode downed the stack *before* dumping. Both are
+fixed; the journey keeps them fixed.
+
 ---
 
 ## Running
@@ -128,6 +168,12 @@ python3 tests/run.py --e2e --domain opensme.local
 
 # operator broadcast journey (recreates the portal — CI runs it after the suite):
 python3 tests/05-e2e/broadcast.py opensme.local
+
+# resilience journey (bounces postgres + zitadel — CI runs it after the suite):
+python3 tests/05-e2e/resilience.py opensme.local
+
+# backup journey (runs scripts/backup.sh, audits the artifacts):
+python3 tests/05-e2e/backup.py
 
 # static-ish subset (no credentials needed):
 python3 tests/05-e2e/run.py opensme.local --skip-flows
