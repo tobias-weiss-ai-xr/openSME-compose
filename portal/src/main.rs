@@ -14,6 +14,8 @@ use tokio::signal;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
+mod intercom;
+
 #[derive(Clone)]
 struct AppConfig {
     opencloud_url: String,
@@ -28,6 +30,9 @@ struct AppConfig {
     announcements: Arc<Vec<Announcement>>,
     ai: Option<AiConfig>,
     ai_client: reqwest::Client,
+    intercom: intercom::IntercomConfig,
+    intercom_store: Arc<intercom::IntercomStore>,
+    intercom_client: reqwest::Client,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -103,6 +108,46 @@ fn parse_announcements(raw: &str) -> Vec<Announcement> {
     }
 }
 
+/// Server-render the intercom list into the landing page — progressive
+/// enhancement: the page is meaningful without JS; app.js re-renders
+/// after each post (textContent, never innerHTML).
+fn render_intercom(messages: &[intercom::IntercomMessage]) -> String {
+    if messages.is_empty() {
+        return r#"<li class=\"ic-empty\">No notes yet — start the conversation.</li>"#.into();
+    }
+    messages
+        .iter()
+        .map(|m| {
+            let text = html_escape(&m.text);
+            let att = match &m.attachment {
+                Some(a) => {
+                    let url = html_escape(&a.url);
+                    let name = html_escape(&a.name);
+                    let size = match a.size {
+                        Some(b) if b < 1024 => format!("{b} B"),
+                        Some(b) if b < 1024 * 1024 => {
+                            format!("{:.1} KB", b as f64 / 1024.0)
+                        }
+                        Some(b) => format!("{:.1} MB", b as f64 / (1024.0 * 1024.0)),
+                        None => String::new(),
+                    };
+                    let size_attr = if size.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" ({size})")
+                    };
+                    let ct = html_escape(&a.content_type);
+                    format!(
+                        r#"<a class=\"ic-att\" href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">📎 {name}{size_attr} · {ct}</a>"#
+                    )
+                }
+                None => String::new(),
+            };
+            format!(r#"<li>{text}{att}</li>"#)
+        })
+        .collect()
+}
+
 fn render_announcements(announcements: &[Announcement]) -> String {
     announcements
         .iter()
@@ -149,6 +194,20 @@ fn build_landing_page(config: &AppConfig) -> String {
     } else {
         ""
     };
+
+    let ic_rendered = render_intercom(&config.intercom_store.list());
+    let intercom_card = format!(
+        r#"<div class="card intercom" id="intercom-card">
+                <h2>Intercom</h2>
+                <ul class="ic-list" id="ic-list" aria-live="polite">{ic_rendered}</ul>
+                <div class="ic-box">
+                    <textarea class="ic-text" rows="2" placeholder="Short note for the team…" aria-label="Message" maxlength="2000"></textarea>
+                    <input class="ic-url" type="url" placeholder="Attachment from cloud — paste a share link (https://cloud…/s/…)" aria-label="Attachment URL">
+                    <button class="ic-send" type="button">Send</button>
+                    <p class="ic-out" hidden></p>
+                </div>
+            </div>"#
+    );
 
     let announcements = render_announcements(&config.announcements);
     let domain = html_escape(&config.opensme_domain);
@@ -270,6 +329,53 @@ fn build_landing_page(config: &AppConfig) -> String {
             line-height: 1.55;
             white-space: pre-wrap;
         }}
+        .ic-list {{
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 16rem;
+            overflow-y: auto;
+        }}
+        .ic-list li {{
+            color: #e2e8f0;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            word-break: break-word;
+        }}
+        .ic-list .ic-att {{
+            display: block;
+            color: #93c5fd;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }}
+        .ic-list .ic-att:hover {{ text-decoration: underline; }}
+        .ic-box {{ display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.75rem; }}
+        .ic-text, .ic-url {{
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 0.6rem;
+            color: #e2e8f0;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.92rem;
+            font-family: inherit;
+            resize: vertical;
+        }}
+        .ic-send {{
+            align-self: flex-start;
+            background: rgba(96, 165, 250, 0.18);
+            border: 1px solid rgba(96, 165, 250, 0.45);
+            border-radius: 0.6rem;
+            color: #bfdbfe;
+            padding: 0.45rem 1rem;
+            font-size: 0.92rem;
+            cursor: pointer;
+        }}
+        .ic-send:hover {{ background: rgba(96, 165, 250, 0.32); }}
+        .ic-out {{
+            color: #cbd5e1;
+            font-size: 0.88rem;
+        }}
         #palette {{
             position: fixed;
             inset: 0;
@@ -346,6 +452,7 @@ fn build_landing_page(config: &AppConfig) -> String {
     <main class="grid">
         {cards}
         {ai_card}
+        {intercom_card}
     </main>
     <footer>
         openSME Portal &mdash; {domain}
@@ -562,7 +669,9 @@ fn build_router(config: Arc<AppConfig>) -> Router {
         .route("/app.js", get(handle_app_js))
         .route("/health", get(handle_health))
         .route("/api/services", get(handle_services))
-        .route("/api/announcements", get(handle_announcements));
+        .route("/api/announcements", get(handle_announcements))
+        .route("/api/intercom", get(handle_intercom_list))
+        .route("/api/intercom", post(handle_intercom_post));
 
     if config.ai.is_some() {
         router = router.route("/api/ai/chat", post(handle_ai_chat));
@@ -572,6 +681,91 @@ fn build_router(config: Arc<AppConfig>) -> Router {
         .layer(middleware::from_fn(security_headers))
         .layer(cors)
         .with_state(config)
+}
+
+/// Portal intercom: a short internal note, optionally referencing one
+/// attachment from the cloud service (metadata snapshot only).
+#[derive(Deserialize)]
+struct IntercomPost {
+    text: String,
+    #[serde(default)]
+    attachment_url: Option<String>,
+}
+
+async fn handle_intercom_list(State(config): State<Arc<AppConfig>>) -> impl IntoResponse {
+    Json(serde_json::json!({ "messages": config.intercom_store.list() }))
+}
+
+async fn handle_intercom_post(
+    State(config): State<Arc<AppConfig>>,
+    Json(post): Json<IntercomPost>,
+) -> impl IntoResponse {
+    use axum::http::header::{CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_TYPE};
+    use axum::response::IntoResponse;
+
+    let bad = |msg: &str| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": msg })),
+        )
+    };
+
+    let text = match intercom::validate_text(&post.text) {
+        Ok(t) => t,
+        Err(e) => return bad(&e).into_response(),
+    };
+
+    let attachment = match post.attachment_url.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(raw) => {
+            let url = match intercom::validate_attachment_url(raw, &config.intercom) {
+                Ok(u) => u,
+                Err(e) => return bad(&e).into_response(),
+            };
+            // Snapshot the metadata at send time — the file stays in the cloud.
+            let head = config
+                .intercom_client
+                .head(&url)
+                .timeout(Duration::from_secs(10))
+                .send()
+                .await;
+            let head = match head {
+                Ok(r) if r.status().is_success() => r,
+                Ok(r) => {
+                    return bad(&format!(
+                        "attachment source answered HTTP {}",
+                        r.status().as_u16()
+                    ))
+                    .into_response()
+                }
+                Err(_) => return bad("attachment source unreachable").into_response(),
+            };
+            let hdr = |name: &axum::http::HeaderName| {
+                head.headers()
+                    .get(name)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|s| s.to_string())
+            };
+            let size = head
+                .headers()
+                .get(CONTENT_LENGTH)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+            Some(intercom::parse_attachment_metadata(
+                &url,
+                hdr(&CONTENT_TYPE).as_deref(),
+                size,
+                hdr(&CONTENT_DISPOSITION).as_deref(),
+            ))
+        }
+    };
+
+    let msg = config.intercom_store.push(text, attachment);
+    (
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "message": msg })),
+    )
+        .into_response()
 }
 
 async fn handle_app_js() -> impl IntoResponse {
@@ -646,6 +840,12 @@ fn load_config() -> Arc<AppConfig> {
             .timeout(Duration::from_secs(60))
             .build()
             .unwrap_or_default(),
+        intercom: intercom::IntercomConfig::from_env(&load_env("OPENSME_DOMAIN", "opensme.org")),
+        intercom_store: Arc::new(intercom::IntercomStore::default()),
+        intercom_client: reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .build()
+            .unwrap_or_default(),
     })
 }
 
@@ -700,6 +900,12 @@ mod tests {
             announcements: Arc::new(parse_announcements(announcements)),
             ai,
             ai_client: reqwest::Client::new(),
+            intercom: intercom::IntercomConfig {
+                allowed_hosts: vec!["cloud.example".into()],
+                allow_http: false,
+            },
+            intercom_store: Arc::new(intercom::IntercomStore::default()),
+            intercom_client: reqwest::Client::new(),
         }
     }
 
@@ -807,6 +1013,33 @@ mod tests {
     #[test]
     fn html_escape_covers_angle_brackets() {
         assert_eq!(html_escape("<b>"), "&lt;b&gt;");
+    }
+
+    #[test]
+    fn intercom_card_always_on_page() {
+        let html = build_landing_page(&cfg_with("", None, ""));
+        assert!(html.contains("id=\"intercom-card\""));
+        assert!(html.contains("ic-send"));
+    }
+
+    #[test]
+    fn intercom_messages_rendered_escaped_into_page() {
+        let cfg = cfg_with("", None, "");
+        cfg.intercom_store
+            .push("note <script>alert(1)</script>".into(), None);
+        let att = intercom::parse_attachment_metadata(
+            "https://cloud.example/s/f.pdf",
+            Some("application/pdf"),
+            Some(2048),
+            Some("attachment; filename=\"Rechnung<script>.pdf\""),
+        );
+        cfg.intercom_store.push("see attached".into(), Some(att));
+        let html = build_landing_page(&cfg);
+        assert!(!html.contains("<script>alert(1)"));
+        assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assert!(html.contains("Rechnung&lt;script&gt;.pdf"));
+        assert!(html.contains("2.0 KB"));
+        assert!(html.contains("application/pdf"));
     }
 
     // ── In-process HTTP contract tests (tower oneshot — no sockets) ────
@@ -1064,5 +1297,93 @@ mod tests {
                 prop_assert_eq!(a.level == "warn", *warn);
             }
         }
+    }
+
+    // ── Intercom HTTP contract (in-process) ─────────────────────────
+
+    #[tokio::test]
+    async fn intercom_post_then_list_roundtrip() {
+        let cfg = cfg_with("", None, "");
+        let resp = respond(
+            cfg.clone(),
+            "POST",
+            "/api/intercom",
+            Some(serde_json::json!({ "text": "  Team-Meet um 10  " })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::CREATED);
+        let posted = body_json(resp).await;
+        assert_eq!(posted["message"]["text"], "Team-Meet um 10");
+
+        let resp = respond(cfg, "GET", "/api/intercom", None).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let listed = body_json(resp).await;
+        assert_eq!(listed["messages"][0]["text"], "Team-Meet um 10");
+        assert!(listed["messages"][0]["id"].is_u64());
+    }
+
+    #[tokio::test]
+    async fn intercom_rejects_blank_and_oversized_text() {
+        let cfg = cfg_with("", None, "");
+        for text in ["", "    "] {
+            let resp = respond(
+                cfg.clone(),
+                "POST",
+                "/api/intercom",
+                Some(serde_json::json!({ "text": text })),
+            )
+            .await;
+            assert_eq!(resp.status(), StatusCode::BAD_REQUEST, "text={text:?}");
+        }
+        let long = "x".repeat(intercom::MAX_TEXT + 1);
+        let resp = respond(
+            cfg.clone(),
+            "POST",
+            "/api/intercom",
+            Some(serde_json::json!({ "text": long })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        // nothing leaked into the store
+        let listed = body_json(respond(cfg, "GET", "/api/intercom", None).await).await;
+        assert_eq!(listed["messages"].as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn intercom_attachment_foreign_host_rejected_without_store_write() {
+        let cfg = cfg_with("", None, "");
+        let resp = respond(
+            cfg.clone(),
+            "POST",
+            "/api/intercom",
+            Some(serde_json::json!({
+                "text": "see attached",
+                "attachment_url": "https://evil.example/s/abc"
+            })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        let err = body_json(resp).await;
+        assert!(err["error"].as_str().unwrap_or("").contains("not allowed"));
+        let listed = body_json(respond(cfg, "GET", "/api/intercom", None).await).await;
+        assert_eq!(listed["messages"].as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn intercom_attachment_unreachable_upstream_is_400() {
+        let cfg = cfg_with("", None, "");
+        // allowlisted host but nothing answers there — the metadata HEAD
+        // fails and the message is rejected (no silent text-only post).
+        let resp = respond(
+            cfg,
+            "POST",
+            "/api/intercom",
+            Some(serde_json::json!({
+                "text": "see attached",
+                "attachment_url": "https://cloud.example/s/abc"
+            })),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
 }
