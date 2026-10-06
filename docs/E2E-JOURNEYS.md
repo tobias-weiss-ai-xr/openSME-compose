@@ -210,6 +210,49 @@ The backend is a pure-stdlib mock (`tests/05-e2e/ai_mock.py`) that the
 portal reaches over the docker bridge gateway — the journey tests the
 PORTAL's AI surface and its contract, not a real LLM.
 
+## Epic P — Mail, for real: mailcow delivers actual mail
+
+> *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
+> als Git-Submodule gepinnt) wie ein Nutzer UND wie ein Auditor fahren:
+> echtes SMTP/IMAP, echte Zustellung, abgeschottete Verwaltung.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| P1 | Die Admin-UI lädt über den openSME-Traefik | `tests/05-e2e/mailcow_journey.py` — `https://mail.<domain>/` serves the mailcow UI |
+| P2 | SMTP kündigt sich sauber an :25 an | EHLO → 250 with the mailcow banner |
+| P3 | Submission auf :587 verhandelt STARTTLS | smtplib STARTTLS handshake succeeds |
+| P4 | IMAPS auf :993 verhandelt TLS | stdlib TLS handshake succeeds |
+| P5 | **Zustell-Roundtrip**: Mailbox rein, Post an sich selbst, INBOX raus | REST API provisions domain+mailbox (deterministic password via `edit/mailbox`) → authenticated SMTP submission → message found in INBOX over IMAPS — pure stdlib (`smtplib`/`imaplib`) |
+| P6 | SOGo-Webmail antwortet | `/SOGo/` reachable through the same edge |
+| P7 | Die REST-API wird NIEMALS an der Öffentlichkeit serviert | `/api/v1/...` via Traefik → 401/403/404 (the allowlist covers localhost only) |
+
+Integration facts (deliberately honest):
+
+- **Submodule, kein Fork**: `mail/mailcow-dockerized` ist auf ein
+  Upstream-Release gepinnt (`git submodule status` zeigt den Commit, Tag
+  `2026-09` zum Zeitpunkt der Integration). GPL-3.0 bleibt in seinem
+  eigenen Baum — kein Code wird in dieses Apache-2.0-Repo kopiert.
+- **`scripts/mailcow.sh` ist der einzige Entrypoint**: rendert
+  `mail/mailcow.conf` (gitignored, Secrets) aus `.env`, bootet das
+  mailcow-Compose-Projekt, hängt Traefik ans mailcow-Netz und verwaltet
+  den dynamischen Router als Marker-Block in `traefik/dynamic.yml`.
+- **TLS gehört Traefik**: mailcows eigener ACME/HTTP-Weg ist aus, die
+  Weboberfläche ist nur über die OpenSME-Edge erreichbar. Ein
+  self-signed-Zertifikat (plus DH-Params) wird vom Wrapper in
+  `data/assets/ssl` gelegt, damit die internen Listener (nginx/dovecot)
+  starten.
+- **IPv6**: mailcow bindet dual-stack. Auf Hosts, die mit
+  `ipv6.disable=1` booten, patcht der Wrapper die offiziellen
+  user-editable-Konfigpunkte (`data/conf/*`, update-fest) auf IPv4 und
+  erzeugt die Bridge mit `enable_ipv6=false`. Dual-Stack-Hosts brauchen
+  nichts.
+- **Demo-leane Defaults**: ClamAV und Full-Text-Search sind aus
+  (`MAILCOW_SKIP_CLAMD`/`MAILCOW_SKIP_FTS`), damit der Stack neben dem
+  OpenSME-Kern in ~2 GB RAM passt. Für Produktion: beide auf `n`.
+- **Kein OIDC in der gepinnten Version**: mailcow 2026-09 authentifiziert
+  gegen seine eigene Mailbox-DB. IdP-gebundenes SSO für die Admin-UI ist
+  Follow-up, kein brav - die Journeys dokumentieren den Ist-Zustand.
+
 ---
 
 ## Running
@@ -234,6 +277,12 @@ python3 tests/05-e2e/runtime_truth.py
 
 # local AI journey (recreates the portal against a stdlib AI mock):
 python3 tests/05-e2e/ai_journey.py opensme.local
+
+# mailcow journey (requires the submodule + `scripts/mailcow.sh up`):
+git submodule update --init mail/mailcow-dockerized
+scripts/mailcow.sh up mail.opensme.local
+python3 tests/05-e2e/mailcow_journey.py opensme.local
+scripts/mailcow.sh down
 
 # static-ish subset (no credentials needed):
 python3 tests/05-e2e/run.py opensme.local --skip-flows

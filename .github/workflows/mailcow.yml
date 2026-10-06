@@ -1,0 +1,85 @@
+name: E2E — mailcow (full mail server)
+
+# Heavy opt-in job for the mailcow integration (git submodule, pinned to
+# an upstream release). The main CI workflow stays fast; this one pays for
+# the ~1.5 GB image pull and the extra ~2 GB RAM of a real mail stack.
+# ubuntu-latest runners have IPv6 in the kernel (mailcow needs it) and
+# free SMTP/IMAP ports, so no host preparation is required.
+
+on:
+  push:
+    branches: [main, feat/mailcow]
+    paths:
+      - "mail/**"
+      - "scripts/mailcow.sh"
+      - "tests/05-e2e/mailcow_journey.py"
+      - "tests/05-e2e/exposure.py"
+      - ".github/workflows/mailcow.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mailcow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mailcow:
+    name: mailcow — delivery round trip
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout (with mailcow submodule)
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+
+      - name: Provision deploy-time Zitadel artifacts (masterkey + busybox)
+        # Same recipe as the main CI e2e job — both artifacts are gitignored
+        run: |
+          printf '%s' "$(openssl rand -base64 24)" > idm/secrets/masterkey
+          mkdir -p idm/zitadel
+          cid=$(docker create busybox:stable-musl true)
+          docker cp "$cid":/bin/busybox idm/zitadel/busybox
+          docker rm "$cid" >/dev/null
+          chmod +x idm/zitadel/busybox
+
+      - name: Boot demo stack (generates .env with random passwords)
+        run: bash scripts/demo.sh
+
+      - name: Boot mailcow stack (submodule, demo-lean profile)
+        env:
+          OPENSME_DOMAIN: opensme.local
+          MAILCOW_HOSTNAME: mail.opensme.local
+        run: bash scripts/mailcow.sh up mail.opensme.local
+
+      - name: Wait for mailcow web UI
+        run: |
+          for i in $(seq 1 60); do
+            code=$(docker compose --project-directory mail/mailcow-dockerized \
+              --env-file mail/mailcow.conf exec -T nginx-mailcow \
+              curl -s -o /dev/null -w '%{http_code}' \
+              "http://localhost:${HTTP_PORT:-18080}/" || echo 000)
+            [ "$code" = "200" ] && echo "mailcow UI ready" && exit 0
+            sleep 5
+          done
+          echo "mailcow UI did not become ready in time"; exit 1
+
+      - name: Run mailcow journey (Epic P — delivery round trip)
+        run: python3 tests/05-e2e/mailcow_journey.py opensme.local
+
+      - name: Run exposure journey with mailcow surface
+        run: python3 tests/05-e2e/exposure.py opensme.local
+
+      - name: Teardown mailcow
+        if: always()
+        run: bash scripts/mailcow.sh down || true

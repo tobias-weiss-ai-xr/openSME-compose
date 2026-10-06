@@ -31,7 +31,10 @@ from conftest import Result
 import requests
 
 T = 10
-ALLOWED_HOST_PORTS = {"80", "443", "8080"}
+BASE_HOST_PORTS = {"80", "443", "8080"}
+# mailcow (optional submodule stack) binds the mail server's ports on the
+# host — that is its contract. Allowed only while it is actually running.
+MAILCOW_PORTS = {"25", "110", "143", "465", "587", "993", "995", "4190"}
 FORBIDDEN_SERVICES = ("postgres", "redis", "memcached")
 MANAGEMENT_PATHS = ("/api/http/routers", "/dashboard/", "/api/overview")
 LOCALISH_SUFFIXES = (".local", ".localhost", ".test")
@@ -85,22 +88,29 @@ def main() -> int:
     r = subprocess.run(
         ["docker", "ps", "--format", "{{.Names}}\\t{{.Ports}}"],
         capture_output=True, text=True)
+    allowed = set(BASE_HOST_PORTS)
+    if any("mailcow" in n for n in probe.stdout.split()):
+        allowed |= MAILCOW_PORTS
     offenders: list[str] = []
     seen: set[str] = set()
     for line in r.stdout.splitlines():
         name, _, ports = line.partition("\t")
-        if "opensme" not in name:
+        if "opensme" not in name and "mailcow" not in name and "postfix" not in name \
+                and "dovecot" not in name:
             continue
-        for m in re.finditer(r":(\d+)->", ports):
+        for m in re.finditer(r"(?:0\.0\.0\.0|\[::\]):(\d+)->", ports):
+            # only PUBLIC bindings count — loopback-only binds (mailcow's
+            # redis/mariadb/doveadm) are safe by design
             hp = m.group(1)
             seen.add(hp)
-            if hp not in ALLOWED_HOST_PORTS:
+            if hp not in allowed:
                 offenders.append(f"{name}:{hp}")
     if offenders:
         result.fail(f"undocumented host ports published: {', '.join(offenders)}")
     elif seen:
-        result.ok(f"host surface is exactly {sorted(seen, key=int)} "
-                  f"(documented ports only)")
+        result.ok(f"host surface documented ({sorted(seen, key=int)} "
+                  f"— core: {sorted(BASE_HOST_PORTS, key=int)}"
+                  + (", mail: mailcow" if allowed - BASE_HOST_PORTS & seen else "") + ")")
     else:
         result.warn("no published ports found — is the stack up?")
 
