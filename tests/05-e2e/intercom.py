@@ -38,7 +38,7 @@ import urllib3
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from conftest import Result
+from conftest import Result, ensure_portal_routed, wait_http_ok
 
 import requests
 
@@ -170,6 +170,12 @@ def main() -> int:
     tmpdir = Path(tempfile.mkdtemp(prefix="opensme-intercom-"))
     cloud_up = False
     try:
+        # routing first: traefik's provider can lose the portal router
+        # after earlier journeys' fast recreates — heal before judging
+        if not ensure_portal_routed(session, portal):
+            result.fail("portal unreachable via traefik even after resync")
+            return 1
+
         # T1: the card is always there
         page = session.get(portal + "/", timeout=T)
         (result.ok if 'id="intercom-card"' in page.text else result.fail)(
@@ -222,7 +228,7 @@ def main() -> int:
                 "INTERCOM_ATTACHMENT_HOSTS": f"{CLOUD_NAME}:{CLOUD_PORT}",
                 "INTERCOM_ALLOW_HTTP": "1",
             })
-            if not wait_portal(session, portal):
+            if not ensure_portal_routed(session, portal):
                 result.fail("portal did not come back with intercom overrides")
                 return 1
 
@@ -307,7 +313,7 @@ def main() -> int:
             recreate_portal({})
         except subprocess.SubprocessError:
             pass
-        wait_portal(session, portal)
+        ensure_portal_routed(session, portal)
 
     # restored: intercom still lists the notes (in-memory store survived
     # nothing — the portal was recreated, so the store is empty again;

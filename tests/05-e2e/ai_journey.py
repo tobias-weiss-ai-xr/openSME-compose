@@ -39,7 +39,7 @@ import urllib3
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from conftest import Result
+from conftest import Result, ensure_portal_routed
 
 import requests
 
@@ -225,14 +225,21 @@ def main() -> int:
             recreate_portal({})
         except subprocess.SubprocessError:
             pass
-        wait_portal(session, portal_base)
+        # traefik's docker provider can lose the router across fast
+        # recreates — heal before judging the restore
+        ensure_portal_routed(session, portal_base)
 
-    # restored: the card must be gone again
+    # restored: the card must be gone again — AND the page must answer
+    # 200 with real content (a bare traefik 404 would "hide" the card too)
     page = session.get(portal_base + "/", timeout=T)
-    (result.ok if 'id="ai-card"' not in page.text else result.fail)(
+    ai_card_still = 'id="ai-card"' in page.text
+    restored_ok = (page.status_code == 200
+                   and not ai_card_still
+                   and "openSME Portal" in page.text)
+    (result.ok if restored_ok else result.fail)(
         "stack restored: AI card hidden again"
-        if 'id="ai-card"' not in page.text
-        else "teardown incomplete: AI card still visible"
+        if restored_ok
+        else f"teardown incomplete: HTTP {page.status_code} ai-card={ai_card_still}"
     )
 
     print()

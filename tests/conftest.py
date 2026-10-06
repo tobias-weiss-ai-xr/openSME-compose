@@ -463,3 +463,44 @@ def get_volumes(svc_data: dict) -> list[str]:
 def is_host_network(svc_data: dict) -> bool:
     """Check if a service uses network_mode: host."""
     return svc_data.get("network_mode") == "host"
+
+
+# ─── Portal routing self-heal ─────────────────────────────────────────────
+
+def wait_http_ok(session, url: str, deadline_s: float = 60.0, interval: float = 2.0) -> bool:
+    """Poll until `url` answers HTTP 200 (journeys use it for /health)."""
+    import time as _time
+    import requests as _requests
+    deadline = _time.time() + deadline_s
+    while _time.time() < deadline:
+        try:
+            if session.get(url, timeout=15).status_code == 200:
+                return True
+        except _requests.RequestException:
+            pass
+        _time.sleep(interval)
+    return False
+
+
+def ensure_portal_routed(session, portal_base: str, log=print) -> bool:
+    """Make sure Traefik actually routes the portal after a recreate.
+
+    Traefik's docker provider subscribes to container events; when many
+    fast `up -d portal` recreates happen (journey suites do), the
+    start-event of the new container can get lost against the stop-event
+    of the old one — the router disappears and every request answers
+    Traefik's bare "404 page not found" until the provider resyncs.
+
+    Self-heal ladder:
+      1. wait up to 60s for /health to turn 200 (benign boot delay)
+      2. `docker restart opensme-traefik` (forced provider resync) and
+         wait again up to 60s
+    Returns True only when /health is 200 via the public route.
+    """
+    if wait_http_ok(session, portal_base + "/health"):
+        return True
+    log("portal not routed via traefik — forcing provider resync (traefik restart)")
+    import subprocess as _sp
+    _sp.run(["docker", "restart", "opensme-traefik"],
+            capture_output=True, timeout=120)
+    return wait_http_ok(session, portal_base + "/health")
