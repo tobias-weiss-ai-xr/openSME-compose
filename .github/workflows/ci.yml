@@ -185,3 +185,5 @@ jobs:
 
       - name: Run e2e suite (Layer 5 — SSO flows)
         run: python3 tests/05-e2e/run.py opensme.local
+      - name: Run operator broadcast journey (publish → escape check → withdraw)
+        run: python3 tests/05-e2e/broadcast.py opensme.local

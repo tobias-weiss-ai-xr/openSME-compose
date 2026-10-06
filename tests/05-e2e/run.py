@@ -433,6 +433,38 @@ def section_portal(result, session, portal_base, ai_configured=False):
     else:
         result.ok("portal landing page ok")
 
+    # Trust & transport: plain HTTP must bounce to HTTPS (when served via
+    # Traefik; the plain-localhost variant is skipped)
+    if portal_base.startswith("https://"):
+        try:
+            rr = session.get("http://" + portal_base[len("https://"):],
+                             allow_redirects=False, timeout=T)
+            loc = rr.headers.get("Location", "")
+            if rr.status_code in REDIRECTS and loc.startswith("https://"):
+                result.ok("plain HTTP redirects to HTTPS")
+            else:
+                result.fail(f"HTTP did not redirect to HTTPS: "
+                            f"{rr.status_code} {loc[:60]}")
+        except requests.RequestException as e:
+            result.warn(f"HTTP→HTTPS probe failed: {e.__class__.__name__}")
+
+    # Trust in depth: security headers must survive 404s (they guard every
+    # response, not just the happy path)
+    try:
+        miss404 = [
+            f"{k}={v}" for k, v in {
+                "x-content-type-options": "nosniff",
+                "x-frame-options": "DENY",
+            }.items() if v not in (session.get(portal_base + "/e2e-not-a-page",
+                                               timeout=T).headers.get(k) or "")
+        ]
+        (result.ok if not miss404 else result.fail)(
+            "security headers present on 404 responses" if not miss404
+            else f"404 responses lack headers: {'; '.join(miss404)}"
+        )
+    except requests.RequestException as e:
+        result.fail(f"404 header probe failed: {e.__class__.__name__}")
+
     # security-header contract (must match the middleware in portal/src/main.rs)
     want = {
         "x-content-type-options": "nosniff",
@@ -462,6 +494,26 @@ def section_portal(result, session, portal_base, ai_configured=False):
             f"portal /api/services: {len(services)} service(s)" if isinstance(services, list)
             else f"portal /api/services: HTTP {s.status_code}"
         )
+
+        # Truthful catalog: every advertised service must actually answer.
+        # The portal must not promise what isn't there.
+        if isinstance(services, list):
+            dead = []
+            for svc in services:
+                href = str(svc.get("url") or svc.get("href") or "")
+                if not href:
+                    dead.append(f"{svc.get('name')!r}: no url")
+                    continue
+                try:
+                    rs = session.get(href, timeout=T, allow_redirects=True)
+                    if rs.status_code >= 500:
+                        dead.append(f"{svc.get('name')!r}: HTTP {rs.status_code}")
+                except requests.RequestException:
+                    dead.append(f"{svc.get('name')!r}: unreachable")
+            (result.ok if not dead else result.fail)(
+                f"all {len(services)} advertised service(s) reachable"
+                if not dead else f"catalog lies about: {'; '.join(dead)}"
+            )
 
         # announcements consumer contract: array of {level in info|warn,
         # non-empty text}, capped — this is what app.js renders into HTML
@@ -719,6 +771,67 @@ def section_sogo_sso(result, session, webmail_base, idp_base):
     result.skip("sogo not running")
 
 
+def section_user_lifecycle(result: Result, session, disc: dict, client_id: str,
+                           callback: str, idp_base: str, lc_pat: str,
+                           client_uid: str, pat: str):
+    """Identity lifecycle: an operator provisions a user via API, that user
+    logs in through the full SSO flow, and after deletion the dead identity
+    is rejected. Leftovers from crashed runs are purged first."""
+    H = {"Authorization": f"Bearer {pat}", "Content-Type": "application/json"}
+    uname = "e2e-throwaway"
+
+    # 0) purge leftovers (crashed previous runs) — the journey must be idempotent
+    lst = session.post(idp_base + "/v2/users", headers=H, json={"queries": [
+        {"userNameQuery": {"userName": uname, "method": "TEXT_QUERY_METHOD_EQUALS"}}
+    ]}, timeout=T).json()
+    for stale in (lst.get("result") or []):
+        session.delete(idp_base + f"/v2/users/{stale.get('userId')}",
+                       headers=H, timeout=T)
+    if lst.get("result"):
+        result.ok("purged leftover identity from a previous run")
+
+    # 1) provision: create the user WITH their initial password (the admin
+    #    path; the separate /password endpoint is self-service and needs
+    #    verification)
+    pw = "E2e-" + secrets.token_urlsafe(9) + "!7"
+    j = session.post(idp_base + "/v2/users/human", headers=H, json={
+        "username": uname,
+        "profile": {"givenName": "E2", "familyName": "Throwaway"},
+        "email": {"email": f"{uname}@e2e.invalid", "isVerified": True},
+        "password": {"password": pw, "changeRequired": False},
+    }, timeout=T).json()
+    uid = j.get("userId", "")
+    if not uid:
+        result.fail(f"user provisioning failed: {str(j)[:100]}")
+        return
+    result.ok(f"provisioned identity {uname} ({uid})")
+
+    try:
+        # 2) that user logs in through the full authorization-code flow
+        authz, verifier, state, nonce = authorize_url(disc, client_id, callback)
+        qs, _sess = api_login(session, idp_base, lc_pat, client_uid, authz,
+                              uid, pw)
+        if qs.get("code"):
+            result.ok("freshly provisioned user completes the SSO flow")
+        else:
+            result.fail("provisioned user login produced no code")
+
+        # 3) deletion → the dead identity must be rejected while the app is
+        #    still alive (isolate the user-lifecycle assertion)
+        r = session.delete(idp_base + f"/v2/users/{uid}", headers=H, timeout=T)
+        if r.status_code >= 300:
+            result.fail(f"user deletion failed: HTTP {r.status_code}")
+            return
+        result.ok("deleted identity")
+        try:
+            api_login(session, idp_base, lc_pat, client_uid, authz, uid, pw)
+            result.fail("deleted identity was still able to log in")
+        except E2EError:
+            result.ok("deleted identity is rejected by the IdP")
+    finally:
+        session.delete(idp_base + f"/v2/users/{uid}", headers=H, timeout=T)
+
+
 def section_synapse_sso(result, session, matrix_base, idp_base):
     url = f"{matrix_base}/_matrix/client/v3/login/sso/redirect"
     try:
@@ -866,6 +979,15 @@ def main() -> bool:
                              lc_pat, client_uid, sess):
             section_logout(result, session, idp_base, lc_pat, client_uid, sess,
                            client_id, callback, disc)
+
+    # Identity lifecycle (provision → SSO login → delete → dead login
+    # rejected) — reuses the throw-away app while it is still alive
+    if flows_ok and disc and client_id and lc_pat and client_uid and pat:
+        try:
+            section_user_lifecycle(result, session, disc, client_id, callback,
+                                   idp_base, lc_pat, client_uid, pat)
+        except E2EError as e:
+            result.fail(f"identity lifecycle: {e}")
 
     # Cleanup the throw-away app (best effort)
     if owned and pat:
