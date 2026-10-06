@@ -250,6 +250,38 @@ S1 caught a real one: the SMTP password placeholder (`CHANGEME_smtp`)
 sat in opencloud's live env of EVERY SMTP-less deployment — the default
 is now empty, mail stays opt-in.
 
+## Epic T — Intercom: internal short messages
+
+> *Als Mitarbeiter schicke ich dem Team eine kurze Notiz direkt über das
+> Portal — ohne Kanal-Wechsel.*
+
+| # | User story | Test |
+|---|------------|------|
+| T1 | Als Nutzer sehe ich das Intercom-Panel auf dem Portal | landing page contains `id="intercom-card"`; `GET /api/intercom` lists messages |
+| T2 | Als Nutzer sende ich eine Nachricht; sie erscheint in der Liste | `POST /api/intercom` with text → 2xx, message retrievable, rendered on the page |
+| T3 | Als Nutzer wird mein Text XSS-sicher gerendert | `<script>` in text lands escaped in the page, raw in the JSON API |
+| T4 | Als Betreiber sind Nachrichten begrenzt | empty text and >2000 chars rejected with 400; store capped at 50 (FIFO) |
+
+The store is in-memory by design (v1): messages are conversational
+ephemera, not records. The journey never assumes persistence across
+restarts — that is Epic P's territory for DATA, not chat.
+
+## Epic U — Attachments from the cloud service
+
+> *Als Nutzer hänge ich einer Nachricht eine Datei aus der Cloud an —
+> mit echten Metadaten, ohne den Inhalt durch das Portal zu schleusen.*
+
+| # | User story | Test |
+|---|------------|------|
+| U1 | Als Nutzer füge ich eine Cloud-Datei per Link hinzu | `POST` with `attachment_url` → attachment metadata (name, size, type) attached to the message |
+| U2 | Die Metadaten kommen zur Sendezeit vom Cloud-Server (Snapshot) | portal fetches HEAD at send time — name from Content-Disposition, size from Content-Length, type from Content-Type |
+| U3 | Als Betreiber akzeptiert das Portal nur die eigene Cloud als Quelle | host allowlist (`INTERCOM_ATTACHMENT_HOSTS`, default `cloud.<domain>`) — foreign hosts and ports rejected with 400 |
+| U4 | Als Angreifer kann ich SSRF nicht nutzen | IP-literal hosts, link-local targets and non-allowlisted internal services rejected; http refused unless `INTERCOM_ALLOW_HTTP=1` (dev) |
+| U5 | Dateinamen mit Schadcode werden XSS-sicher gerendert | `<script>` in Content-Disposition filename lands escaped on the page |
+
+The portal stores a metadata SNAPSHOT at send time (the attachment stays
+in the cloud — the portal never proxies file bodies).
+
 ## Epic P — Mail, for real: mailcow delivers actual mail
 
 > *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
@@ -324,6 +356,9 @@ python3 tests/05-e2e/hygiene.py opensme.local
 
 # persistence journey (restarts the whole stack — run it last):
 python3 tests/05-e2e/persistence.py opensme.local
+
+# intercom journey (recreates the portal with an attachment-source mock):
+python3 tests/05-e2e/intercom.py opensme.local
 
 # mailcow journey (requires the submodule + `scripts/mailcow.sh up`):
 git submodule update --init mail/mailcow-dockerized

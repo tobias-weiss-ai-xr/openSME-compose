@@ -252,6 +252,13 @@ What is covered (full story catalog with Given/When/Then:
    nothing, a marker row survives a full `down` + `up -d` round trip
    (volumes hold state), and the stack is functional again afterwards.
    CI runs it last because it restarts the whole stack.
+20. **Intercom + cloud attachments** — `tests/05-e2e/intercom.py`: the
+   intercom card is always on, notes are validated (blank/oversized →
+   400) and rendered XSS-escaped; attaching a cloud file by URL yields
+   REAL metadata (name from Content-Disposition, size, type) against a
+   real stand-in container on the compose network; the SSRF guard holds
+   (foreign hosts/ports, IP literals, link-local rejected); hostile
+   filenames render escaped. CI runs it before persistence.
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP

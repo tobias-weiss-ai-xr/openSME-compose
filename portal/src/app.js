@@ -164,4 +164,90 @@
       });
     }
   }
+  // ── Intercom: short notes with cloud attachments ────────────────────
+  var icCard = document.querySelector("#intercom-card");
+  if (icCard) {
+    var icList = icCard.querySelector("#ic-list");
+    var icText = icCard.querySelector(".ic-text");
+    var icUrl = icCard.querySelector(".ic-url");
+    var icSend = icCard.querySelector(".ic-send");
+    var icOut = icCard.querySelector(".ic-out");
+
+    function humanSize(bytes) {
+      if (bytes == null) return "";
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / 1048576).toFixed(1) + " MB";
+    }
+
+    function renderMessages(messages) {
+      icList.textContent = "";
+      (messages || []).forEach(function (m) {
+        var li = document.createElement("li");
+        li.textContent = m.text;
+        if (m.attachment) {
+          var a = document.createElement("a");
+          a.className = "ic-att";
+          a.href = m.attachment.url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          var label = "\uD83D\uDCCE " + (m.attachment.name || "attachment");
+          var sz = humanSize(m.attachment.size);
+          if (sz) label += " (" + sz + ")";
+          if (m.attachment.content_type) label += " \u00B7 " + m.attachment.content_type;
+          a.textContent = label; // textContent — never innerHTML (XSS)
+          li.appendChild(a);
+        }
+        icList.appendChild(li);
+      });
+    }
+
+    function refresh() {
+      fetch("/api/intercom")
+        .then(function (r) { return r.json(); })
+        .then(function (d) { renderMessages(d.messages); })
+        .catch(function () {});
+    }
+
+    icSend.addEventListener("click", function () {
+      var text = (icText.value || "").trim();
+      if (!text) {
+        icOut.textContent = "Write a short note first.";
+        icOut.hidden = false;
+        return;
+      }
+      var payload = { text: text };
+      var att = (icUrl.value || "").trim();
+      if (att) payload.attachment_url = att;
+      icOut.textContent = "…";
+      icOut.hidden = false;
+      fetch("/api/intercom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || ("HTTP " + r.status)); });
+          return r.json();
+        })
+        .then(function (d) {
+          icText.value = "";
+          icUrl.value = "";
+          icOut.hidden = true;
+          refresh();
+        })
+        .catch(function (err) {
+          icOut.textContent = "Not sent: " + err.message;
+        });
+    });
+
+    icText.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        icSend.click();
+      }
+    });
+
+    refresh();
+  }
 })();

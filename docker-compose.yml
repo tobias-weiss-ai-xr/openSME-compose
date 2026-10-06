@@ -320,6 +320,8 @@ services:
       AI_API_URL: ${AI_API_URL:-}
       AI_MODEL: ${AI_MODEL:-}
       AI_API_KEY: ${AI_API_KEY:-}
+      INTERCOM_ATTACHMENT_HOSTS: ${INTERCOM_ATTACHMENT_HOSTS:-}
+      INTERCOM_ALLOW_HTTP: ${INTERCOM_ALLOW_HTTP:-}
       RUST_LOG: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
