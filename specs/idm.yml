@@ -6,7 +6,7 @@
 
 services:
   zitadel:
-    image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:latest}
+    image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:v4.19.4}
     compose_file: idm/zitadel.yml
     required: false  # overlay — included via COMPOSE_FILE
     host_ports: []

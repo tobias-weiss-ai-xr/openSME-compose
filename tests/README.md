@@ -226,6 +226,21 @@ What is covered (full story catalog with Given/When/Then:
    audits the artifacts: non-empty gzip'd SQL dump with real tables
    (IdP database included), valid Traefik tar, full gzip CRC. CI runs it
    after the main suite.
+13. **Session isolation** — two provisioned coworkers hold distinct IdP
+   sessions; A's logout sticks while B's session still finalizes
+   (part of the main suite)
+14. **Exposure** — `tests/05-e2e/exposure.py`: published host ports are
+   exactly the documented surface, stateful services refuse host
+   connections, traefik's management API isn't routed publicly. CI runs
+   it after the main suite.
+15. **Runtime truth** — `tests/05-e2e/runtime_truth.py`: running images
+   match the compose declaration (no drift) and nothing runs on a
+   mutable `:latest` tag. CI runs it after the main suite.
+16. **Local AI live** — `tests/05-e2e/ai_journey.py` recreates the
+   portal with `AI_API_URL` against a stdlib OpenAI-compatible mock:
+   card appears, round trip answers, upstream contract proven from the
+   mock's request log, empty questions rejected, stack restored. CI runs
+   it after the main suite.
 
 Configuration (env vars win over `.env`):
 

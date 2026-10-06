@@ -191,3 +191,9 @@ jobs:
         run: python3 tests/05-e2e/resilience.py opensme.local
       - name: Run backup journey (provable restore points)
         run: python3 tests/05-e2e/backup.py
+      - name: Run exposure journey (management planes stay closed)
+        run: python3 tests/05-e2e/exposure.py opensme.local
+      - name: Run runtime truth journey (no drift, no :latest)
+        run: python3 tests/05-e2e/runtime_truth.py
+      - name: Run local AI journey (mock backend, contract proof)
+        run: python3 tests/05-e2e/ai_journey.py opensme.local
