@@ -39,11 +39,11 @@ TRAEFIK_CONTAINER="opensme-traefik"
 PROJECT="mailcowdockerized"
 MARK_BEGIN="# ── BEGIN MAILCOW ROUTER (managed by scripts/mailcow.sh) ──"
 MARK_END="# ── END MAILCOW ROUTER ──"
-# the router target must match the CONTAINER port — mailcow renders
-# HTTP_PORT as both the host and the container port, so read the rendered
-# value back from the conf (|| true: the conf may not exist yet)
 MAILCOW_HTTP_PORT="$(grep -E '^HTTP_PORT=' "${CONF}" 2>/dev/null | cut -d= -f2 || true)"
-MAILCOW_HTTP_PORT="${MAILCOW_HTTP_PORT:-18080}"
+MAILCOW_HTTP_PORT="${MAILCOW_HTTP_PORT:-28080}"
+# the router target must match the CONTAINER port — mailcow renders
+# HTTP_PORT as both the host and the container port (read at inject time,
+# after the conf is rendered)
 
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; NC=$'\033[0m'
 info() { echo "${GREEN}→${NC} $*"; }
@@ -85,10 +85,10 @@ MAILCOW_TZ=${TZ:-Europe/Berlin}
 # on host loopback with high ports (compose expands an empty bind to
 # 0.0.0.0, which would collide with Traefik on :80/:443). The web UI is
 # reachable ONLY via Traefik; no ACME inside mailcow.
-HTTP_PORT=18080
+HTTP_PORT=${MAILCOW_HTTP_PORT:-28080}
 HTTP_BIND=127.0.0.1
 HTTP_REDIRECT=n
-HTTPS_PORT=18443
+HTTPS_PORT=${MAILCOW_HTTPS_PORT:-28443}
 HTTPS_BIND=127.0.0.1
 SKIP_LETS_ENCRYPT=y
 SKIP_IP_CHECK=y
@@ -220,7 +220,7 @@ ${MARK_BEGIN}
     mailcow-web:
       loadBalancer:
         servers:
-          - url: "http://nginx-mailcow:${MAILCOW_HTTP_PORT:-18080}"
+          - url: "http://nginx-mailcow:${MAILCOW_HTTP_PORT:-28080}"
 ${MARK_END}
 EOF
     info "router injected into traefik/dynamic.yml (Host ${MAILCOW_HOSTNAME})"
@@ -243,24 +243,58 @@ PYEOF
 
 cmd_up() {
   require_submodule
-  [[ -f "${CONF}" ]] || render_conf
+  if [[ ! -f "${CONF}" ]]; then
+    # refuse to render fresh credentials over an EXISTING database volume:
+    # mariadb keeps the password from its FIRST initialization, a new conf
+    # would silently split-brain the stack (postfix/php-fpm can no longer
+    # authenticate). Purging is an explicit operator decision.
+    if docker volume inspect "${PROJECT}_mysql-vol-1" >/dev/null 2>&1; then
+      die "mail/mailcow.conf missing but mailcow database volume exists —
+credentials unknown. Run 'scripts/mailcow.sh down --purge' to reset (destroys mail data) or restore the conf."
+    fi
+    render_conf
+  fi
   # keep HOSTNAME consistent with the caller (router rule uses it)
   sed -i "s|^MAILCOW_HOSTNAME=.*|MAILCOW_HOSTNAME=${MAILCOW_HOSTNAME}|" "${CONF}"
   ensure_certs
   patch_ipv6_listen
   info "booting mailcow (this pulls ~1.5 GB on first run)…"
-  compose up -d
+  local rc=0
+  compose up -d || rc=$?
+  # compose sometimes leaves key services in "created" (sometimes even
+  # network-less) on a rocky first boot — stop+recreate settles it
+  for svc in nginx-mailcow postfix-mailcow dovecot-mailcow; do
+    state="$(docker inspect "mailcowdockerized-${svc}-1" --format '{{.State.Status}}' 2>/dev/null || echo missing)"
+    if [[ "${state}" != "running" ]]; then
+      compose rm -sf "${svc}" >/dev/null 2>&1 || true
+      compose up -d "${svc}" >/dev/null 2>&1 || true
+    fi
+  done
+  # wiring must happen even when some containers failed to start
   ensure_router
+  if [[ ${rc} -ne 0 ]]; then
+    die "some mailcow containers failed to start — inspect with:
+  docker compose --project-directory ${SUBMODULE_DIR} --env-file ${CONF} ps -a"
+  fi
   echo ""
   info "mailcow UI:  https://${MAILCOW_HOSTNAME}/  (via openSME Traefik)"
   info "mail domain: ${MAIL_DOMAIN} — create mailboxes via the UI or REST API"
 }
 
 cmd_down() {
+  local purge=0
+  [[ "${1:-}" == "--purge" ]] && purge=1
   remove_router
   [[ -f "${CONF}" ]] || { info "no mailcow.conf — nothing to stop"; exit 0; }
-  compose down
-  info "mailcow stopped; openSME core untouched"
+  if [[ ${purge} -eq 1 ]]; then
+    compose down -v
+    rm -f "${CONF}"
+    rm -rf "${SUBMODULE_DIR}/data/assets/ssl"
+    info "mailcow stopped and purged (volumes, conf, certs); openSME core untouched"
+  else
+    compose down
+    info "mailcow stopped (volumes kept); openSME core untouched"
+  fi
 }
 
 cmd_status() {
@@ -275,7 +309,7 @@ cmd_logs() { compose logs -f "${1:-}"; }
 
 case "${1:-}" in
   up) shift || true; [[ -n "${1:-}" ]] && MAILCOW_HOSTNAME="$1"; cmd_up ;;
-  down) cmd_down ;;
+  down) shift || true; cmd_down "${1:-}" ;;
   status) cmd_status ;;
   logs) shift || true; cmd_logs "${1:-}" ;;
   *) sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 1 ;;

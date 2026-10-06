@@ -68,7 +68,7 @@ jobs:
             code=$(docker compose --project-directory mail/mailcow-dockerized \
               --env-file mail/mailcow.conf exec -T nginx-mailcow \
               curl -s -o /dev/null -w '%{http_code}' \
-              "http://localhost:${HTTP_PORT:-18080}/" || echo 000)
+              "http://localhost:28080/" || echo 000)
             [ "$code" = "200" ] && echo "mailcow UI ready" && exit 0
             sleep 5
           done
