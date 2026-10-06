@@ -748,6 +748,52 @@ def section_apps(result, session, urls):
             result.skip(f"{label} not running")
 
 
+def section_opencloud(result: Result, session, cloud_base: str, idp_base: str):
+    """Files & collaboration: the cloud web app is up, but its contents sit
+    behind an auth wall — and the OIDC wiring to the central IdP is probed
+    honestly (warn, not fail, when the subset doesn't register the client)."""
+    try:
+        r = session.get(cloud_base + "/", timeout=T)
+    except requests.RequestException:
+        result.skip("opencloud not running")
+        return
+    if r.status_code != 200 or not re.search(r"opencloud|owncloud", r.text, re.I):
+        result.fail(f"opencloud web UI broken: HTTP {r.status_code}")
+        return
+    result.ok("opencloud web UI loads")
+
+    # files must not be world-readable: unauthenticated WebDAV is denied
+    try:
+        dav = session.get(cloud_base + "/remote.php/dav/", timeout=T)
+        (result.ok if dav.status_code in (401, 403) else result.fail)(
+            "WebDAV auth wall holds (401/403)" if dav.status_code in (401, 403)
+            else f"WebDAV answers {dav.status_code} without credentials!"
+        )
+    except requests.RequestException as e:
+        result.fail(f"WebDAV probe failed: {e.__class__.__name__}")
+
+    # OIDC wiring: the IdP must know the cloud's client, otherwise login is
+    # a dead end (UI loads, auth fails). Diagnostic warn — the minimal demo
+    # subset may legitimately ship without the client registration.
+    try:
+        disc = session.get(idp_base + "/.well-known/openid-configuration",
+                           timeout=T).json()
+        az = session.get(disc["authorization_endpoint"], params={
+            "client_id": "opencloud", "response_type": "code",
+            "scope": "openid", "nonce": "e2e-wiring-probe",
+            "redirect_uri": f"{cloud_base}/oidc-callback.html",
+        }, allow_redirects=False, timeout=T)
+        if az.status_code in REDIRECTS:
+            result.ok("opencloud OIDC client is registered at the IdP")
+        elif "App.NotFound" in az.text or "client" in az.text.lower():
+            result.warn("opencloud OIDC client NOT registered in this subset "
+                        "— web login would fail (register it for full demo)")
+        else:
+            result.warn(f"opencloud OIDC probe: HTTP {az.status_code} {az.text[:80]}")
+    except (requests.RequestException, ValueError) as e:
+        result.warn(f"opencloud OIDC probe failed: {e.__class__.__name__}")
+
+
 def section_sogo_sso(result, session, webmail_base, idp_base):
     """Groupware journey: opening the webmail app must land on the central
     SSO (same contract as the synapse check)."""
@@ -1014,6 +1060,10 @@ def main() -> bool:
     if not args.skip_apps:
         section_synapse_sso(result, session, matrix_base, idp_base)
         section_sogo_sso(result, session, webmail_base, idp_base)
+
+    # 8) Files & collaboration — auth wall + OIDC wiring of the cloud
+    if not args.skip_apps:
+        section_opencloud(result, session, cloud_base, idp_base)
 
     return result.summary()
 

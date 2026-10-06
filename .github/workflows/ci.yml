@@ -187,3 +187,7 @@ jobs:
         run: python3 tests/05-e2e/run.py opensme.local
       - name: Run operator broadcast journey (publish → escape check → withdraw)
         run: python3 tests/05-e2e/broadcast.py opensme.local
+      - name: Run resilience journey (DB bounce + IdP outage → self-heal)
+        run: python3 tests/05-e2e/resilience.py opensme.local
+      - name: Run backup journey (provable restore points)
+        run: python3 tests/05-e2e/backup.py

@@ -122,31 +122,52 @@ if [ "$DRY_RUN" = true ]; then
 fi
 
 # ── Stop services for consistent backup ───────
-if [ "$NO_STOP" = false ]; then
-  echo "🛑 Stopping services for consistent backup..."
-  docker compose down --remove-orphans 2>/dev/null || true
-  sleep 5
+# NOTE: we no longer `compose down` before the dumps — pg_dumpall and a tar
+# of /etc/traefik are safe against a RUNNING stack, and downing the stack
+# first made both dumps silently EMPTY (nothing to connect to). The stack
+# is only stopped below, and only for volume backups.
+if [ "$BACKUP_VOLUMES" = true ]; then
+  echo "🛑 Will stop services for the volume backup (after the dumps)"
 fi
 
 # ── PostgreSQL dump ───────────────────────────
 echo "   → PostgreSQL..."
-docker compose run --rm --no-deps --entrypoint "" \
-  postgres pg_dumpall -U "${POSTGRES_USER:-opensme}" 2>/dev/null \
-  | gzip > "${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz" \
-  || echo "   ⚠ PostgreSQL backup skipped (not running)"
+# Dump the RUNNING server (exec). A second container from `compose run` has
+# no server on its socket — it produced a silently EMPTY dump.
+if docker compose ps --services --filter status=running 2>/dev/null \
+     | grep -q '^postgres$' \
+  && docker compose exec -T postgres pg_dumpall -U "${POSTGRES_USER:-opensme}" 2>/dev/null \
+       | gzip > "${BACKUP_DIR}/postgres_${TIMESTAMP}.sql.gz"; then
+  :  # dump written
+else
+  echo "   ⚠ PostgreSQL backup skipped (postgres not running)"
+fi
 
 # ── Traefik ACME/SSL ──────────────────────────
 echo "   → Traefik (ACME certs)..."
-docker compose run --rm --no-deps --entrypoint "" \
-  -v "$(pwd)/${BACKUP_DIR}:/backup" \
-  traefik tar czf "/backup/traefik_${TIMESTAMP}.tar.gz" -C /etc/traefik . 2>/dev/null \
-  || echo "   ⚠ Traefik backup skipped (not running or no volume)"
+# Stream the archive from the RUNNING traefik container. `docker compose run`
+# cannot work here: a second traefik instance would collide with the live
+# container's published ports 80/443 (which is why the old approach silently
+# produced no artifact).
+if docker compose ps --services --filter status=running 2>/dev/null \
+     | grep -q '^traefik$' \
+  && docker compose exec -T traefik tar czf - -C /etc/traefik . \
+       > "${BACKUP_DIR}/traefik_${TIMESTAMP}.tar.gz" 2>/dev/null; then
+  :  # archive written
+else
+  echo "   ⚠ Traefik backup skipped (not running or no volume)"
+fi
 
 # ── Volume backup ─────────────────────────────
 if [ "$BACKUP_VOLUMES" = true ]; then
   PROJECT_NAME="${COMPOSE_PROJECT_NAME:-opensme-compose}"
   PARTIAL_DIR="${BACKUP_DIR}/partial-${TIMESTAMP}"
   mkdir -p "$PARTIAL_DIR"
+
+  # volumes are only consistent while the writers are down
+  echo "🛑 Stopping services for volume backup..."
+  docker compose down --remove-orphans 2>/dev/null || true
+  sleep 5
 
   for vol in "${SELECTED_VOLUMES[@]}"; do
     FULL_VOL="${PROJECT_NAME}_${vol}"
@@ -168,8 +189,8 @@ if [ "$BACKUP_VOLUMES" = true ]; then
   fi
 fi
 
-# ── Restart services ──────────────────────────
-if [ "$NO_STOP" = false ]; then
+# ── Restart services (only if volume backup stopped them) ──
+if [ "$BACKUP_VOLUMES" = true ] && [ "$NO_STOP" = false ]; then
   echo "🚀 Restarting services..."
   docker compose up -d
   sleep 10
