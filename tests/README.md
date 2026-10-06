@@ -259,6 +259,20 @@ What is covered (full story catalog with Given/When/Then:
    real stand-in container on the compose network; the SSRF guard holds
    (foreign hosts/ports, IP literals, link-local rejected); hostile
    filenames render escaped. CI runs it before persistence.
+21. **Portability (bring your own domain)** — `tests/05-e2e/portability.py`:
+   the portal MOVES to `portal.meine-firma.test` by env alone (labels
+   re-interpolate at recreate), the old domain stops routing, the
+   derived intercom default allowlist `cloud.<domain>` follows (stand-in
+   aliased on the compose network), and rollback restores the original.
+22. **Observability & log hygiene** — `tests/05-e2e/observability.py`
+   (read-only): healthchecked containers report healthy, secret-shaped
+   `.env` values never appear in the last 4000 log lines of any opensme
+   container, portal logs are RFC-3339 structured (tracing format).
+23. **Idempotency (second boot converges)** — `tests/05-e2e/idempotency.py`:
+   runs `scripts/demo.sh` a SECOND time — `.env` stays byte-identical,
+   an OIDC app provisioned before the boot still exists exactly once,
+   the re-seeded automation PAT authenticates, stack healthy after.
+   CI runs it before persistence (which restarts the stack anyway).
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP

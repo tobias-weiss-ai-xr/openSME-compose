@@ -7,15 +7,15 @@ mailcow-dockerized (git submodule, pinned to an upstream release) is the
 openSME stack's full-mail option. This journey exercises it like a user
 and an auditor would:
 
-  P1  the admin UI loads through the openSME Traefik (mail.<domain>)
-  P2  SMTP announces itself on :25 (EHLO → 250, mailcow banner)
-  P3  submission on :587 negotiates STARTTLS
-  P4  IMAPS on :993 negotiates TLS
-  P5  THE delivery round trip: create a domain + mailbox via the REST
+  MA1  the admin UI loads through the openSME Traefik (mail.<domain>)
+  MA2  SMTP announces itself on :25 (EHLO → 250, mailcow banner)
+  MA3  submission on :587 negotiates STARTTLS
+  MA4  IMAPS on :993 negotiates TLS
+  MA5  THE delivery round trip: create a domain + mailbox via the REST
       API, authenticate via SMTP submission, mail a message to ourselves,
       and find it in the INBOX over IMAPS — pure stdlib (smtplib/imaplib)
-  P6  SOGo webmail: the groupware UI answers on /SOGo
-  P7  the REST API is NOT reachable through the public edge (auditor)
+  MA6  SOGo webmail: the groupware UI answers on /SOGo
+  MA7  the REST API is NOT reachable through the public edge (auditor)
 
 Requires: the mailcow stack provisioned via `scripts/mailcow.sh up` and
 the openSME core running (Traefik routes the UI). Skips cleanly when
