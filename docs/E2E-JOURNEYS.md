@@ -68,6 +68,55 @@ audience binding, replay rejection after logout.
 | D1 | (siehe B5) — UI/Endpoint gating | `section_portal` AI card gating |
 | D2 | Als Mitarbeiter bekommt meine Frage eine Antwort über den Portal-Proxy (Retries überbrücken die Modell-Ladezeit) | Layer 4 `ai-proxy` round-trip — deployed twin of the portal's in-process contract tests |
 
+## Epic E — Trust & transport: every response is defensible
+
+> *Als Nutzer und als Auditor vertraue ich dem Portal auch dann, wenn ich
+> auf eine falsche URL klicke oder bewusst HTTP eintippe.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| E1 | Als Nutzer, der `http://` eintippt, lande ich sofort verschlüsselt | plain-HTTP request → redirect to HTTPS |
+| E2 | Als Auditor erwarte ich die harten Header auf JEDER Antwort — auch auf 404 | security headers survive a 404 response |
+
+## Epic F — Truthful catalog: the portal never lies
+
+> *Als Mitarbeiter klicke ich auf eine Kachel und erwarte, dass dahinter
+> wirklich ein Dienst steht — keine Leichen im Katalog.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| F1 | Als Mitarbeiter kann ich jeder beworbenen Kachel trauen: advertised ⇔ reachable | every `/api/services` entry answers with < 500 |
+
+## Epic G — Identity lifecycle: identities are born, work, and die
+
+> *Als Betreiber lege ich einen Mitarbeiter über die API an; er meldet
+> sich an; nach Kündigung ist die Identität sofort tot — überall.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| G1 | Als Betreiber provisions ich eine Identität per IdP-API (inkl. Initialpasswort) | `section_user_lifecycle` — create-with-password |
+| G2 | Als frisch angelegter Mitarbeiter melde ich mich über den kompletten SSO-Flow an | full authorization-code flow as the new user |
+| G3 | Als Betreiber lösche ich die Identität — und der tote Login wird abgewiesen, solange die App existiert | deletion → login attempt → rejection |
+
+The journey is idempotent: leftovers from crashed runs are purged before
+provisioning, and the identity is cleaned up even on failure.
+
+## Epic H — Broadcast: the operator talks to every user at once
+
+> *Als Betreiber verkünde ich eine Ankündigung an alle Nutzer — und ein
+> Angreifer kann über diesen Kanal kein JavaScript einschleusen.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| H1 | Als Nutzer sehe ich die Betreiber-Ankündigung auf der Landing Page | `tests/05-e2e/broadcast.py` — env-driven publish, portal recreate |
+| H2 | Als Angreifer erreiche ich über den Announcements-Kanal keine Skript-Ausführung | `<script>` payload arrives HTML-escaped on page and API |
+| H3 | Als Nutzer erlebe ich Stille, wenn nichts zu sagen ist | withdraw → zero announcements |
+
+Unlike the read-only journeys, Epic H **recreates the portal container**
+with a `PORTAL_ANNOUNCEMENTS` override and restores it afterwards — the
+only journey that drives the stack's lifecycle, because that is exactly
+what an operator broadcast does.
+
 ---
 
 ## Running
@@ -76,6 +125,9 @@ audience binding, replay rejection after logout.
 # demo stack (bootstrap + full flows):
 ./scripts/demo.sh
 python3 tests/run.py --e2e --domain opensme.local
+
+# operator broadcast journey (recreates the portal — CI runs it after the suite):
+python3 tests/05-e2e/broadcast.py opensme.local
 
 # static-ish subset (no credentials needed):
 python3 tests/05-e2e/run.py opensme.local --skip-flows

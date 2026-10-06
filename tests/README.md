@@ -183,8 +183,10 @@ What is covered (full story catalog with Given/When/Then:
 [docs/E2E-JOURNEYS.md](../docs/E2E-JOURNEYS.md)):
 
 1. **IdP discovery** — `/.well-known/openid-configuration` + JWKS
-2. **Portal** — landing page, `/health`, `/api/services`, security-header
-   contract (CSP, nosniff, frame-deny, referrer-policy — mirrors the
+2. **Portal** — landing page, `/health`, `/api/services` (plus: every
+   advertised service must actually answer — the catalog never lies),
+   security-header contract on 200s AND 404s, plain-HTTP → HTTPS redirect
+   (CSP, nosniff, frame-deny, referrer-policy — mirrors the
    middleware contract-tested in `portal/src/main.rs`), announcements
    consumer schema, AI card gating (hidden unless `AI_API_URL` set)
 3. **SSO login flow** — authorization-code + PKCE, logged in via the v2
@@ -205,6 +207,14 @@ What is covered (full story catalog with Given/When/Then:
    cms, store, webmail (when running)
 7. **SSO wiring** — synapse `/_matrix/client/v3/login/sso/redirect` and
    SOGo webmail must redirect to the IdP, not to their own login pages
+8. **Identity lifecycle** — a throwaway identity is provisioned via the
+   IdP API (create-with-password), completes the full SSO flow, is
+   deleted, and the dead login is rejected (idempotent: leftovers are
+   purged first)
+9. **Operator broadcast** — `tests/05-e2e/broadcast.py` recreates the
+   portal with a `PORTAL_ANNOUNCEMENTS` override (one benign + one XSS
+   payload), asserts the notice is visible AND escaped, then withdraws
+   it and asserts silence. Run by CI after the main suite.
 
 Configuration (env vars win over `.env`):
 
