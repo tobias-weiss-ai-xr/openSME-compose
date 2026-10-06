@@ -817,6 +817,33 @@ def section_sogo_sso(result, session, webmail_base, idp_base):
     result.skip("sogo not running")
 
 
+def _purge_user(session, idp_base: str, pat: str, uname: str) -> None:
+    """Delete any leftover identity with this username (idempotent journeys)."""
+    H = {"Authorization": f"Bearer {pat}", "Content-Type": "application/json"}
+    lst = session.post(idp_base + "/v2/users", headers=H, json={"queries": [
+        {"userNameQuery": {"userName": uname, "method": "TEXT_QUERY_METHOD_EQUALS"}}
+    ]}, timeout=T).json()
+    for stale in (lst.get("result") or []):
+        session.delete(idp_base + f"/v2/users/{stale.get('userId')}",
+                       headers=H, timeout=T)
+
+
+def _provision_user(session, idp_base: str, pat: str, uname: str) -> tuple[str, str]:
+    """Create an identity WITH its initial password (admin path — the
+    separate /password endpoint is self-service and needs verification).
+    Returns (userId, password)."""
+    pw = "E2e-" + secrets.token_urlsafe(9) + "!7"
+    j = session.post(idp_base + "/v2/users/human", headers={
+        "Authorization": f"Bearer {pat}", "Content-Type": "application/json"
+    }, json={
+        "username": uname,
+        "profile": {"givenName": "E2", "familyName": "Throwaway"},
+        "email": {"email": f"{uname}@e2e.invalid", "isVerified": True},
+        "password": {"password": pw, "changeRequired": False},
+    }, timeout=T).json()
+    return j.get("userId", ""), pw
+
+
 def section_user_lifecycle(result: Result, session, disc: dict, client_id: str,
                            callback: str, idp_base: str, lc_pat: str,
                            client_uid: str, pat: str):
@@ -827,26 +854,15 @@ def section_user_lifecycle(result: Result, session, disc: dict, client_id: str,
     uname = "e2e-throwaway"
 
     # 0) purge leftovers (crashed previous runs) — the journey must be idempotent
+    _purge_user(session, idp_base, pat, uname)
     lst = session.post(idp_base + "/v2/users", headers=H, json={"queries": [
         {"userNameQuery": {"userName": uname, "method": "TEXT_QUERY_METHOD_EQUALS"}}
     ]}, timeout=T).json()
-    for stale in (lst.get("result") or []):
-        session.delete(idp_base + f"/v2/users/{stale.get('userId')}",
-                       headers=H, timeout=T)
     if lst.get("result"):
         result.ok("purged leftover identity from a previous run")
 
-    # 1) provision: create the user WITH their initial password (the admin
-    #    path; the separate /password endpoint is self-service and needs
-    #    verification)
-    pw = "E2e-" + secrets.token_urlsafe(9) + "!7"
-    j = session.post(idp_base + "/v2/users/human", headers=H, json={
-        "username": uname,
-        "profile": {"givenName": "E2", "familyName": "Throwaway"},
-        "email": {"email": f"{uname}@e2e.invalid", "isVerified": True},
-        "password": {"password": pw, "changeRequired": False},
-    }, timeout=T).json()
-    uid = j.get("userId", "")
+    # 1) provision: create the user WITH their initial password
+    uid, pw = _provision_user(session, idp_base, pat, uname)
     if not uid:
         result.fail(f"user provisioning failed: {str(j)[:100]}")
         return
@@ -876,6 +892,68 @@ def section_user_lifecycle(result: Result, session, disc: dict, client_id: str,
             result.ok("deleted identity is rejected by the IdP")
     finally:
         session.delete(idp_base + f"/v2/users/{uid}", headers=H, timeout=T)
+
+
+def section_session_isolation(result: Result, session, disc: dict, client_id: str,
+                              callback: str, idp_base: str, lc_pat: str,
+                              client_uid: str, pat: str):
+    """Multi-tenant identity: two coworkers log in, sessions are distinct,
+    and logging out one does NOT end the other's session."""
+    ua, ub = "e2e-cowork-a", "e2e-cowork-b"
+    for u in (ua, ub):
+        _purge_user(session, idp_base, pat, u)
+    try:
+        uid_a, pw_a = _provision_user(session, idp_base, pat, ua)
+        uid_b, pw_b = _provision_user(session, idp_base, pat, ub)
+        if not uid_a or not uid_b:
+            result.fail("session isolation: provisioning failed")
+            return
+
+        authz_a, _, _, _ = authorize_url(disc, client_id, callback)
+        _, sess_a = api_login(session, idp_base, lc_pat, client_uid, authz_a, uid_a, pw_a)
+        authz_b, _, _, _ = authorize_url(disc, client_id, callback)
+        _, sess_b = api_login(session, idp_base, lc_pat, client_uid, authz_b, uid_b, pw_b)
+        if sess_a["id"] == sess_b["id"]:
+            result.fail("two identities share ONE session — isolation broken")
+            return
+        result.ok("two identities hold distinct IdP sessions")
+
+        # cowork A logs out — cowork B must keep working
+        if not terminate(session, idp_base, lc_pat, client_uid,
+                         sess_a["id"], sess_a["token"]):
+            result.fail("session isolation: logout of cowork A rejected")
+            return
+        authz_a2, _, _, _ = authorize_url(disc, client_id, callback)
+        h = lc_headers(lc_pat, client_uid)
+        r = session.get(authz_a2, headers=h, allow_redirects=False, timeout=T)
+        m = re.search(r"authRequest=([A-Za-z0-9_:-]+)", r.headers.get("Location", ""))
+        if m:
+            try:
+                finalize(session, idp_base, lc_pat, client_uid, m.group(1),
+                         sess_a["id"], sess_a["token"])
+                result.fail("cowork A's session survived logout")
+            except E2EError:
+                result.ok("cowork A's logout sticks")
+
+        try:
+            authz_b2, _, _, _ = authorize_url(disc, client_id, callback)
+            r = session.get(authz_b2, headers=lc_headers(lc_pat, client_uid),
+                            allow_redirects=False, timeout=T)
+            m = re.search(r"authRequest=([A-Za-z0-9_:-]+)", r.headers.get("Location", ""))
+            if not m:
+                result.fail("session isolation: could not open a fresh auth request for B")
+                return
+            qs_b = finalize(session, idp_base, lc_pat, client_uid,
+                            m.group(1), sess_b["id"], sess_b["token"])
+            if qs_b.get("code"):
+                result.ok("cowork B unaffected by A's logout (session still finalizes)")
+            else:
+                result.fail("cowork B finalize produced no code")
+        except E2EError as e:
+            result.fail(f"cowork B collateral damage from A's logout: {e}")
+    finally:
+        for u in (ua, ub):
+            _purge_user(session, idp_base, pat, u)
 
 
 def section_synapse_sso(result, session, matrix_base, idp_base):
@@ -1034,6 +1112,14 @@ def main() -> bool:
                                    idp_base, lc_pat, client_uid, pat)
         except E2EError as e:
             result.fail(f"identity lifecycle: {e}")
+        # session isolation: two coworkers, independent logins, no
+        # collateral damage on logout
+        try:
+            section_session_isolation(result, session, disc, client_id,
+                                      callback, idp_base, lc_pat,
+                                      client_uid, pat)
+        except E2EError as e:
+            result.fail(f"session isolation: {e}")
 
     # Cleanup the throw-away app (best effort)
     if owned and pat:

@@ -157,6 +157,59 @@ serverless container) for the SQL dump — it silently produced **empty**
 dumps, and its default mode downed the stack *before* dumping. Both are
 fixed; the journey keeps them fixed.
 
+## Epic L — Session isolation: coworkers don't share keys
+
+> *Als zwei Mitarbeiter angemeldet sind, darf das Abmelden des einen den
+> anderen nie rauswerfen.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| L1 | Als Mitarbeiterin habe ich meine EIGENE IdP-Sitzung | `section_session_isolation` — two provisioned coworkers, distinct session ids |
+| L2 | Als Mitarbeiter bleibt meine Sitzung bestehen, wenn ein Kollege sich abmeldet | A's logout sticks AND B's session still finalizes auth requests |
+
+## Epic M — Exposure: management planes stay closed
+
+> *Als Betreiber ist die Angriffsfläche dokumentiert — und nichts
+> Statefulliches oder Verwaltbares hängt am Host.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| M1 | Der Host exponiert nur die dokumentierten Ports | `tests/05-e2e/exposure.py` — published ports == {80, 443, 8080} |
+| M2 | Als Angreifer erreiche ich postgres/redis/memcached nicht vom Host | no host bindings + live port probes refuse |
+| M3 | Traefiks Verwaltungs-API ist nicht öffentlich geroutet | `/api/http/routers`, `/dashboard/`, `/api/overview` → not 200 on any public host |
+
+## Epic N — Runtime truth: what runs is what's declared
+
+> *Als Betreiber kann ich beweisen, dass der Stack genau die Bits
+> fährt, die deklariert sind — und keine `:latest`-Lotterie.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| N1 | Das Laufende entspricht der Deklaration — kein Drift | `tests/05-e2e/runtime_truth.py` — `compose config` vs. running images (build services are their own truth) |
+| N2 | Kein Container läuft auf einem veränderlichen `:latest`-Tag | every running image is version-pinned |
+
+This journey forced real pinning fixes: traefik `:latest` → `v3.7.13`,
+zitadel → `v4.19.4`, opencloud → `8.0.1` — exactly what was running, now
+immune to silent upstream upgrades.
+
+## Epic O — Local AI, for real: the flagship path, live
+
+> *Als Nutzer stelle ich dem Portal eine Frage und bekomme eine Antwort
+> vom lokalen KI-Backend — mit sauberem Vertrag und abgesicherten
+> Eingaben.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| O1 | Mit konfigurierter KI WIRD die Karte sichtbar (Umkehrung von D2/B5) | `tests/05-e2e/ai_journey.py` — portal recreated with `AI_API_URL` → `id="ai-card"` present |
+| O2 | Frage rein, Antwort raus — der Proxy-Roundtrip funktioniert | POST `/api/ai/chat` → answer from the OpenAI-compatible mock |
+| O3 | Das Portal spricht den korrekten Upstream-Vertrag | mock logs prove: bearer auth, `model` from `AI_MODEL`, user message == question, `max_tokens` bounded |
+| O4 | Leere Fragen werden abgewiesen, nicht weitergeleitet | empty question → 400 AND nothing reaches the backend |
+| O5 | Nach dem Test ist der Stack wieder im Auslieferungszustand | teardown: card hidden again |
+
+The backend is a pure-stdlib mock (`tests/05-e2e/ai_mock.py`) that the
+portal reaches over the docker bridge gateway — the journey tests the
+PORTAL's AI surface and its contract, not a real LLM.
+
 ---
 
 ## Running
@@ -174,6 +227,13 @@ python3 tests/05-e2e/resilience.py opensme.local
 
 # backup journey (runs scripts/backup.sh, audits the artifacts):
 python3 tests/05-e2e/backup.py
+
+# exposure + runtime truth (read-only operator audits):
+python3 tests/05-e2e/exposure.py opensme.local
+python3 tests/05-e2e/runtime_truth.py
+
+# local AI journey (recreates the portal against a stdlib AI mock):
+python3 tests/05-e2e/ai_journey.py opensme.local
 
 # static-ish subset (no credentials needed):
 python3 tests/05-e2e/run.py opensme.local --skip-flows

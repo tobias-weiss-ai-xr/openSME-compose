@@ -30,7 +30,7 @@ services:
   # connect the portal to the host's traefik-web network instead.
   traefik:
     <<: *service-defaults
-    image: ${TRAEFIK_IMAGE:-traefik:latest}
+    image: ${TRAEFIK_IMAGE:-traefik:v3.7.13}
     container_name: opensme-traefik
     profiles: ["standalone"]
     restart: unless-stopped

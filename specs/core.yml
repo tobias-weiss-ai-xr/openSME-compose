@@ -6,7 +6,7 @@
 
 services:
   traefik:
-    image: traefik:latest
+    image: traefik:v3.7.13
     compose_file: docker-compose.yml
     required: true
     profiles: [standalone]

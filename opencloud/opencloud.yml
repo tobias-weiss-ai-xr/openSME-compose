@@ -27,7 +27,7 @@ services:
     # data-race patch ("concurrent map read and map write"), 7.x fixed it.
     # If a multi-core startup race ever resurfaces, pin cpuset on the host
     # (Go derives GOMAXPROCS from affinity; the env var is ignored).
-    image: opencloudeu/opencloud-rolling:latest
+    image: opencloudeu/opencloud-rolling:8.0.1
     container_name: opensme-opencloud
     restart: unless-stopped
     stop_grace_period: 60s

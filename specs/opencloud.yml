@@ -4,7 +4,7 @@
 
 services:
   opencloud:
-    image: opencloudeu/opencloud-rolling:latest
+    image: opencloudeu/opencloud-rolling:8.0.1
     compose_file: opencloud/opencloud.yml
     required: false
     host_ports: []
