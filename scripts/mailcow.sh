@@ -41,8 +41,8 @@ MARK_BEGIN="# ── BEGIN MAILCOW ROUTER (managed by scripts/mailcow.sh) ──
 MARK_END="# ── END MAILCOW ROUTER ──"
 # the router target must match the CONTAINER port — mailcow renders
 # HTTP_PORT as both the host and the container port, so read the rendered
-# value back from the conf
-MAILCOW_HTTP_PORT="$(grep -E '^HTTP_PORT=' "${CONF}" 2>/dev/null | cut -d= -f2)"
+# value back from the conf (|| true: the conf may not exist yet)
+MAILCOW_HTTP_PORT="$(grep -E '^HTTP_PORT=' "${CONF}" 2>/dev/null | cut -d= -f2 || true)"
 MAILCOW_HTTP_PORT="${MAILCOW_HTTP_PORT:-18080}"
 
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; NC=$'\033[0m'
@@ -147,17 +147,21 @@ ensure_certs() {
   local ssl_dir="${SUBMODULE_DIR}/data/assets/ssl"
   mkdir -p "${ssl_dir}"
   if [[ ! -s "${ssl_dir}/cert.pem" || ! -s "${ssl_dir}/key.pem" ]]; then
-    openssl req -new -x509 -days 3650 -nodes \
+    if openssl req -new -x509 -days 3650 -nodes \
       -subj "/CN=${MAILCOW_HOSTNAME}" \
       -addext "subjectAltName=DNS:${MAILCOW_HOSTNAME}" \
-      -keyout "${ssl_dir}/key.pem" -out "${ssl_dir}/cert.pem" 2>/dev/null \
-      && info "self-signed mail certificate created (${MAILCOW_HOSTNAME})" \
-      || die "openssl unavailable — cannot seed mail certificates"
+      -keyout "${ssl_dir}/key.pem" -out "${ssl_dir}/cert.pem" 2>/dev/null; then
+      info "self-signed mail certificate created (${MAILCOW_HOSTNAME})"
+    else
+      die "openssl unavailable — cannot seed mail certificates"
+    fi
   fi
   if [[ ! -s "${ssl_dir}/dhparams.pem" ]]; then
-    openssl dhparam -out "${ssl_dir}/dhparams.pem" 2048 2>/dev/null \
-      && info "DH parameters created" \
-      || warn "dhparam generation failed — dovecot may refuse to start"
+    if openssl dhparam -out "${ssl_dir}/dhparams.pem" 2048 2>/dev/null; then
+      info "DH parameters created"
+    else
+      warn "dhparam generation failed — dovecot may refuse to start"
+    fi
   fi
 }
 
@@ -195,8 +199,9 @@ ensure_router() {
   # 1) attach traefik to the mailcow network (idempotent)
   if ! docker network inspect "${PROJECT}_mailcow-network" \
       --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null | grep -q "${TRAEFIK_CONTAINER}"; then
-    docker network connect "${PROJECT}_mailcow-network" "${TRAEFIK_CONTAINER}" 2>/dev/null \
-      && info "traefik attached to the mailcow network" || true
+    if docker network connect "${PROJECT}_mailcow-network" "${TRAEFIK_CONTAINER}" 2>/dev/null; then
+      info "traefik attached to the mailcow network"
+    fi
   fi
   # 2) inject the dynamic router into traefik/dynamic.yml (marker block).
   #    The REST API is deliberately NOT allowlisted for traefik's IP —
