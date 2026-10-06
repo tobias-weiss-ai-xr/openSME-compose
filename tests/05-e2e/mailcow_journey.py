@@ -90,7 +90,7 @@ def api(session, conf, method: str, path: str, payload=None):
            "-H", f"X-API-Key: {conf['API_KEY']}", "-H", "Content-Type: application/json"]
     if payload is not None:
         cmd += ["-d", json.dumps(payload)]
-    cmd += [f"http://localhost:{conf.get('HTTP_PORT', '18080')}/api/v1/{path}"]
+    cmd += [f"http://localhost:{conf.get('HTTP_PORT', '28080')}/api/v1/{path}"]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     body = r.stderr
     code = (r.stdout or "").strip()
@@ -152,6 +152,24 @@ def main() -> int:
         )
     except requests.RequestException as e:
         result.fail(f"admin UI unreachable: {e.__class__.__name__}")
+        print()
+        result.summary()
+        return 1
+
+    # mailcow's nginx becoming ready does not imply postfix is — retry the
+    # first SMTP probe until the daemon answers or the gate expires
+    def smtp_ready(port: int) -> bool:
+        for _ in range(24):
+            try:
+                with smtplib.SMTP("127.0.0.1", port, timeout=T) as s:
+                    s.ehlo()
+                return True
+            except (OSError, smtplib.SMTPException):
+                time.sleep(5)
+        return False
+
+    if not (smtp_ready(25) and smtp_ready(587)):
+        result.fail("SMTP daemons never became ready (postfix gate expired)")
         print()
         result.summary()
         return 1

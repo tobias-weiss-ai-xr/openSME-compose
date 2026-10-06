@@ -6,3 +6,16 @@ http:
       rateLimit:
         average: 100
         burst: 200
+# ── BEGIN MAILCOW ROUTER (managed by scripts/mailcow.sh) ──
+  routers:
+    mailcow-ui:
+      rule: "Host(`mail.opensme.local`)"
+      entrypoints: [websecure]
+      service: mailcow-web
+      tls: {}
+  services:
+    mailcow-web:
+      loadBalancer:
+        servers:
+          - url: "http://nginx-mailcow:28080"
+# ── END MAILCOW ROUTER ──
