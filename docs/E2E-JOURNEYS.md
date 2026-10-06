@@ -210,6 +210,46 @@ The backend is a pure-stdlib mock (`tests/05-e2e/ai_mock.py`) that the
 portal reaches over the docker bridge gateway — the journey tests the
 PORTAL's AI surface and its contract, not a real LLM.
 
+## Epic P — Persistence: the data is still there
+
+> *Als Betreiber überlebt mein Dienst einen kompletten Stack-Restart —
+> ohne Datenverlust und ohne disruption beim normalen Redeploy.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| P1 | Ein erneutes `up -d` stört den laufenden Betrieb nicht | `tests/05-e2e/persistence.py` — container start-times unchanged (no recreation churn) |
+| P2 | Daten überleben einen vollen Stack-Restart (Volumes halten) | marker row in a journey-owned DB → `down` (volumes kept) → `up -d` → row still there |
+| P3 | Nach dem Restart ist der Stack nicht nur "up", sondern brauchbar | IdP discovery + portal health answer again |
+
+The journey owns its database (`e2e_persist`, dropped afterwards); the
+stack's own volumes are never touched.
+
+## Epic Q — Burst: a small office at 09:00
+
+> *Um 9 Uhr öffnet die ganze Belegschaft den Arbeitsplatz — der Portal
+> bleibt ruhig.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| Q1 | Parallelzugriff erzeugt keine Serverfehler | `tests/05-e2e/burst.py` — 40 workers × 8 requests across `/`, `/health`, `/api/services`: zero 5xx, zero conn errors |
+| Q2 | Die Antwortzeit bleibt im Rahmen | p95 within a generous budget (CI runners are slow; the assertion is regression protection, not a benchmark) |
+| Q3 | Der Katalog bleibt unter Last korrekt | every `/api/services` response under burst equals the calm one (no truncation, no mixed bodies) |
+
+## Epic S — Hygiene: no defaults, no open writes
+
+> *Als Auditor finde ich keinen Platzhalter-Credential im Laufzeit-Stack
+> und keine anonyme Schreiboperation.*
+
+| # | User story | Journey test |
+|---|------------|--------------|
+| S1 | Kein CHANGEME/Beispiel-Passwort erreicht den laufenden Stack | `tests/05-e2e/hygiene.py` — inspect every container env (documented minio pair excepted, full profile only) |
+| S2 | Der IdP lehnt anonyme Management-Writes ab | `POST /v2/users/human` / `DELETE /v2/users/…` ohne Token → 401/403 |
+| S3 | Die Cloud lehnt gefälschte Credentials ab | forged bearer on WebDAV + capabilities → 401/403 |
+
+S1 caught a real one: the SMTP password placeholder (`CHANGEME_smtp`)
+sat in opencloud's live env of EVERY SMTP-less deployment — the default
+is now empty, mail stays opt-in.
+
 ## Epic P — Mail, for real: mailcow delivers actual mail
 
 > *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
@@ -277,6 +317,13 @@ python3 tests/05-e2e/runtime_truth.py
 
 # local AI journey (recreates the portal against a stdlib AI mock):
 python3 tests/05-e2e/ai_journey.py opensme.local
+
+# burst + hygiene (read-only quality/credential audits):
+python3 tests/05-e2e/burst.py opensme.local
+python3 tests/05-e2e/hygiene.py opensme.local
+
+# persistence journey (restarts the whole stack — run it last):
+python3 tests/05-e2e/persistence.py opensme.local
 
 # mailcow journey (requires the submodule + `scripts/mailcow.sh up`):
 git submodule update --init mail/mailcow-dockerized

@@ -197,3 +197,9 @@ jobs:
         run: python3 tests/05-e2e/runtime_truth.py
       - name: Run local AI journey (mock backend, contract proof)
         run: python3 tests/05-e2e/ai_journey.py opensme.local
+      - name: Run burst journey (concurrent load, zero 5xx)
+        run: python3 tests/05-e2e/burst.py opensme.local
+      - name: Run hygiene journey (no default creds, no open writes)
+        run: python3 tests/05-e2e/hygiene.py opensme.local
+      - name: Run persistence journey (state survives full restart)
+        run: python3 tests/05-e2e/persistence.py opensme.local
