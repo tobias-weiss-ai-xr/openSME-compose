@@ -198,7 +198,7 @@ fn build_landing_page(config: &AppConfig) -> String {
     let ic_rendered = render_intercom(&config.intercom_store.list());
     let intercom_card = format!(
         r#"<div class="card intercom" id="intercom-card">
-                <h2>Intercom</h2>
+                <h2>Team Notes</h2>
                 <ul class="ic-list" id="ic-list" aria-live="polite">{ic_rendered}</ul>
                 <div class="ic-box">
                     <textarea class="ic-text" rows="2" placeholder="Short note for the team…" aria-label="Message" maxlength="2000"></textarea>
