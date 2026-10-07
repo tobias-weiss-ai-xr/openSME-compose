@@ -416,6 +416,48 @@ no browser, no JS, pure document truth.
 | AE2 | Normaler Verkehr wird nie bestraft | 100 sequential requests: zero 429, zero 5xx |
 | AE3 | Der Flood trifft die Grenze — und der Eddge überlebt | a 1000-request concurrent flood trips the limiter (429s appear, no 5xx), and after a short cool-down ordinary traffic flows freely again (bucket refills) |
 
+## Epic AF — Secret surface: least privilege, measured
+
+> *Als Angreifer will ich aus irgendeinem Container passende Schlüssel
+> mitnehmen — als Betreiber will ich, dass jedes Secret genau so viel
+> Fläche hat, wie sein Dienst braucht.*
+
+| # | User story | Test |
+|---|------------|------|
+| AF1 | Der Edge trägt keine Geheimnisse | traefik's REAL environment (docker inspect) holds no secret-shaped env vars — the most exposed surface has nothing worth stealing |
+| AF2 | Das Portal sieht nie das DB-Passwort | the portal talks HTTP to the world, not SQL to postgres — no POSTGRES/DB password in its env |
+| AF3 | Der Machinekey hat einen Halter | the zitadel machinekey volume is mounted by exactly one container — zitadel itself |
+| AF4 | `.env` wird nie whole-mount | no container mounts the repo's `.env` — host config must not become a wholesale secret dump |
+| AF5 | Dashboard-Credentials sind gehasht | the traefik basic-auth users label is an apr1/bcrypt-shaped hash, never plaintext |
+
+Generic by design: a new container that starts consuming the DB
+password or mounting `.env` trips this journey without list upkeep.
+
+## Epic AG — TLS contract at the crypto edge
+
+> *Als Betreiber will ich, dass „nur TLS" eine gemessene Zusicherung
+> ist: alte Protokolle abgelehnt, moderne akzeptiert, HSTS gesetzt,
+> Zertifikat im Fenster.*
+
+| # | User story | Test |
+|---|------------|------|
+| AG1 | Legacy TLS wird abgewiesen | handshakes capped at TLS 1.0/1.1 are refused at the edge (stdlib ssl) |
+| AG2 | Modernes TLS verbindet | TLS 1.2 and 1.3 handshakes succeed |
+| AG3 | HSTS ist gesetzt | every response carries `strict-transport-security: max-age≥31536000; includeSubDomains` — browsers never try plain http again (pinned by a portal unit test too) |
+| AG4 | Das Zertifikat ist im Fenster | the served cert's validity covers now (parsed with openssl like an operator would) — catches stale or swapped certs |
+
+## Epic AH — Concurrent writers: the store holds under contention
+
+> *Als Team wollen wir zwanzig Notizen im selben Augenblick schreiben
+> können, ohne dass eine verloren geht oder die Seite bricht.*
+
+| # | User story | Test |
+|---|------------|------|
+| AH1 | Parallele Schreiber kommen alle durch | 20 concurrent intercom POSTs all answer 201 — no deadlock, no dropped writers |
+| AH2 | Keine Note geht verloren | every posted note is in the store afterwards — no lost update, no interleaving corruption |
+| AH3 | Leser sehen nie Halbfertiges | 10 readers DURING the storm all see valid HTTP-200 JSON |
+| AH4 | Die Seite trägt den Sturm | the rendered page carries the notes that survived the contention |
+
 This journey exists because the wiring was found DEAD: the
 name-suffixed key form of the entrypoint middleware flags was silently
 dropped by traefik's slice parser — 1875 rps, zero 429s. The fix
@@ -499,6 +541,13 @@ python3 tests/05-e2e/accessibility.py opensme.local
 
 # rate limit journey (fires a flood at the edge limiter, measures 429s):
 python3 tests/05-e2e/rate_limit.py opensme.local
+
+# tls contract + secret surface journeys (crypto edge + least privilege):
+python3 tests/05-e2e/tls_contract.py opensme.local
+python3 tests/05-e2e/secret_surface.py opensme.local
+
+# concurrent writers journey (20 writers + 10 readers at once):
+python3 tests/05-e2e/concurrent_writers.py opensme.local
 
 # hostile input journey (feeds XSS payloads through the intercom renderer):
 python3 tests/05-e2e/hostile_input.py opensme.local

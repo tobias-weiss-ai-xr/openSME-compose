@@ -307,6 +307,19 @@ What is covered (full story catalog with Given/When/Then:
    429s without a single 5xx, and the bucket refills so ordinary
    traffic flows freely again. Pins the repeated-flag wiring fix by
    measuring.
+30. **TLS contract (crypto edge)** — `tests/05-e2e/tls_contract.py`:
+   legacy TLS refused, TLS 1.2/1.3 connect, HSTS header present with a
+   year-long max-age (pinned by a portal unit test), certificate
+   inside its validity window.
+31. **Secret surface (least privilege)** —
+   `tests/05-e2e/secret_surface.py`: walks the RUNNING containers'
+   real environments — the edge carries no secret-shaped vars, the
+   portal never sees the DB password, the machinekey has exactly one
+   holder, `.env` is mounted into nothing, dashboard creds are hashed.
+32. **Concurrent writers (store correctness)** —
+   `tests/05-e2e/concurrent_writers.py`: 20 parallel intercom posts
+   all land, no lost updates, concurrent readers always see valid
+   JSON, the page carries the surviving notes.
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP

@@ -207,6 +207,10 @@ jobs:
         run: python3 tests/05-e2e/accessibility.py opensme.local
       - name: Run rate limit journey (the edge limiter actually limits)
         run: python3 tests/05-e2e/rate_limit.py opensme.local
+      - name: Run tls contract journey (legacy TLS refused, HSTS, cert window)
+        run: python3 tests/05-e2e/tls_contract.py opensme.local
+      - name: Run secret surface journey (least privilege on secrets)
+        run: python3 tests/05-e2e/secret_surface.py opensme.local
       - name: Run observability journey (healthchecks + secrets-out-of-logs)
         run: python3 tests/05-e2e/observability.py opensme.local
       - name: Run portability journey (portal migrates to another domain)
@@ -215,6 +219,8 @@ jobs:
         run: python3 tests/05-e2e/intercom.py opensme.local
       - name: Run hostile input journey (nothing breaks out of the renderer)
         run: python3 tests/05-e2e/hostile_input.py opensme.local
+      - name: Run concurrent writers journey (the intercom store under contention)
+        run: python3 tests/05-e2e/concurrent_writers.py opensme.local
       - name: Run rolling recreate journey (deploy without turbulence)
         run: python3 tests/05-e2e/rolling_recreate.py opensme.local
       - name: Run idempotency journey (second boot converges, no duplicates)

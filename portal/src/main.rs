@@ -645,6 +645,13 @@ async fn security_headers(
     let h = res.headers_mut();
     h.insert("x-content-type-options", "nosniff".parse().unwrap());
     h.insert("x-frame-options", "DENY".parse().unwrap());
+    // HSTS: the portal is served TLS-only (traefik redirects :80 → :443),
+    // so telling browsers to refuse plain-http for a year is always safe
+    // here — and it covers the JSON API responses too.
+    h.insert(
+        "strict-transport-security",
+        "max-age=31536000; includeSubDomains".parse().unwrap(),
+    );
     h.insert(
         "referrer-policy",
         "strict-origin-when-cross-origin".parse().unwrap(),
@@ -1094,6 +1101,9 @@ mod tests {
         );
         let csp = header(&resp, "content-security-policy");
         assert!(csp.contains("default-src 'self'"));
+        let hsts = header(&resp, "strict-transport-security");
+        assert!(hsts.contains("max-age=31536000"), "hsts: {hsts}");
+        assert!(hsts.contains("includeSubDomains"), "hsts: {hsts}");
     }
 
     #[tokio::test]
