@@ -329,6 +329,56 @@ This is the boot-strapping promise as a test: setup steps and seeding
 are idempotent, volumes hold state, and a re-run converges instead of
 diverging.
 
+## Epic Y — Disaster recovery: a backup that has survived its drill
+
+> *Als Betreiber will ich aus einem echten Total-Verlust (Volumen weg,
+> Datenbank weg) mit dem Bordmittel wiederherstellen können — und zwar
+> so, dass es einer vorher geprüft hat.*
+
+| # | User story | Test |
+|---|------------|------|
+| Y1 | Mein Restore-Punkt ist vollständig | `backup.sh` produces the SQL dump (with the drill marker database in it) and non-empty volume archives |
+| Y2 | Ich sehe vorher, was passieren würde | `restore.sh --dry-run <prefix>` exits 0 and names the artifacts |
+| Y3 | Der Ernstfall läuft durch | the marker database is DESTROYED (`DROP DATABASE`, verified gone), then the interactive `restore.sh` is answered "yes" — it takes the stack down, restores PostgreSQL + volumes and boots it back |
+| Y4 | Die Daten sind wirklich zurück | the marker row resurrects byte-for-byte from the dump (`SELECT` returns the exact buried value) |
+| Y5 | Danach ist der Stack wieder sauber online | the portal answers 200 on the public route after the drill |
+
+The drill drives the stack lifecycle like persistence does, but goes
+further: it destroys state for real and puts it back with the
+operator's own tooling.
+
+## Epic Z — Trust & transport at the edge: the contract of the front door
+
+> *Als Nutzer will ich, dass der Transport mirror-sicher ist: Klartext
+> landet nirgends, keine Antwort verrät Interna, Management-Flächen
+> verlangen Beweise.*
+
+| # | User story | Test |
+|---|------------|------|
+| Z1 | Klartext-HTTP gibt es nicht | every public hostname (portal/auth/cloud) answers plain http with a 3xx redirect to the https URL |
+| Z2 | Jede Antwort trägt die Sicherheits-Header | page AND API responses carry `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and a CSP |
+| Z3 | Fehlerseiten verraten nichts | unknown paths answer 404 with a body containing no framework names, no panics, no stack traces |
+| Z4 | Das Traefik-Dashboard bleibt hinter Basic-Auth | the dashboard router answers 401 without credentials |
+| Z5 | Fremde Hostnamen bekommen nichts | an unknown vhost gets traefik's default 404 — no other component answers for it |
+
+## Epic AB — Document hygiene: the SSR markup is the interface
+
+> *Als Nutzer mit Screenreader (oder altem Browser) will ich, dass die
+> server-rendered Seite alleine schon sauber strukturiert ist — ohne
+> dass JavaScript nötig wäre.*
+
+| # | User story | Test |
+|---|------------|------|
+| AB1 | Das Dokument erklärt sich | `<html lang>` set, viewport meta present, non-empty `<title>` |
+| AB2 | Bilder haben Alternativtexte | every `<img>` carries an alt attribute (decorative `alt=""` counts — it must EXIST) |
+| AB3 | Jedes Formularfeld ist beschriftet | every input/textarea has aria-label, aria-labelledby or an associated `<label for>` |
+| AB4 | Keine Inline-Event-Handler | no `onclick=`-style attributes — behaviour lives in `/app.js` (CSP `script-src 'self'` without unsafe-inline) |
+| AB5 | Die Überschriften-Gliederung stimmt | exactly one `<h1>`, no heading level is skipped on the way down |
+| AB6 | Interaktive Elemente sind benannt | every link/button has visible text or an aria-label |
+
+Journeys here parse the landing page with the stdlib HTML parser —
+no browser, no JS, pure document truth.
+
 ## Epic MA — Mail, for real: mailcow delivers actual mail
 
 > *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
@@ -401,8 +451,15 @@ python3 tests/05-e2e/ai_journey.py opensme.local
 python3 tests/05-e2e/burst.py opensme.local
 python3 tests/05-e2e/hygiene.py opensme.local
 
+# transport + accessibility (read-only edge/document audits):
+python3 tests/05-e2e/transport.py opensme.local
+python3 tests/05-e2e/accessibility.py opensme.local
+
 # persistence journey (restarts the whole stack — run it last):
 python3 tests/05-e2e/persistence.py opensme.local
+
+# restore drill (runs backup.sh + restore.sh, drops/restores state — run LAST):
+python3 tests/05-e2e/restore_drill.py opensme.local
 
 # intercom journey (recreates the portal with an attachment-source mock):
 python3 tests/05-e2e/intercom.py opensme.local

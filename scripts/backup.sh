@@ -174,7 +174,7 @@ if [ "$BACKUP_VOLUMES" = true ]; then
     echo "   → Volume: $vol..."
     docker run --rm \
       -v "${FULL_VOL}:/data" \
-      -v "$(pwd)/${PARTIAL_DIR}:/backups" \
+      -v "${PARTIAL_DIR}:/backups" \
       alpine:3.20 \
       tar czf "/backups/${vol}.tar.gz" -C /data . 2>/dev/null \
       || echo "   ⚠ Volume $vol skipped (not found)"

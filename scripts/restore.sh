@@ -120,12 +120,23 @@ if [ "$VOLUMES_ONLY" = false ] && [ -f "$PG_FILE" ]; then
   echo "   → Restoring PostgreSQL..."
   # Start just postgres
   docker compose up -d postgres 2>/dev/null || true
-  sleep 10
+  # Wait for readiness — a blind sleep restores into a server that is
+  # still booting and silently drops the whole dump.
+  for i in $(seq 1 30); do
+    docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-opensme}" \
+      >/dev/null 2>&1 && break
+    [ "$i" = 30 ] && echo "   ⚠ postgres never became ready — aborting restore" >&2 && exit 1
+    sleep 2
+  done
 
-  # Restore
+  # Restore (stderr stays visible — a failed restore must be loud).
+  # NO ON_ERROR_STOP here: pg_dumpall emits bare `CREATE ROLE ...` — on a
+  # re-restore those legitimately fail with "already exists" and must not
+  # abort the remaining databases. Whether the restore actually WORKED is
+  # data, not exit codes — the e2e restore drill verifies a marker row.
   gunzip -c "$PG_FILE" | docker compose exec -T postgres \
-    psql -U "${POSTGRES_USER:-opensme}" -d postgres 2>/dev/null \
-    || echo "   ⚠ PostgreSQL restore failed (may need manual intervention)"
+    psql -U "${POSTGRES_USER:-opensme}" -d postgres \
+    || echo "   ⚠ PostgreSQL restore reported errors (check above)"
 
   echo "   ✓ PostgreSQL restored"
 elif [ "$VOLUMES_ONLY" = false ]; then
@@ -151,7 +162,7 @@ if [ "$PG_ONLY" = false ] && [ -f "$VOLUMES_FILE" ]; then
     docker volume create "$full_vol" 2>/dev/null || true
     docker run --rm \
       -v "${full_vol}:/data" \
-      -v "$(pwd)/${TEMP_DIR}:/backups" \
+      -v "${TEMP_DIR}:/backups" \
       alpine:3.20 \
       tar xzf "/backups/$(basename "$vol_archive")" -C /data 2>/dev/null \
       || echo "     ⚠ Volume $vol_name restore failed"

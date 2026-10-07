@@ -273,6 +273,23 @@ What is covered (full story catalog with Given/When/Then:
    an OIDC app provisioned before the boot still exists exactly once,
    the re-seeded automation PAT authenticates, stack healthy after.
    CI runs it before persistence (which restarts the stack anyway).
+24. **Disaster recovery drill** — `tests/05-e2e/restore_drill.py`:
+   runs `backup.sh` (with a marker database buried in the dump), then
+   DESTROYS the marker database for real, restores via the interactive
+   `restore.sh` ("yes" on stdin) and verifies the marker row comes back
+   byte-for-byte and the stack re-boots healthy. Run it LAST.
+25. **Transport & header semantics** — `tests/05-e2e/transport.py`:
+   plain http redirects to https on every public hostname, the portal
+   answers with the security-header contract (nosniff, frame-deny,
+   referrer-policy, CSP) on page AND API, 404s leak no framework
+   internals, the traefik dashboard demands basic auth, foreign vhosts
+   get nothing.
+26. **Accessibility & document hygiene (SSR)** —
+   `tests/05-e2e/accessibility.py`: parses the landing page with the
+   stdlib HTML parser — lang/viewport/title present, images carry alt,
+   form controls are labelled (aria or label-for), no inline event
+   handlers, one h1 with no skipped heading levels, links/buttons have
+   accessible names. No browser, no JS — pure document truth.
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP

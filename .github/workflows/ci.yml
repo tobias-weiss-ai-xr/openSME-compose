@@ -201,6 +201,10 @@ jobs:
         run: python3 tests/05-e2e/burst.py opensme.local
       - name: Run hygiene journey (no default creds, no open writes)
         run: python3 tests/05-e2e/hygiene.py opensme.local
+      - name: Run transport journey (redirects, security headers, no leaks)
+        run: python3 tests/05-e2e/transport.py opensme.local
+      - name: Run accessibility journey (SSR document hygiene)
+        run: python3 tests/05-e2e/accessibility.py opensme.local
       - name: Run observability journey (healthchecks + secrets-out-of-logs)
         run: python3 tests/05-e2e/observability.py opensme.local
       - name: Run portability journey (portal migrates to another domain)
@@ -211,3 +215,5 @@ jobs:
         run: python3 tests/05-e2e/idempotency.py opensme.local
       - name: Run persistence journey (state survives full restart)
         run: python3 tests/05-e2e/persistence.py opensme.local
+      - name: Run restore drill (backup → destroy → restore → verify)
+        run: python3 tests/05-e2e/restore_drill.py opensme.local
