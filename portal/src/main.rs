@@ -836,8 +836,10 @@ fn load_config() -> Arc<AppConfig> {
         announcements,
         ai,
         // One shared client: connection pooling, 30s default timeout.
+        // 300s: CPU-served LLMs cold-load for minutes — the first chat
+        // after ollama eviction must not surface as "upstream unreachable".
         ai_client: reqwest::Client::builder()
-            .timeout(Duration::from_secs(60))
+            .timeout(Duration::from_secs(300))
             .build()
             .unwrap_or_default(),
         intercom: intercom::IntercomConfig::from_env(&load_env("OPENSME_DOMAIN", "opensme.org")),
