@@ -65,6 +65,14 @@ services:
       # salvoxia/sogo:latest (2026-10) fronts sogod with apache2 on :80;
       # older builds exposed sope directly on :20000 (loopback-only)
       - "traefik.http.services.sogo.loadbalancer.server.port=80"
+      # send bare-host requests to the SOGo app root instead of a 404
+      - "traefik.http.routers.sogo-root.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.org}`) && Path(`/`)"
+      - "traefik.http.routers.sogo-root.tls=true"
+      - "traefik.http.routers.sogo-root.entrypoints=websecure"
+      - "traefik.http.routers.sogo-root.middlewares=sogo-root-redirect@docker"
+      - "traefik.http.middlewares.sogo-root-redirect.redirectregex.regex=^https?://[^/]+/?$$"
+      - "traefik.http.middlewares.sogo-root-redirect.redirectregex.replacement=https://${SOGO_DOMAIN:-webmail.opensme.org}/SOGo/"
+      - "traefik.http.middlewares.sogo-root-redirect.redirectregex.permanent=true"
     deploy:
       resources:
         limits:
