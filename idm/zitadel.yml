@@ -22,6 +22,9 @@ services:
     <<: *service-defaults
     image: ${ZITADEL_IMAGE:-ghcr.io/zitadel/zitadel:v4.19.4}
     container_name: opensme-zitadel
+    # FQDN hostname: zitadel's SMTP client EHLOs with os.Hostname(); the
+    # container-ID default gets rejected by strict relays (stalwart 550).
+    hostname: auth.opensme.vhrz2392.local
     restart: unless-stopped
     # Fresh installs need `zitadel init` then
     # `zitadel setup --masterkeyFile /secrets/masterkey --steps /steps.yaml`
