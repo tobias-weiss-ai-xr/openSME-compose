@@ -32,8 +32,10 @@ logs/
 *.log
 __pycache__/
 result-*
-# Zitadel masterkey (provisioned at deploy time)
+# Zitadel masterkey + system API key (provisioned at deploy time)
 idm/secrets/masterkey
+idm/secrets/zitadel-system-key.pem
+idm/secrets/zitadel-system-key.pub
 # Zitadel healthcheck helper (static busybox binary, extracted at deploy time)
 idm/zitadel/busybox
 
