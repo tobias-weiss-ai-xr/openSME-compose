@@ -1,0 +1,44 @@
+# profiles/tls-letsencrypt.yml — PRODUCTION TLS overlay
+#
+# The BASE compose intentionally serves routers with Traefik's default
+# self-signed certificate: the demo hosts (.local/.test) can never pass
+# LE identifier validation, and a certresolver-referencing router gets
+# taken down by Traefik whenever certificate issuance fails — a flaky
+# demo edge. Journeys verify over HTTP with verification disabled, so
+# the default cert is exactly right for the demo.
+#
+# For REAL domains, add this overlay LAST (after the app files, before
+# size profiles) and ensure the letsencrypt resolver config matches your
+# CA (TRAEFIK_ACME_CA_SERVER in .env — see .env.example). Labels merge
+# by key, so this overlay only ADDS the resolver references.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f ... -f profiles/tls-letsencrypt.yml up -d
+#
+# SPDX-FileCopyrightText: 2026 Tobias Weiss
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  traefik:
+    labels:
+      traefik.http.routers.dashboard.tls.certresolver: "letsencrypt"
+
+  portal:
+    labels:
+      traefik.http.routers.portal.tls.certresolver: "letsencrypt"
+
+  zitadel:
+    labels:
+      traefik.http.routers.zitadel.tls.certresolver: "letsencrypt"
+
+  opencloud:
+    labels:
+      traefik.http.routers.opencloud.tls.certresolver: "letsencrypt"
+
+  collabora:
+    labels:
+      traefik.http.routers.collabora.tls.certresolver: "letsencrypt"
+
+  minio:
+    labels:
+      traefik.http.routers.minio.tls.certresolver: "letsencrypt"

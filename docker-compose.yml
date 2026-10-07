@@ -58,6 +58,12 @@ services:
       - "--ping=true"
       - "--ping.entryPoint=web"
       - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.org}"
+      # Demo-safe default: LE STAGING. The demo serves .local/.test hosts
+      # that LE (rightly) refuses — against production ACME every router
+      # (re)configuration fires real orders whose latency storms delay
+      # routing readiness (and burn prod rate limits). Set this to
+      # https://acme-v02.api.letsencrypt.org/directory in production .env.
+      - "--certificatesResolvers.letsencrypt.acme.caServer=${TRAEFIK_ACME_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}"
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
       - "--api.dashboard=true"
@@ -104,7 +110,6 @@ services:
       - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.org}`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.middlewares=auth"
       # Compression middleware (file provider config in traefik-data)
@@ -344,7 +349,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
       - "traefik.http.routers.portal.tls=true"
-      - "traefik.http.routers.portal.tls.certresolver=letsencrypt"
       - "traefik.http.routers.portal.entrypoints=websecure"
       - "traefik.http.services.portal.loadbalancer.server.port=8080"
     deploy:
