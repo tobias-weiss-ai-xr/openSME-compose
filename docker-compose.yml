@@ -75,14 +75,21 @@ services:
       # Rate limiting for 500 users
       # gzip/brotli compression + rate limiting (file provider)
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
-      # Entrypoint middleware chain — repeated-flag form. The name-suffixed
-      # key form (middlewares.compress@docker=compress) is silently dropped
-      # by traefik's slice parser: `middlewares` is a LIST, the suffix turns
-      # the key into an unknown map path, and NO middleware gets wired (the
-      # e2e rate-limit journey measured 1875 rps with zero 429s before the
-      # fix). Repeated identical flags append to the slice — verified live.
-      - "--entryPoints.web.http.middlewares=compress@docker"
-      - "--entryPoints.web.http.middlewares=ratelimit@file"
+      # Entrypoint middleware chain — repeated-flag form, WEBS ECURE ONLY.
+      # Two hard-won lessons:
+      # 1. The name-suffixed key form (middlewares.compress@docker=compress)
+      #    is silently dropped by traefik's slice parser: `middlewares` is a
+      #    LIST, the suffix turns the key into an unknown map path, and NO
+      #    middleware gets wired (measured 1875 rps with zero 429s).
+      # 2. Entry-level middlewares on :80 are a boot-race hazard: the
+      #    @file middlewares load AFTER traefik builds its internal
+      #    routers (web-to-websecure redirect, ping healthcheck, acme-http)
+      #    — a missing middleware makes traefik DROP the router, so for the
+      #    first seconds plain http answered 404 instead of redirecting.
+      #    :80 carries only the redirect/acme/ping internals — nothing
+      #    worth rate-limiting — so it stays dependency-free. All real
+      #    traffic enters via websecure, where the flood budget is
+      #    enforced (verified: 1000-request flood → 743×429, zero 5xx).
       - "--entryPoints.websecure.http.middlewares=compress@docker"
       - "--entryPoints.websecure.http.middlewares=ratelimit@file"
     ports:
