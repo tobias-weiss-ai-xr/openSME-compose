@@ -55,6 +55,10 @@ services:
       ZITADEL_DATABASE_POSTGRES_USER_SSLMODE: disable
       # ── External domain ──
       ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-auth.opensme.org}
+      # System API user (JWT-profile auth) — lets the host manage instance
+      # domains (e.g. after a domain rename) via the system API. Key lives in
+      # the host .env; never bake a private key into the compose files.
+      ZITADEL_SYSTEMAPIUSERS: ${ZITADEL_SYSTEMAPIUSERS:-}
       ZITADEL_EXTERNALPORT: 443
       # tlsMode external: Traefik terminates TLS and forwards plain HTTP to
       # zitadel:8080. Keep ExternalSecure=false so 'zitadel ready' probes
