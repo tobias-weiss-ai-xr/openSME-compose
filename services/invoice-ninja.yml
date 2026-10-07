@@ -67,6 +67,10 @@ services:
     profiles: ["invoice"]
     environment:
       APP_URL: "https://invoices.${OPENSME_DOMAIN:-opensme.org}"
+      # The entrypoint bakes .env into the container layer on first boot — a
+      # recreate loses it (and the APP_KEY it auto-generated), so the key must
+      # be supplied explicitly and persisted in the host .env.
+      APP_KEY: ${INVOICENINJA_APP_KEY:-}
       APP_ENV: production
       DB_HOST: invoiceninja-db
       DB_PORT: "3306"

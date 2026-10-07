@@ -145,12 +145,11 @@ services:
       password: ${COLLABORA_PASSWORD:-CHANGEME_collabora}
     cap_add:
       - MKNOD
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9980/hosting/discovery"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+    # collabora/code 26.04 ships NO curl, wget, or shell — an in-container
+    # healthcheck is impossible, so leave the container healthcheck-less
+    # ("Up"): traefik routes it immediately and a dead coolwsd shows up as
+    # 502. (The old curl probe made newer image builds permanently unhealthy,
+    # which made traefik v3.5+ filter the router entirely → 404.)
     networks:
       - opensme-net
     labels:
