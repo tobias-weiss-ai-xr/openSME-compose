@@ -8,6 +8,10 @@
 {
   // Server
   WOPort = 20000;
+  // sope binds 127.0.0.1 unless told otherwise — without this, the container
+  // answers on loopback only and traefik (dialing the container IP) gets 502.
+  // The compose service alias resolves to the container IP.
+  WOHost = sogo;
   WOHTTPEnabled = YES;
   WOLogFile = /var/log/sogo/sogo.log;
   SOPidFile = /var/run/sogo/sogo.pid;
