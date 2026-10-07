@@ -103,6 +103,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
       - "traefik.http.routers.opencloud.tls=true"
       - "traefik.http.routers.opencloud.tls.certresolver=letsencrypt"
@@ -154,6 +155,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.org}`)"
       - "traefik.http.routers.collabora.tls=true"
       - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
