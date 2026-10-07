@@ -51,7 +51,12 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - opensme-net
+      opensme-net:
+        # dotted alias so SMTP clients that EHLO with the dial host (go
+        # net/smtp, e.g. zitadel's notifier) send an FQDN that strict
+        # relays accept — the bare "stalwart" name gets 550'd
+        aliases:
+          - stalwart.opensme.vhrz2392.local
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.org}`)"
