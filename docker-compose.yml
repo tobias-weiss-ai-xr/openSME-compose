@@ -1,6 +1,10 @@
 # ── Global defaults ──────────────────────────────────
 # Inherited by every service in this file via: <<: *service-defaults
 x-service-defaults: &service-defaults
+  labels:
+    # keep watchtower (host daemon, 04:00 schedule) hands off this stack —
+    # versions are pinned/managed in the repo, not by nightly image drift
+    - "com.centurylinklabs.watchtower.enable=false"
   logging:
     driver: json-file
     options:
@@ -96,6 +100,7 @@ services:
           - "${OPENCLOUD_DOMAIN:-cloud.opensme.org}"
     labels:
       - "traefik.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.org}`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
@@ -336,6 +341,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
       - "traefik.http.routers.portal.tls=true"
       - "traefik.http.routers.portal.tls.certresolver=letsencrypt"
