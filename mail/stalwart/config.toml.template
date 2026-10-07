@@ -56,7 +56,7 @@ enable = true
 
 [authentication.fallback-admin]
 user = "admin"
-secret = "${STALWART_ADMIN_PASSWORD:-CHANGEME_stalwart_admin}"
+secret = "${STALWART_ADMIN_PASSWORD}"
 
 # zitadel's go net/smtp notifier always sends "EHLO localhost"; without
 # this the internal relay path (auth -> mail) fails with 550 Invalid EHLO
