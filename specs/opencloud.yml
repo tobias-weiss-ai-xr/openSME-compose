@@ -32,7 +32,10 @@ services:
     compose_file: opencloud/opencloud.yml
     required: false
     host_ports: []
-    healthcheck: true
+    # collabora/code 26.04 ships no curl/wget/shell — in-container health-
+    # checks are impossible (see opencloud/opencloud.yml); a dead coolwsd
+    # surfaces as Traefik 502.
+    healthcheck: false
     networks: [opensme-net]
     env:
       - COLLABORA_DOMAIN

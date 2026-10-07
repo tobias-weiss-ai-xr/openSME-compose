@@ -113,7 +113,9 @@ TIER_BUDGETS_GB = {"soho": 6, "small": 20, "medium": 40}
 PINNED_IMAGES = ["traefik", "postgres", "redis", "memcached", "stalwart", "sogo"]
 
 # One-shot / never-run services exempt from the healthcheck invariant
-HEALTHCHECK_EXEMPT = {"taskfleet"}
+HEALTHCHECK_EXEMPT = {"taskfleet", "collabora"}  # collabora/code 26.04 ships
+# no curl/wget/shell — an in-container healthcheck is impossible (see
+# opencloud/opencloud.yml); a dead coolwsd surfaces as Traefik 502.
 
 
 def all_compose_files():

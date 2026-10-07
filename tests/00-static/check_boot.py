@@ -135,7 +135,8 @@ HEALTHCHECK_BINS = {
     "llama.cpp": ["curl"],  # ubuntu-based ggml image
     "paperless-ngx": ["curl"],
     "gotenberg": ["curl"],
-    "tika": ["curl"],
+    "tika": ["bash"],   # apache/tika:latest is java-only (curl/wget dropped)
+                        # — healthcheck probes via bash /dev/tcp
     "invoiceninja": ["curl", "pgrep"],  # php-fpm image ships procps
     "dev-agent": ["curl"],
 }
