@@ -62,7 +62,9 @@ services:
       - "traefik.http.routers.sogo.tls=true"
       - "traefik.http.routers.sogo.tls.certresolver=letsencrypt"
       - "traefik.http.routers.sogo.entrypoints=websecure"
-      - "traefik.http.services.sogo.loadbalancer.server.port=20000"
+      # salvoxia/sogo:latest (2026-10) fronts sogod with apache2 on :80;
+      # older builds exposed sope directly on :20000 (loopback-only)
+      - "traefik.http.services.sogo.loadbalancer.server.port=80"
     deploy:
       resources:
         limits:
