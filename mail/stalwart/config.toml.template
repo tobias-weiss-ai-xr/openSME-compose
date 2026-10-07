@@ -7,7 +7,11 @@
 # Store lives on the stalwart-data volume (RocksDB).
 
 [server]
-hostname = "${MAIL_DOMAIN:-mail.opensme.org}"
+hostname = "${MAIL_DOMAIN}"
+# NOTE: plain ${MAIL_DOMAIN} — the entrypoint renderer does not understand
+# the bash "${VAR:-default}" form and would bake the literal string in,
+# which also breaks stalwart's own EHLO-domain validation (550 Invalid
+# EHLO domain for internal relays like zitadel's notifier).
 
 [server.listener.smtp]
 bind = "[::]:25"
