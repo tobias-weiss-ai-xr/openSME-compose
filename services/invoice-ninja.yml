@@ -105,10 +105,13 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: 192M
+          # 192M OOM-killed the app during Laravel boot against a migrated
+          # (non-empty) DB — supervisor then exits cleanly and the container
+          # flaps forever. 512M leaves ample headroom for artisan optimize.
+          memory: 512M
         reservations:
           cpus: "0.1"
-          memory: 32M
+          memory: 64M
 
   # nginx front for the fpm container; serves the shared public volume and
   # forwards FastCGI to the "invoiceninja" service
