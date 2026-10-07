@@ -205,12 +205,18 @@ jobs:
         run: python3 tests/05-e2e/transport.py opensme.local
       - name: Run accessibility journey (SSR document hygiene)
         run: python3 tests/05-e2e/accessibility.py opensme.local
+      - name: Run rate limit journey (the edge limiter actually limits)
+        run: python3 tests/05-e2e/rate_limit.py opensme.local
       - name: Run observability journey (healthchecks + secrets-out-of-logs)
         run: python3 tests/05-e2e/observability.py opensme.local
       - name: Run portability journey (portal migrates to another domain)
         run: python3 tests/05-e2e/portability.py opensme.local
       - name: Run intercom journey (notes + cloud attachments, SSRF guard)
         run: python3 tests/05-e2e/intercom.py opensme.local
+      - name: Run hostile input journey (nothing breaks out of the renderer)
+        run: python3 tests/05-e2e/hostile_input.py opensme.local
+      - name: Run rolling recreate journey (deploy without turbulence)
+        run: python3 tests/05-e2e/rolling_recreate.py opensme.local
       - name: Run idempotency journey (second boot converges, no duplicates)
         run: python3 tests/05-e2e/idempotency.py opensme.local
       - name: Run persistence journey (state survives full restart)

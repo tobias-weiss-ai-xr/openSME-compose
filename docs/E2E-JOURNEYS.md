@@ -379,6 +379,48 @@ operator's own tooling.
 Journeys here parse the landing page with the stdlib HTML parser —
 no browser, no JS, pure document truth.
 
+## Epic AC — Hostile input: nothing breaks out of the renderer
+
+> *Als Angreifer will ich Skripte und Tricks durch Notizen und
+> Anhänge in die Seite schmuggeln — als Betreiber will ich, dass der
+> Renderer jede Attacke zu inertem Text degradiert.*
+
+| # | User story | Test |
+|---|------------|------|
+| AC1 | Event-Handler-Injection scheitert | `<img onerror>`, `<svg onload>`, script tags and broken-tag smuggles reach the intercom list ONLY html-escaped — no raw handler attribute in the served segment (the page's own script tag is out of scope) |
+| AC2 | Feindliche Attachment-URLs werden abgewiesen | `javascript:`, `data:`, credential-bearing and explicit-port URLs are rejected or refused storage — no 5xx, never a live link |
+| AC3 | Unicode überlebt den Round-Trip | umlauts, emoji and RTL text survive POST → API → page byte-identically (raw or html-escaped spelling) |
+| AC4 | API und Seite erzählen absichtlich verschiedene Wahrheiten | the API serves the raw text (machine truth), the page serves the escaped form (human safety) — the contrast holds for a probe payload |
+| AC5 | Die Liste bleibt begrenzt | the 51st note is answered honestly (201 or 4xx) and the served list never exceeds MAX_MESSAGES (50) — no unbounded growth |
+
+## Epic AD — Rolling recreate: deploy without turbulence
+
+> *Als Betreiber will ich das Portal unter laufendem Verkehr neu
+> erstellen können (Upgrade, Konfig-Änderung), ohne dass Nutzer einen
+> Hänger sehen.*
+
+| # | User story | Test |
+|---|------------|------|
+| AD1 | Fehler bleiben im Fenster | a traffic poller (≈8 rps across / and /health) runs through a forced portal recreate — every failure (5xx or connection-level) falls INSIDE the recreate window, the in-window 5xx budget is small, and nothing errors after the window closes |
+| AD2 | Der Verkehr erholt sich vollständig | the tail of the run is 100% ok — full success rate after the recreate, conn-level failures bounded |
+| AD3 | Der Inhalt bleibt unberührt | stack healthy and the intercom API answers after the recreate — the recreation was transparent to content |
+
+## Epic AE — Abuse resistance: the edge limiter actually limits
+
+> *Als Betreiber will ich, dass die zugesagte Ratenbegrenzung (100
+> req/s, burst 200) eine gefeuerte Zusage ist — nicht Dekoration.*
+
+| # | User story | Test |
+|---|------------|------|
+| AE1 | Die Middleware ist verkabelt | the ratelimit middleware is declared in `traefik/dynamic.yml` AND mounted into the running traefik container |
+| AE2 | Normaler Verkehr wird nie bestraft | 100 sequential requests: zero 429, zero 5xx |
+| AE3 | Der Flood trifft die Grenze — und der Eddge überlebt | a 1000-request concurrent flood trips the limiter (429s appear, no 5xx), and after a short cool-down ordinary traffic flows freely again (bucket refills) |
+
+This journey exists because the wiring was found DEAD: the
+name-suffixed key form of the entrypoint middleware flags was silently
+dropped by traefik's slice parser — 1875 rps, zero 429s. The fix
+(repeated-flag form) is pinned by measuring, not by reading config.
+
 ## Epic MA — Mail, for real: mailcow delivers actual mail
 
 > *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
@@ -454,6 +496,15 @@ python3 tests/05-e2e/hygiene.py opensme.local
 # transport + accessibility (read-only edge/document audits):
 python3 tests/05-e2e/transport.py opensme.local
 python3 tests/05-e2e/accessibility.py opensme.local
+
+# rate limit journey (fires a flood at the edge limiter, measures 429s):
+python3 tests/05-e2e/rate_limit.py opensme.local
+
+# hostile input journey (feeds XSS payloads through the intercom renderer):
+python3 tests/05-e2e/hostile_input.py opensme.local
+
+# rolling recreate journey (recreates the portal under synthetic traffic):
+python3 tests/05-e2e/rolling_recreate.py opensme.local
 
 # persistence journey (restarts the whole stack — run it last):
 python3 tests/05-e2e/persistence.py opensme.local

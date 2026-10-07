@@ -75,10 +75,16 @@ services:
       # Rate limiting for 500 users
       # gzip/brotli compression + rate limiting (file provider)
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
-      - "--entryPoints.web.http.middlewares.compress@docker=compress"
-      - "--entryPoints.websecure.http.middlewares.compress@docker=compress"
-      - "--entryPoints.web.http.middlewares.ratelimit@file=ratelimit@file"
-      - "--entryPoints.websecure.http.middlewares.ratelimit@file=ratelimit@file"
+      # Entrypoint middleware chain — repeated-flag form. The name-suffixed
+      # key form (middlewares.compress@docker=compress) is silently dropped
+      # by traefik's slice parser: `middlewares` is a LIST, the suffix turns
+      # the key into an unknown map path, and NO middleware gets wired (the
+      # e2e rate-limit journey measured 1875 rps with zero 429s before the
+      # fix). Repeated identical flags append to the slice — verified live.
+      - "--entryPoints.web.http.middlewares=compress@docker"
+      - "--entryPoints.web.http.middlewares=ratelimit@file"
+      - "--entryPoints.websecure.http.middlewares=compress@docker"
+      - "--entryPoints.websecure.http.middlewares=ratelimit@file"
     ports:
       - "80:80"
       - "443:443"

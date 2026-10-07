@@ -290,6 +290,23 @@ What is covered (full story catalog with Given/When/Then:
    form controls are labelled (aria or label-for), no inline event
    handlers, one h1 with no skipped heading levels, links/buttons have
    accessible names. No browser, no JS — pure document truth.
+27. **Hostile input (renderer safety)** — `tests/05-e2e/hostile_input.py`:
+   event-handler injection payloads render strictly escaped in the
+   intercom list, hostile attachment URLs (javascript:, data:,
+   credentials, port bypasses) are rejected, unicode round-trips
+   byte-identically, API serves raw truth vs page escaped markup,
+   list stays bounded at 50.
+28. **Rolling recreate (deploy under load)** —
+   `tests/05-e2e/rolling_recreate.py`: recreates the portal while a
+   traffic poller keeps probing — all failures confined to the
+   recreate window (small 5xx budget), tail of the run 100% ok, stack
+   healthy and content intact afterwards.
+29. **Rate limiting (edge abuse resistance)** —
+   `tests/05-e2e/rate_limit.py`: middleware declared AND mounted,
+   100 sequential requests never punished, a 1000-request flood trips
+   429s without a single 5xx, and the bucket refills so ordinary
+   traffic flows freely again. Pins the repeated-flag wiring fix by
+   measuring.
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP
