@@ -28,6 +28,9 @@
 #   MAILCOW_HOSTNAME   FQDN of the web UI   (default: mail.${OPENSME_DOMAIN:-opensme.org})
 #   OPENSME_DOMAIN     mail domain for the demo (default: opensme.org)
 #   MAILCOW_SKIP_CLAMD default y | SKIP_FTS default y — keep the demo lean
+#   MAILCOW_{SMTP,SMTPS,SUBMISSION,IMAP,IMAPS,POP,POPS}_PORT
+#                      host-side mail-port binds (defaults 25/465/587/143/993/
+#                      110/995 — remap when the host already runs a mail server)
 # ═══════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -100,14 +103,16 @@ SKIP_CLAMD=${MAILCOW_SKIP_CLAMD:-y}
 SKIP_FTS=${MAILCOW_SKIP_FTS:-y}
 SKIP_SOGO=n
 
-# mail ports stay on the host — that is the mail server's contract
-SMTP_PORT=25
-SMTPS_PORT=465
-SUBMISSION_PORT=587
-IMAP_PORT=143
-IMAPS_PORT=993
-POP_PORT=110
-POPS_PORT=995
+# mail ports stay on the host — that is the mail server's contract.
+# Remap via MAILCOW_*_PORT when the host already runs another mail server
+# (e.g. coexistence with a legacy Stalwart holding 25/143/587).
+SMTP_PORT=${MAILCOW_SMTP_PORT:-25}
+SMTPS_PORT=${MAILCOW_SMTPS_PORT:-465}
+SUBMISSION_PORT=${MAILCOW_SUBMISSION_PORT:-587}
+IMAP_PORT=${MAILCOW_IMAP_PORT:-143}
+IMAPS_PORT=${MAILCOW_IMAPS_PORT:-993}
+POP_PORT=${MAILCOW_POP_PORT:-110}
+POPS_PORT=${MAILCOW_POPS_PORT:-995}
 
 DBNAME=mailcow
 DBUSER=mailcow
@@ -134,8 +139,16 @@ EOF
   info "rendered mail/mailcow.conf (hostname=${MAILCOW_HOSTNAME})"
 }
 
+# compose v2 ships as a docker CLI plugin (`docker compose`) or a standalone
+# binary (`docker-compose`, e.g. Debian's docker-compose package) — accept both
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE=(docker compose)
+else
+  COMPOSE=(docker-compose)
+fi
+
 compose() {
-  (cd "${SUBMODULE_DIR}" && docker compose --env-file "${CONF}" "$@")
+  (cd "${SUBMODULE_DIR}" && "${COMPOSE[@]}" --env-file "${CONF}" "$@")
 }
 
 ensure_certs() {
