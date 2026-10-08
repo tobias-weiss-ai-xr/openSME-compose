@@ -44,6 +44,10 @@ DEMO_SET = "docker-compose.yml:idm/zitadel.yml:opencloud/opencloud.yml:profiles/
 RECREATE_WINDOW = 60      # s: keep polling while the recreate runs
 RECOVERY_BUDGET = 30      # s: after recreate, traffic must be 100% again
 POLL_INTERVAL = 0.25      # s between probes (≈4 rps per route)
+# Recreate turbulence budget: a single-container --force-recreate drops the
+# router, so Traefik answers mostly 404 (and briefly 5xx) until the provider
+# reattaches — a few seconds at ≈4 rps. Budget bounds that window.
+TURBULENCE_BUDGET = 20
 
 
 def install_dns_fallback() -> None:
@@ -179,16 +183,22 @@ def main() -> int:
         poller.join(timeout=15)
 
         # ── AD1: all failures confined to the recreate window ──────────
-        in_win_5xx = sum(1 for ts, k in poller.samples
-                         if k == "5xx" and ts <= window_end)
+        # A single-container --force-recreate drops the portal router, so
+        # Traefik answers 404 (not 502) while it is down; both 5xx and
+        # 4xx ("other") count as expected recreate turbulence, budgeted to
+        # the window. Anything after window_end is a regression.
+        in_win_turb = sum(1 for ts, k in poller.samples
+                          if k in ("5xx", "other") and ts <= window_end)
         out_errors = sum(1 for ts, k in poller.samples
-                         if k in ("5xx", "conn") and ts > window_end)
-        ad1 = recreate_rc == 0 and in_win_5xx <= 8 and out_errors == 0
+                         if k in ("5xx", "other", "conn") and ts > window_end)
+        ad1 = recreate_rc == 0 and in_win_turb <= TURBULENCE_BUDGET \
+            and out_errors == 0
         (result.ok if ad1 else result.fail)(
-            f"turbulence confined: {in_win_5xx} in-window 5xx (budget 8), "
-            f"{out_errors} outside the window ({poller.total} samples)"
+            f"turbulence confined: {in_win_turb} in-window 5xx/4xx "
+            f"(budget {TURBULENCE_BUDGET}), {out_errors} outside the "
+            f"window ({poller.total} samples)"
             if ad1
-            else f"turbulence unconfined: in-window 5xx={in_win_5xx}, "
+            else f"turbulence unconfined: in-window 5xx/4xx={in_win_turb}, "
                  f"out-of-window errors={out_errors}, rc={recreate_rc}"
         )
 

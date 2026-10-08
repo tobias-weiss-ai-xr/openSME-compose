@@ -467,17 +467,27 @@ def is_host_network(svc_data: dict) -> bool:
 
 # ─── Portal routing self-heal ─────────────────────────────────────────────
 
-def wait_http_ok(session, url: str, deadline_s: float = 60.0, interval: float = 2.0) -> bool:
-    """Poll until `url` answers HTTP 200 (journeys use it for /health)."""
+def wait_http_ok(session, url: str, deadline_s: float = 60.0, interval: float = 2.0,
+                 stable: int = 1) -> bool:
+    """Poll until `url` answers HTTP 200 `stable` times in a row.
+
+    `stable=1` (default) keeps the historic single-success behaviour; higher
+    values confirm a recovered route is actually stable, not mid-flap.
+    """
     import time as _time
     import requests as _requests
     deadline = _time.time() + deadline_s
+    streak = 0
     while _time.time() < deadline:
         try:
             if session.get(url, timeout=15).status_code == 200:
-                return True
+                streak += 1
+                if streak >= stable:
+                    return True
+            else:
+                streak = 0
         except _requests.RequestException:
-            pass
+            streak = 0
         _time.sleep(interval)
     return False
 
@@ -499,10 +509,10 @@ def ensure_portal_routed(session, portal_base: str, log=print) -> bool:
          wait again up to 90s (covers the post-restart ACME storm)
     Returns True only when /health is 200 via the public route.
     """
-    if wait_http_ok(session, portal_base + "/health", deadline_s=75):
+    if wait_http_ok(session, portal_base + "/health", deadline_s=75, stable=2):
         return True
     log("portal not routed via traefik — forcing provider resync (traefik restart)")
     import subprocess as _sp
     _sp.run(["docker", "restart", "opensme-traefik"],
             capture_output=True, timeout=120)
-    return wait_http_ok(session, portal_base + "/health", deadline_s=90)
+    return wait_http_ok(session, portal_base + "/health", deadline_s=90, stable=2)
