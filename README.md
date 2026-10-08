@@ -927,6 +927,11 @@ Backups are stored in `./backups/` with timestamps:
 - `traefik_YYYYMMDD_HHMMSS.tar.gz` — Traefik ACME/SSL
 - `volumes_YYYYMMDD_HHMMSS.tar.gz` — Combined volume backup
 
+> **Never commit `./backups/`.** A volume backup carries the Zitadel machine
+> key, the login-client PAT, the OpenCloud config and the full PostgreSQL data
+> directory. The directory is gitignored, and `check_artifacts.py` fails CI if a
+> backup is ever staged.
+
 Retention: 7 days (automatic cleanup).
 
 For automated daily backups:

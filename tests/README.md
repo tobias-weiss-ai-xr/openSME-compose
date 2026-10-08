@@ -12,9 +12,12 @@ tests/
 ├── 00-static/                   # Layer 0: Static validation (no containers)
 │   ├── check_env.py             #   Env var completeness (.env.example)
 │   ├── scan_secrets.py          #   Secret scanning (no CHANGEME_ in compose)
+│   ├── check_artifacts.py       #   No committed backups/dumps/secrets
 │   ├── check_platform.py        #   Runtime platform min versions (k3s, docker)
 │   ├── check_perf.py            #   Perf gate: budgets, limits, log caps, healthchecks
 │   ├── check_boot.py            #   Boot contracts (image pins, entrypoints, Traefik…)
+│   ├── check_agent.py           #   Dev-maintenance-bot knowledge/spec parity
+│   ├── check_bootstrap.py       #   Seed BPMN deployable by Operaton
 │   ├── compose_config.py        #   Compose matrix: every overlay combo renders
 │   └── yaml_lint.py             #   YAML syntax + structure validation
 ├── 01-specs/                    # Layer 1: Spec compliance (no containers)

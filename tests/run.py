@@ -49,6 +49,7 @@ LAYERS = {
             ("YAML lint", "tests/00-static/yaml_lint.py"),
             ("Env completeness", "tests/00-static/check_env.py"),
             ("Secret scan", "tests/00-static/scan_secrets.py"),
+            ("Committed-artifact hygiene", "tests/00-static/check_artifacts.py"),
             ("Perf & budgets", "tests/00-static/check_perf.py"),
             ("Boot contracts", "tests/00-static/check_boot.py"),
             ("Compose config gate", "tests/00-static/compose_config.py"),

@@ -1,7 +1,13 @@
-# Env — ignore all real env files; keep only the tracked template
+# Env — ignore all real env files; keep only the tracked templates
 .env
 .env.*
 !.env.example
+!.env.demo
+
+# Runtime backup artifacts (scripts/backup.sh output).
+# They carry a PostgreSQL dump, the Zitadel machine key and the OpenCloud
+# config — never commit them.
+backups/
 
 # TLS certs
 certs/
