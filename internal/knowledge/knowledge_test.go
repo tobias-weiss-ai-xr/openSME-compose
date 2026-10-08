@@ -84,7 +84,7 @@ func TestRealKB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	core := []string{"traefik", "postgres", "zitadel", "stalwart", "sogo", "opencloud", "invoice-ninja", "paperless", "camunda", "common"}
+	core := []string{"traefik", "postgres", "zitadel", "stalwart", "sogo", "opencloud", "invoice-ninja", "paperless", "operaton", "common"}
 	have := map[string]bool{}
 	for _, svc := range s.Services() {
 		have[svc] = true

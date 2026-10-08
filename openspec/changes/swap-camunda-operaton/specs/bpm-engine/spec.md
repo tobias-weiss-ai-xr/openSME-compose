@@ -1,7 +1,7 @@
 ## Purpose
 
 Defines the optional BPMN/DMN workflow engine service of the stack: a
-single-container Operaton Tomcat distribution (community successor of
+single-container Operaton Spring Boot distribution (community successor of
 Camunda 7 CE) with PostgreSQL persistence, Traefik routing, profile gating,
 and a REST-only integration contract. The engine is a pluggable component:
 any compatible fork must be replaceable by changing the image env var.

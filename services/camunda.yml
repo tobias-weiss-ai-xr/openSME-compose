@@ -11,11 +11,13 @@ x-service-defaults: &service-defaults
     - no-new-privileges:true
 
 # ═══════════════════════════════════════════════════════════════
-# openSME — Camunda 7 (BPMN workflow & decision engine)
+# openSME — Operaton (BPMN workflow & decision engine)
 # ═══════════════════════════════════════════════════════════════
-# Camunda Platform 7 (Tomcat distribution): BPMN 2.0 process engine,
-# DMN decision tables, REST API (/engine-rest/), and web apps
-# (Cockpit, Tasklist, Admin) at https://bpm.<domain>/camunda/app/
+# Operaton — the community-owned Apache 2.0 successor of Camunda 7 CE
+# (same engine lineage, API/model/DB-schema compatible).  Spring Boot
+# distribution: BPMN 2.0 process engine, DMN decision tables, REST API
+# (/engine-rest/), and web apps (Cockpit, Tasklist, Admin) at
+# https://bpm.<domain>/operaton/app/
 #
 # Include via: COMPOSE_FILE=…:services/camunda.yml
 # Or via profile: docker compose --profile camunda up -d
@@ -23,18 +25,18 @@ x-service-defaults: &service-defaults
 # Requires: PostgreSQL (core, camunda_db)
 #
 # The upstream image ships H2/MySQL/PostgreSQL JDBC drivers; no
-# custom build is needed. DB_* env vars configure the datasource
-# at boot via the entrypoint script (xmlstarlet edits server.xml).
+# custom build is needed. DB_* env vars configure the datasource at
+# boot (the entrypoint translates them to SPRING_DATASOURCE_*).
 # WAIT_FOR pauses boot until postgres is accepting TCP connections.
 #
-# Camunda 7 is in maintenance mode (extended support through 2030);
-# Camunda 8 (distributed, Elasticsearch-based) is the successor.
+# Service name and profile retain the "camunda" label for backward
+# compatibility — the image is swappable via CAMUNDA_IMAGE.
 # ═══════════════════════════════════════════════════════════════
 
 services:
   camunda:
     <<: *service-defaults
-    image: ${CAMUNDA_IMAGE:-camunda/camunda-bpm-platform:tomcat-7.23.0}
+    image: ${CAMUNDA_IMAGE:-operaton/operaton:2.1.5}
     container_name: opensme-camunda
     restart: unless-stopped
     profiles: ["camunda"]
@@ -47,7 +49,7 @@ services:
       WAIT_FOR_TIMEOUT: "60"
       TZ: ${TZ:-Europe/Berlin}
     volumes:
-      - camunda-data:/camunda/data
+      - camunda-data:/operaton/configuration/userlib
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,11 +60,11 @@ services:
       - "traefik.http.routers.camunda.entrypoints=websecure"
       - "traefik.http.services.camunda.loadbalancer.server.port=8080"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/camunda/app/"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/engine-rest/engine"]
       interval: 30s
       timeout: 10s
       retries: 5
-      # Java/Tomcat cold start: first boot creates schema + indexes
+      # Spring Boot cold start: first boot creates schema + indexes
       start_period: 120s
     networks:
       - opensme-net

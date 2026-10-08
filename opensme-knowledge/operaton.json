@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "service": "operaton",
+  "runbooks": [
+    {
+      "symptoms": ["database connection failed", "jdbc connection refused", "cannot acquire connection"],
+      "diagnosis": "Operaton cannot reach PostgreSQL. The JDBC datasource is configured via DB_URL/DB_USERNAME/DB_PASSWORD and the container starts before postgres is ready, or the credentials are wrong.",
+      "remediation": [
+        "Verify postgres is healthy: docker inspect opensme-postgres",
+        "Check DB_URL points to jdbc:postgresql://postgres:5432/camunda_db",
+        "Verify DB_USERNAME and DB_PASSWORD match the postgres-init users",
+        "Restart the engine after postgres is healthy"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["out of memory", "oom killed", "heap space", "java.lang.OutOfMemoryError"],
+      "diagnosis": "Operaton JVM heap exhausted. Default JVM heap is too small for large process definitions or high-throughput deployments, or the container memory limit is too low.",
+      "remediation": [
+        "Increase the container memory limit in services/camunda.yml",
+        "Set JAVA_OPTS to increase -Xmx (e.g. -Xmx768m) if the default is too low",
+        "Check for runaway process instances or infinite loops in BPMN",
+        "Restart the engine after adjusting limits"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["startup failed", "context path", "operaton not ready", "spring boot startup"],
+      "diagnosis": "Operaton (Spring Boot) failed during startup — usually a missing database table (first-run schema setup), a port conflict on 8080, or a corrupt deployment.",
+      "remediation": [
+        "Check logs for the exact startup phase that failed",
+        "If first run, ensure the database schema was created (Operaton auto-creates on first boot)",
+        "Verify port 8080 is not already in use by another container",
+        "Clear the operaton-data volume only if you accept data loss"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["engine rest 404", "rest api not found", "/engine-rest returns 404"],
+      "diagnosis": "The REST API is not deployed or the context path is wrong. Operaton serves REST at /engine-rest/engine by default (same as Camunda 7).",
+      "remediation": [
+        "Verify the REST API is enabled (check /operaton/internal/rest/ directory)",
+        "Access /engine-rest/engine — should return [{\"name\":\"default\"}]",
+        "Check if the Spring Boot connector is on 8080 and the Traefik rule routes bpm.* correctly"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["webapp 404", "cockpit not found", "tasklist not found", "/camunda/app returns 404"],
+      "diagnosis": "The webapps are served at /operaton/app/ (not /camunda/app/). The context path changed from Camunda 7 to Operaton.",
+      "remediation": [
+        "Access /operaton/app/ for the webapps (Cockpit, Tasklist, Admin, Welcome)",
+        "Access /operaton/app/welcome/default/ for the welcome page",
+        "Update any bookmarks or links from /camunda/app/ to /operaton/app/"
+      ],
+      "flags": []
+    }
+  ]
+}

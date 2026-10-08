@@ -237,8 +237,8 @@ services:
       memory: 2G
 
   camunda:
-    # Camunda 7 (Tomcat distro) — BPMN 2.0 workflow & decision engine
-    image: camunda/camunda-bpm-platform:tomcat-7.23.0
+    # Operaton (community successor of Camunda 7 CE) — BPMN 2.0 workflow & decision engine
+    image: operaton/operaton:2.1.5
     compose_file: services/camunda.yml
     required: false
     profiles: [camunda]
@@ -247,7 +247,7 @@ services:
     networks: [opensme-net]
     depends_on: [postgres]
     volumes:
-      - camunda-data:/camunda/data
+      - camunda-data:/operaton/configuration/userlib
     env:
       - CAMUNDA_DB_PASSWORD
       - CAMUNDA_DOMAIN

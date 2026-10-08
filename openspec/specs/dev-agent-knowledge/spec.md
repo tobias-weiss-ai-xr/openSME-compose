@@ -32,7 +32,7 @@ query APIs for runbook records of the form
 ### Requirement: Seed runbooks cover the core services plus cross-cutting patterns
 
 The knowledge base SHALL seed entries for traefik, postgres, zitadel,
-stalwart, sogo, opencloud, invoice-ninja, paperless, camunda, and common
+stalwart, sogo, opencloud, invoice-ninja, paperless, operaton, and common
 cross-cutting patterns (image-pull, port-in-use, disk-full, volume-permission,
 healthcheck, restart-loop), each with at least one symptom, a diagnosis and
 one remediation.
