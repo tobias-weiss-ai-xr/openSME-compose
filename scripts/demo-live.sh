@@ -122,6 +122,7 @@ OC_OIDC_SECRET=$(pw)
 # ── Portal (empty = hidden from landing page) ──
 MAIL_URL=
 COLLABORA_URL=
+BPM_URL=
 
 # ── Traefik ──
 TRAEFIK_ACME_EMAIL=${ACME_EMAIL}

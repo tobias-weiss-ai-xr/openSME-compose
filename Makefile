@@ -24,7 +24,7 @@
 .PHONY: test test-all test-static lint compose-check env-check secret-scan \
         specs contracts yaml-lint \
         container smoke integration e2e security \
-        bootstrap clean help \
+        bootstrap bpm-deploy clean help \
         up down status logs pull \
         up-soho up-small up-medium up-all \
         nix-build nix-load nix-images \
@@ -322,6 +322,10 @@ bootstrap:
 	@echo -e "$(GREEN)✅ Bootstrap complete$(NC)"
 	@echo -e "  Edit .env with your settings, then: make up PROFILE=soho"
 
+bpm-deploy:
+	@echo -e "$(BLUE)── deploying BPMN seed processes ──$(NC)"
+	@./bootstrap/bpmn-deploy.sh
+
 clean:
 	@rm -rf tests/05-e2e/test-results/ tests/05-e2e/playwright-report/
 	@rm -f /tmp/opensme-test-*.json
@@ -399,5 +403,6 @@ help:
 	@echo ""
 	@echo -e "  $(GREEN)Other$(NC)"
 	@echo "    make bootstrap           Create .env from .env.example"
+	@echo "    make bpm-deploy          Deploy seed BPMN processes to the Operaton engine"
 	@echo "    make clean               Remove test artifacts"
 	@echo ""

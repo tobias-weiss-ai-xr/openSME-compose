@@ -25,6 +25,7 @@ struct AppConfig {
     ticketing_url: String,
     cms_url: String,
     shop_url: String,
+    bpm_url: String,
     portal_domain: String,
     opensme_domain: String,
     announcements: Arc<Vec<Announcement>>,
@@ -528,6 +529,15 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
         });
     }
 
+    // Workflow (Operaton) — only if explicitly configured (not empty)
+    if !config.bpm_url.is_empty() {
+        services.push(Service {
+            name: "Workflow".into(),
+            description: "BPMN process engine — Cockpit, Tasklist and REST API".into(),
+            url: config.bpm_url.clone(),
+        });
+    }
+
     services
 }
 
@@ -840,6 +850,7 @@ fn load_config() -> Arc<AppConfig> {
         ticketing_url: load_env("TICKETING_URL", ""),
         cms_url: load_env("CMS_URL", ""),
         shop_url: load_env("SHOP_URL", ""),
+        bpm_url: load_env("BPM_URL", ""),
         announcements,
         ai,
         // One shared client: connection pooling, 30s default timeout.
@@ -904,6 +915,7 @@ mod tests {
             ticketing_url: ticketing.into(),
             cms_url: String::new(),
             shop_url: String::new(),
+            bpm_url: String::new(),
             portal_domain: "portal.example".into(),
             opensme_domain: "example".into(),
             announcements: Arc::new(parse_announcements(announcements)),
@@ -985,6 +997,17 @@ mod tests {
         let services = get_services(&c);
         assert!(services.iter().any(|s| s.name == "Website"));
         assert!(services.iter().any(|s| s.name == "Shop"));
+    }
+
+    #[test]
+    fn bpm_card_gated_on_url() {
+        let mut c = cfg_with("", None, "");
+        assert!(!get_services(&c).iter().any(|s| s.name == "Workflow"));
+
+        c.bpm_url = "https://bpm.example".into();
+        let services = get_services(&c);
+        assert!(services.iter().any(|s| s.name == "Workflow"));
+        assert!(services.iter().any(|s| s.description.contains("BPMN")));
     }
 
     #[test]

@@ -340,6 +340,7 @@ services:
       TICKETING_URL: ${TICKETING_URL:-}
       CMS_URL: ${CMS_URL:-}
       SHOP_URL: ${SHOP_URL:-}
+      BPM_URL: ${BPM_URL:-}
       PORTAL_ANNOUNCEMENTS: ${PORTAL_ANNOUNCEMENTS:-}
       AI_API_URL: ${AI_API_URL:-}
       AI_MODEL: ${AI_MODEL:-}

@@ -471,6 +471,7 @@ Environment variables for local development:
 | `MAIL_URL` | *(empty — card hidden)* | Webmail link |
 | `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Support / Website / Shop cards |
+| `BPM_URL` | *(empty — card hidden)* | Workflow (Operaton) card — set to `https://bpm.<domain>` with `--profile camunda` |
 | `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON banner array (`info`/`warn`) |
 | `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | AI assistant (OpenAI-compatible `/v1/chat/completions`) — `AI_API_URL=http://ai:8080` with `--profile ai` |
 
@@ -799,6 +800,7 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `STORE_ADMIN_PASSWORD` | *(random)* | RaisFast bootstrap admin password (else printed once to logs) |
 | `CMS_IMAGE` | upstream `:latest` | crap-cms image override — pin once upstream tags releases |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Portal cards for ticketing / website / store |
+| `BPM_URL` | *(empty — card hidden)* | Portal card for the BPM/Workflow service (Operaton) |
 | `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON array of portal banners: `[{'level':'info\|warn','text':'…'}]` |
 | `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | OpenAI-compatible endpoint for the portal AI assistant — set `AI_API_URL=http://ai:8080` with `--profile ai` |
 | `AI_IMAGE` | `…llama.cpp:server-b11223` | llama.cpp image override (build-numbered tags) |
@@ -835,6 +837,9 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
   GRANT ALL PRIVILEGES ON DATABASE camunda_db TO camunda_user;
   ALTER DATABASE camunda_db OWNER TO camunda_user;
   ```
+  Seed BPMN processes are in `bootstrap/bpmn/` — deploy with
+  `make bpm-deploy` or `./bootstrap/bpmn-deploy.sh` (auto-detects the
+  engine via docker exec or `BPM_URL`).
 - **crap-cms** (`--profile cms`): alpha software; upstream publishes
   `:latest` only (no semver tags yet — pin via `CMS_IMAGE` once they do).
   First login: `admin@crap.studio` / `admin123` — **change immediately**.
@@ -897,6 +902,7 @@ make restore-from BACKUP=<ts>  # Restore from backup
 | `scripts/demo-live.sh` | Deploy to server with Let's Encrypt |
 | `scripts/backup.sh` | Backup PostgreSQL + Traefik + volumes (`--volumes`, `--dry-run`, `--services`) |
 | `scripts/restore.sh` | Restore from backup (`--list`, `--pg-only`, `--volumes-only`) |
+| `bootstrap/bpmn-deploy.sh` | Deploy sample BPMN processes to the Operaton engine |
 
 ## Backup &amp; Restore
 
