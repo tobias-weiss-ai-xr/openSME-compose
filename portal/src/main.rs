@@ -52,6 +52,7 @@ struct Announcement {
 
 #[derive(Serialize)]
 struct Service {
+    id: String,
     name: String,
     description: String,
     url: String,
@@ -475,6 +476,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
 
     if !config.idp_url.is_empty() {
         services.push(Service {
+            id: "identity".into(),
             name: "Identity".into(),
             description: "Single sign-on and user management".into(),
             url: config.idp_url.clone(),
@@ -484,6 +486,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // OpenCloud — only if URL differs from the raw default
     if !config.opencloud_url.is_empty() {
         services.push(Service {
+            id: "opencloud".into(),
             name: "OpenCloud".into(),
             description: "Cloud storage, file sharing and collaboration".into(),
             url: config.opencloud_url.clone(),
@@ -493,6 +496,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Collabora — only if explicitly configured (not empty)
     if !config.collabora_url.is_empty() {
         services.push(Service {
+            id: "collabora".into(),
             name: "Collabora".into(),
             description: "Online document editing".into(),
             url: config.collabora_url.clone(),
@@ -502,6 +506,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Webmail — only if explicitly configured (not empty)
     if !config.mail_url.is_empty() {
         services.push(Service {
+            id: "webmail".into(),
             name: "Webmail".into(),
             description: "Email, calendar and contacts".into(),
             url: config.mail_url.clone(),
@@ -511,6 +516,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Helpdesk — only if explicitly configured (not empty)
     if !config.ticketing_url.is_empty() {
         services.push(Service {
+            id: "support".into(),
             name: "Support".into(),
             description: "Helpdesk — tickets and knowledge base".into(),
             url: config.ticketing_url.clone(),
@@ -520,6 +526,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Website CMS — only if explicitly configured (not empty)
     if !config.cms_url.is_empty() {
         services.push(Service {
+            id: "website".into(),
             name: "Website".into(),
             description: "Content management — pages, news and blog".into(),
             url: config.cms_url.clone(),
@@ -529,6 +536,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Store — only if explicitly configured (not empty)
     if !config.shop_url.is_empty() {
         services.push(Service {
+            id: "shop".into(),
             name: "Shop".into(),
             description: "Storefront — products, cart and checkout".into(),
             url: config.shop_url.clone(),
@@ -538,6 +546,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Workflow (Operaton) — only if explicitly configured (not empty)
     if !config.bpm_url.is_empty() {
         services.push(Service {
+            id: "workflow".into(),
             name: "Workflow".into(),
             description: "BPMN process engine — Cockpit, Tasklist and REST API".into(),
             url: config.bpm_url.clone(),
@@ -1014,6 +1023,33 @@ mod tests {
         let services = get_services(&c);
         assert!(services.iter().any(|s| s.name == "Workflow"));
         assert!(services.iter().any(|s| s.description.contains("BPMN")));
+    }
+
+    #[test]
+    fn service_ids_are_stable_unique_and_complete() {
+        // Fully-configured portal: every card carries a stable id.
+        let c = AppConfig {
+            collabora_url: "https://office.example".into(),
+            mail_url: "https://mail.example".into(),
+            ticketing_url: "https://help.example".into(),
+            cms_url: "https://www.example".into(),
+            shop_url: "https://shop.example".into(),
+            bpm_url: "https://bpm.example".into(),
+            ..cfg_with("", None, "")
+        };
+        let services = get_services(&c);
+        assert_eq!(services.len(), 8, "all eight cards configured");
+
+        let ids: Vec<&str> = services.iter().map(|s| s.id.as_str()).collect();
+        assert!(
+            ids.iter().all(|id| !id.is_empty()),
+            "every service needs an id: {ids:?}"
+        );
+        let unique: std::collections::HashSet<&str> = ids.iter().copied().collect();
+        assert_eq!(unique.len(), ids.len(), "service ids must be unique: {ids:?}");
+        assert!(ids.contains(&"identity"));
+        assert!(ids.contains(&"opencloud"));
+        assert!(ids.contains(&"workflow"));
     }
 
     #[test]
