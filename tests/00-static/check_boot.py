@@ -112,6 +112,7 @@ IMAGE_OF = {
     "cms": "crap-cms",
     "store": "raisfast",
     "ai": "llama.cpp",
+    "camunda": "camunda-bpm-platform",
     "dev-agent": "dev-agent",
 }
 
@@ -133,6 +134,7 @@ HEALTHCHECK_BINS = {
     "crap-cms": ["wget"],   # alpine busybox wget
     "raisfast": ["wget"],   # busybox:1.36-musl base
     "llama.cpp": ["curl"],  # ubuntu-based ggml image
+    "camunda-bpm-platform": ["wget"],  # alpine-based; busybox wget
     "paperless-ngx": ["curl"],
     "gotenberg": ["curl"],
     "tika": ["bash"],   # apache/tika:latest is java-only (curl/wget dropped)

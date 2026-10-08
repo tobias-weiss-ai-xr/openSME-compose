@@ -39,6 +39,7 @@ rules:
       - predictive-agent
       - ollama
       - taskfleet
+      - camunda
 
 ---
 
@@ -65,6 +66,7 @@ rules:
       - services/synapse.yml
       - services/element.yml
       - services/notes.yml
+      - services/camunda.yml
       - monitoring/dev-agent.yml
       - monitoring/predictive-agent.yml
       - monitoring/ollama.yml

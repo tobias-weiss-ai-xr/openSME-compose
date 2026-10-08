@@ -39,6 +39,7 @@ rules:
       - dev-agent
       - predictive-agent
       - ollama
+      - camunda
 
   - type: healthcheck-exempt
     services:

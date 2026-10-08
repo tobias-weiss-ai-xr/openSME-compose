@@ -34,3 +34,6 @@ CREATE DATABASE notes_db;
 
 -- ── Nosdesk (ticketing/helpdesk, --profile ticketing) ──
 CREATE DATABASE nosdesk_db;
+
+-- ── Camunda (BPMN workflow engine, --profile camunda) ──
+CREATE DATABASE camunda_db;

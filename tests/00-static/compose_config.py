@@ -53,6 +53,8 @@ MATRIX = [
      ["store"], None),
     ("base+ai", ["docker-compose.yml", "services/ai.yml"],
      ["ai"], None),
+    ("base+camunda", ["docker-compose.yml", "services/camunda.yml"],
+     ["camunda"], None),
     ("base+agent", ["docker-compose.yml", "monitoring/dev-agent.yml"],
      ["standalone"], None),
     # Full deploy set for each RAM tier

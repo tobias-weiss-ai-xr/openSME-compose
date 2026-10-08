@@ -1,0 +1,79 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ═══════════════════════════════════════════════════════════════
+# openSME — Camunda 7 (BPMN workflow & decision engine)
+# ═══════════════════════════════════════════════════════════════
+# Camunda Platform 7 (Tomcat distribution): BPMN 2.0 process engine,
+# DMN decision tables, REST API (/engine-rest/), and web apps
+# (Cockpit, Tasklist, Admin) at https://bpm.<domain>/camunda/app/
+#
+# Include via: COMPOSE_FILE=…:services/camunda.yml
+# Or via profile: docker compose --profile camunda up -d
+#
+# Requires: PostgreSQL (core, camunda_db)
+#
+# The upstream image ships H2/MySQL/PostgreSQL JDBC drivers; no
+# custom build is needed. DB_* env vars configure the datasource
+# at boot via the entrypoint script (xmlstarlet edits server.xml).
+# WAIT_FOR pauses boot until postgres is accepting TCP connections.
+#
+# Camunda 7 is in maintenance mode (extended support through 2030);
+# Camunda 8 (distributed, Elasticsearch-based) is the successor.
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  camunda:
+    <<: *service-defaults
+    image: ${CAMUNDA_IMAGE:-camunda/camunda-bpm-platform:tomcat-7.23.0}
+    container_name: opensme-camunda
+    restart: unless-stopped
+    profiles: ["camunda"]
+    environment:
+      DB_DRIVER: org.postgresql.Driver
+      DB_URL: jdbc:postgresql://postgres:5432/camunda_db
+      DB_USERNAME: camunda_user
+      DB_PASSWORD: ${CAMUNDA_DB_PASSWORD:?CAMUNDA_DB_PASSWORD must be set in .env}
+      WAIT_FOR: postgres:5432
+      WAIT_FOR_TIMEOUT: "60"
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - camunda-data:/camunda/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.camunda.rule=Host(`bpm.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.camunda.tls=true"
+      - "traefik.http.routers.camunda.entrypoints=websecure"
+      - "traefik.http.services.camunda.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/camunda/app/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Java/Tomcat cold start: first boot creates schema + indexes
+      start_period: 120s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+volumes:
+  camunda-data:

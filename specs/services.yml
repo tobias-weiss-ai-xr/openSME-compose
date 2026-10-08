@@ -235,3 +235,21 @@ services:
     traefik_labels: true
     resource_limits:
       memory: 2G
+
+  camunda:
+    # Camunda 7 (Tomcat distro) — BPMN 2.0 workflow & decision engine
+    image: camunda/camunda-bpm-platform:tomcat-7.23.0
+    compose_file: services/camunda.yml
+    required: false
+    profiles: [camunda]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - camunda-data:/camunda/data
+    env:
+      - CAMUNDA_DB_PASSWORD
+    traefik_labels: true
+    resource_limits:
+      memory: 1G

@@ -91,6 +91,16 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<-EOSQL
     END \$\$;
     GRANT nosdesk_app TO nosdesk_user;
     GRANT nosdesk_admin TO nosdesk_user;
+
+    -- ── Camunda (BPMN workflow engine, --profile camunda) ──
+    DO \$\$
+    BEGIN
+      CREATE USER camunda_user WITH PASSWORD '${CAMUNDA_DB_PASSWORD:-changeme}';
+    EXCEPTION WHEN duplicate_object THEN
+      ALTER USER camunda_user WITH PASSWORD '${CAMUNDA_DB_PASSWORD:-changeme}';
+    END \$\$;
+    GRANT ALL PRIVILEGES ON DATABASE camunda_db TO camunda_user;
+    ALTER DATABASE camunda_db OWNER TO camunda_user;
 EOSQL
 
-echo "✅ Per-service database users created (casdoor, synapse, paperless, invoiceninja, notes, nosdesk)"
+echo "✅ Per-service database users created (casdoor, synapse, paperless, invoiceninja, notes, nosdesk, camunda)"

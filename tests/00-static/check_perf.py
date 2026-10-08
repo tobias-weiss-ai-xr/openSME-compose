@@ -127,6 +127,9 @@ def all_compose_files():
         "services/invoice-ninja.yml", "services/paperless.yml",
         "services/cryptpad.yml", "services/synapse.yml",
         "services/element.yml", "services/notes.yml",
+        "services/ticketing.yml", "services/cms.yml",
+        "services/store.yml", "services/ai.yml",
+        "services/camunda.yml",
         "monitoring/dev-agent.yml", "monitoring/predictive-agent.yml",
         "monitoring/ollama.yml", "monitoring/taskfleet.yml",
     ]

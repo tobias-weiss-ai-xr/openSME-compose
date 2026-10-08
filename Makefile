@@ -107,7 +107,7 @@ up-medium:
 up-all:
 	@echo -e "$(BLUE)── starting openSME (ALL services) ──$(NC)"
 	@$(FULL_COMPOSE) --env-file $(TEST_ENV) \
-		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes --profile ticketing --profile cms --profile store --profile ai \
+		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes --profile ticketing --profile cms --profile store --profile ai --profile camunda \
 		up -d
 	@echo -e "$(GREEN)✓ Stack started with all optional services$(NC)"
 

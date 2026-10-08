@@ -164,6 +164,7 @@ services:
       INVOICENINJA_DB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-changeme}
       NOTES_DB_PASSWORD: ${NOTES_DB_PASSWORD:-changeme}
       NOSDESK_DB_PASSWORD: ${NOSDESK_DB_PASSWORD:-changeme}
+      CAMUNDA_DB_PASSWORD: ${CAMUNDA_DB_PASSWORD:-changeme}
     # Production tuning for up to 500 users (via CLI args)
     command:
       - "-c"
