@@ -201,8 +201,11 @@ def main() -> int:
             f"full recovery confirmed: last {len(tail)} samples all ok, "
             f"conn-level {poller.conn_errors}/{poller.total}"
             if recovered
-            else f"recovery incomplete: tail={tail[-5:]} "
-                 f"conn_ratio={conn_ratio:.1%}"
+            else f"recovery incomplete: {len(tail)} tail sample(s) "
+                 f"(need >=10) from {poller.total} total, "
+                 f"first non-ok={next((k for k in tail if k != 'ok'), None)}, "
+                 f"conn_ratio={conn_ratio:.1%} "
+                 f"({poller.conn_errors}/{poller.total})"
         )
 
         # ── AD3: content still there ────────────────────────────────────
