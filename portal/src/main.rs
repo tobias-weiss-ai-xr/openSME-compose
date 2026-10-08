@@ -1046,7 +1046,11 @@ mod tests {
             "every service needs an id: {ids:?}"
         );
         let unique: std::collections::HashSet<&str> = ids.iter().copied().collect();
-        assert_eq!(unique.len(), ids.len(), "service ids must be unique: {ids:?}");
+        assert_eq!(
+            unique.len(),
+            ids.len(),
+            "service ids must be unique: {ids:?}"
+        );
         assert!(ids.contains(&"identity"));
         assert!(ids.contains(&"opencloud"));
         assert!(ids.contains(&"workflow"));
