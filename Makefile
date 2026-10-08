@@ -53,6 +53,9 @@ DOMAIN     := $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2
 COMPOSE    ?= docker compose
 TEST_ENV   ?= .env.example
 PYTHON     ?= python3
+# Go toolchain for lint-code. Override when an old system Go shadows a newer
+# one: `GO=/usr/local/go/bin/go make lint-code`.
+GO         ?= go
 TEST_RUNNER := $(PYTHON) tests/run.py
 
 # ---------------------------------------------------------------------------
@@ -169,13 +172,16 @@ fmt: ## Apply all formatters (rustfmt, gofmt)
 	@echo -e "$(GREEN)✅ formats applied$(NC)"
 
 lint-code: ## Format checks + linters + unit tests (no fixes) — what CI enforces
+	@$(GO) version | awk '{ v=substr($$3,3)+0; if (v < 1.22) { \
+		printf "❌ Go >= 1.22 required, found %s\n", $$3; \
+		print "   hint: GO=/usr/local/go/bin/go make lint-code"; exit 1 } }'
 	cd portal && cargo fmt --check
 	cd portal && cargo clippy --all-targets -- -D warnings
 	cd portal && cargo test
 	@if [ -n "$$(gofmt -l . | grep -v node_modules)" ]; then \
 		echo "unformatted Go files: $$(gofmt -l . | grep -v node_modules)"; exit 1; fi
-	go vet ./...
-	go test ./...
+	$(GO) vet ./...
+	$(GO) test ./...
 	shellcheck scripts/*.sh
 	@echo -e "$(GREEN)✅ code quality gates passed$(NC)"
 
