@@ -124,13 +124,21 @@ services:
       DEV_AGENT_ALLOW_HEAL: ${DEV_AGENT_ALLOW_HEAL:-false}
       DEV_AGENT_API_ADDR: 0.0.0.0:8082
       DEV_AGENT_HOSTNAMES: ${DEV_AGENT_HOSTNAMES:-}
+      DEV_AGENT_HISTORY_MAX: ${DEV_AGENT_HISTORY_MAX:-100}
       # LLM analysis — OFF unless explicitly enabled (privacy default).
       # Bot-specific var so the stack-wide DEV_AGENT_LLM_BACKEND (python
       # dev-agent) cannot silently turn it on.
       DEV_AGENT_LLM_BACKEND: ${DEV_MAINTENANCE_BOT_LLM_BACKEND:-none}
       DEV_AGENT_LLM_URL: ${DEV_MAINTENANCE_BOT_LLM_URL:-}
       DEV_AGENT_LLM_MODEL: ${DEV_MAINTENANCE_BOT_LLM_MODEL:-}
+      DEV_AGENT_LLM_KEY: ${DEV_MAINTENANCE_BOT_LLM_KEY:-}
       TZ: ${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - opensme-net
     deploy:

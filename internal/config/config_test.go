@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -84,6 +85,24 @@ func TestLLMBackendValidation(t *testing.T) {
 	}
 	if c.LLM.URL != "http://llm:11434" || c.LLM.Model != "m" {
 		t.Errorf("llm override = %+v", c.LLM)
+	}
+}
+
+func TestHistoryMax(t *testing.T) {
+	setenv(t, map[string]string{"DEV_AGENT_HISTORY_MAX": "50"})
+	c, err := FromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.HistoryMax != 50 {
+		t.Errorf("HistoryMax = %d, want 50", c.HistoryMax)
+	}
+	if !strings.Contains(c.String(), "history-max=50") {
+		t.Errorf("String() must include history-max: %s", c.String())
+	}
+	setenv(t, map[string]string{"DEV_AGENT_HISTORY_MAX": "-1"})
+	if _, err := FromEnv(); err == nil {
+		t.Error("negative history-max must error")
 	}
 }
 

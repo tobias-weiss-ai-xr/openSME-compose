@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "service": "camunda",
+  "runbooks": [
+    {
+      "symptoms": ["database connection failed", "jdbc connection refused", "cannot acquire connection"],
+      "diagnosis": "Camunda cannot reach PostgreSQL. The JDBC datasource is configured via DB_URL/DB_USERNAME/DB_PASSWORD and the container starts before postgres is ready, or the credentials are wrong.",
+      "remediation": [
+        "Verify postgres is healthy: docker inspect opensme-postgres-1",
+        "Check DB_URL points to jdbc:postgresql://postgres:5432/camunda_db",
+        "Verify DB_USERNAME and DB_PASSWORD match the postgres-init users",
+        "Restart camunda after postgres is healthy"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["out of memory", "oom killed", "heap space", "java.lang.OutOfMemoryError"],
+      "diagnosis": "Camunda JVM heap exhausted. Default JVM heap is too small for large process definitions or high-throughput deployments, or the container memory limit is too low.",
+      "remediation": [
+        "Increase the container memory limit in services/camunda.yml",
+        "Set JAVA_OPTS to increase -Xmx (e.g. -Xmx768m) if the default is too low",
+        "Check for runaway process instances or infinite loops in BPMN",
+        "Restart camunda after adjusting limits"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["startup failed", "context path", "camunda not ready", "tomcat startup"],
+      "diagnosis": "Camunda/Tomcat failed during startup — usually a missing database table (first-run schema setup), a port conflict on 8080, or a corrupt deployment.",
+      "remediation": [
+        "Check logs for the exact startup phase that failed",
+        "If first run, ensure the database schema was created (Camunda auto-creates on first boot)",
+        "Verify port 8080 is not already in use by another container",
+        "Clear the camunda-data volume only if you accept data loss"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["engine rest 404", "rest api not found", "/engine-rest returns 404"],
+      "diagnosis": "The REST API is not deployed or the context path is wrong. Camunda 7 serves REST at /engine-rest/engine by default.",
+      "remediation": [
+        "Verify the REST API war is deployed (check /camunda/lib or the webapps directory)",
+        "Access /engine-rest/engine — should return [{\"name\":\"default\"}]",
+        "Check if the Tomcat connector is on 8080 and the Traefik rule routes bpm.* correctly"
+      ],
+      "flags": []
+    }
+  ]
+}

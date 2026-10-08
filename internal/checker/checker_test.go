@@ -120,6 +120,99 @@ func TestReadOnlyAllowlist(t *testing.T) {
 	}
 }
 
+func TestExpandedErrorPatterns(t *testing.T) {
+	// The expanded error pattern set must catch real-world log lines that
+	// the old error/fatal/panic-only matcher missed.
+	cases := []struct{ log, sym string }{
+		{"connection refused", "log error spike"},
+		{"operation failed", "log error spike"},
+		{"access denied", "log error spike"},
+		{"request timeout", "log error spike"},
+		{"nil pointer exception", "log error spike"},
+		{"unable to bind", "log error spike"},
+		{"cannot connect", "log error spike"},
+		{"permission denied", "log error spike"},
+		{"critical: disk full", "log error spike"},
+		{"INFO: all good", ""}, // info lines must NOT trigger
+	}
+	for _, tc := range cases {
+		f := &fakeRunner{output: map[string]string{
+			"ps":      psJSON("c1", "restarting", "opensme", "svc", "Restarting") + "\n",
+			"inspect": `{"Restarting":true,"OOMKilled":false,"RestartCount":1}`,
+			"logs":    strings.Repeat(tc.log+"\n", 6),
+		}}
+		c := New([]string{"opensme"}, f)
+		findings, _ := c.Inspect(context.Background())
+		var got string
+		if len(findings) > 0 && has(findings[0].Symptoms, "log error spike") {
+			got = "log error spike"
+		}
+		if got != tc.sym {
+			t.Errorf("log %q: got %q, want %q", tc.log, got, tc.sym)
+		}
+	}
+}
+
+func TestMemStatsParsing(t *testing.T) {
+	// docker stats --no-stream --format outputs "0.50%\t12.30%"
+	f := &fakeRunner{output: map[string]string{
+		"ps":      psJSON("c1", "running", "opensme", "postgres", "Up 2 minutes") + "\n",
+		"inspect": `{"Restarting":false,"OOMKilled":true,"RestartCount":0,"Health":{"Status":"unhealthy"}}`,
+		"logs":    "",
+		"stats":   "0.50%\t95.30%\n",
+	}}
+	c := New([]string{"opensme"}, f)
+	findings, _ := c.Inspect(context.Background())
+	if len(findings) != 1 {
+		t.Fatalf("findings = %d, want 1", len(findings))
+	}
+	if !has(findings[0].Symptoms, "memory near limit") {
+		t.Errorf("expected 'memory near limit' symptom, got %v", findings[0].Symptoms)
+	}
+	if findings[0].MemPct < 95.0 {
+		t.Errorf("MemPct = %.1f, want >= 95.0", findings[0].MemPct)
+	}
+}
+
+func TestMemStatsBelowThreshold(t *testing.T) {
+	f := &fakeRunner{output: map[string]string{
+		"ps":      psJSON("c1", "running", "opensme", "postgres", "Up 2 minutes") + "\n",
+		"inspect": `{"Restarting":false,"OOMKilled":true,"RestartCount":0,"Health":{"Status":"unhealthy"}}`,
+		"logs":    "",
+		"stats":   "0.50%\t42.00%\n",
+	}}
+	c := New([]string{"opensme"}, f)
+	findings, _ := c.Inspect(context.Background())
+	if len(findings) != 1 {
+		t.Fatalf("findings = %d, want 1", len(findings))
+	}
+	if has(findings[0].Symptoms, "memory near limit") {
+		t.Errorf("should NOT have 'memory near limit' at 42%%, got %v", findings[0].Symptoms)
+	}
+}
+
+func TestStatsUsesReadOnlyCommand(t *testing.T) {
+	// stats must be in the read-only allowlist (already tested), but verify
+	// the checker actually calls stats (not just that it's allowed).
+	f := &fakeRunner{output: map[string]string{
+		"ps":      psJSON("c1", "restarting", "opensme", "svc", "Restarting") + "\n",
+		"inspect": `{"Restarting":true,"OOMKilled":false,"RestartCount":1}`,
+		"logs":    "",
+		"stats":   "0.00%\t99.00%\n",
+	}}
+	c := New([]string{"opensme"}, f)
+	_, _ = c.Inspect(context.Background())
+	found := false
+	for _, call := range f.calls {
+		if len(call) > 0 && call[0] == "stats" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("checker never called docker stats")
+	}
+}
+
 func has(list []string, s string) bool {
 	for _, v := range list {
 		if v == s {

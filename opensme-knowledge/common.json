@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "service": "common",
+  "runbooks": [
+    {
+      "symptoms": ["image pull backoff", "imagepullbackoff", "errimagepull", "manifest unknown"],
+      "diagnosis": "Container cannot pull its image — the registry is unreachable, the tag does not exist, or authentication is required but not configured.",
+      "remediation": [
+        "Verify the image tag exists in the registry (docker pull <image> manually)",
+        "Check registry credentials in .env or docker config.json",
+        "If using a private registry, ensure docker login or pull-through cache is configured",
+        "Pin to a specific digest if the tag was removed upstream"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["port already in use", "bind address already in use", "address already in use"],
+      "diagnosis": "Two services are trying to bind the same host port, or a stale process from a previous run is holding the port.",
+      "remediation": [
+        "Identify the conflicting service: docker ps --format '{{.Names}} {{.Ports}}'",
+        "Check for host port collisions in docker-compose.yml (ports: mapping)",
+        "Stop the stale container or process holding the port",
+        "Use a different host port or remove the host mapping (compose network only)"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["no space left on device", "disk full", "write error", "enospc"],
+      "diagnosis": "The host or volume is out of disk space. Docker volumes accumulate old layers, logs, and data that can fill the disk.",
+      "remediation": [
+        "Check disk usage: df -h and docker system df",
+        "Prune unused Docker resources: docker system prune (consent required)",
+        "Identify the largest volumes: docker volume ls then inspect sizes",
+        "Check container log sizes: docker inspect --format '{{.LogPath}}' <name>"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["permission denied", "volume permission", "chown", "mkdir permission denied"],
+      "diagnosis": "The container process cannot write to a mounted volume because the host directory has wrong ownership or the container runs as a non-root user.",
+      "remediation": [
+        "Check the host directory ownership: ls -la on the volume mount source",
+        "Verify the container user UID matches the volume owner",
+        "Fix with chown on the host (consent required) or adjust the container user",
+        "For named volumes, ensure the image's entrypoint sets correct permissions"
+      ],
+      "flags": ["requires-consent"]
+    },
+    {
+      "symptoms": ["healthcheck unhealthy", "health check failed", " unhealthy"],
+      "diagnosis": "The container's healthcheck command is failing. This may be a transient startup issue or a real service problem — check the healthcheck command and logs.",
+      "remediation": [
+        "Inspect the healthcheck command: docker inspect --format '{{json .Config.Healthcheck}}' <name>",
+        "Run the healthcheck command manually inside the container",
+        "Check container logs for the actual error",
+        "If the service is slow to start, increase start_period in the compose healthcheck"
+      ],
+      "flags": []
+    },
+    {
+      "symptoms": ["restarting", "restart loop", "crash loop", "exit code 137"],
+      "diagnosis": "Container is in a restart loop. Exit code 137 = OOM kill (128+9=SIGKILL); other codes indicate application crashes. Check restart_count and logs.",
+      "remediation": [
+        "Check restart_count and exit code: docker inspect --format '{{.State.RestartCount}} {{.State.ExitCode}}' <name>",
+        "If exit code 137: increase memory limit or check for memory leaks",
+        "For other exit codes: check logs for the application error",
+        "Consider setting restart_policy condition: on-failure with max_attempts"
+      ],
+      "flags": []
+    }
+  ]
+}

@@ -13,7 +13,9 @@ contribution back to the project.
 The agent SHALL run every outbound payload (LLM context or knowledge
 contribution) through an anonymizer that replaces API keys/secrets with
 `***`, scrubs RFC1918 and link-local IPv4 addresses, replaces internal
-hostnames, and removes local user filesystem paths.
+hostnames, removes local user filesystem paths, redacts JWT tokens,
+connection strings (postgres/redis/mongodb/mysql/amqp URIs), Basic auth
+headers, and email addresses.
 
 #### Scenario: Secrets are masked in LLM context
 
@@ -31,6 +33,26 @@ hostnames, and removes local user filesystem paths.
 
 - **WHEN** outbound context contains a local user path (e.g. `/home/<user>/…`)
 - **THEN** the path SHALL be replaced with a neutral placeholder
+
+#### Scenario: JWT tokens are redacted
+
+- **WHEN** outbound context contains a JWT token (`eyJ...`)
+- **THEN** the token SHALL be replaced with `<jwt>` and SHALL NOT appear in the outbound payload
+
+#### Scenario: Connection strings are redacted
+
+- **WHEN** outbound context contains a connection string (`postgres://`, `redis://`, `mongodb://`, `mysql://`, `amqp://`)
+- **THEN** the entire URI including credentials SHALL be replaced with `<conn-str>`
+
+#### Scenario: Basic auth headers are redacted
+
+- **WHEN** outbound context contains an `Authorization: Basic <base64>` header
+- **THEN** the base64 credential SHALL be replaced with `<redacted>`
+
+#### Scenario: Email addresses are redacted
+
+- **WHEN** outbound context contains an email address
+- **THEN** the address SHALL be replaced with `<email>`
 
 ### Requirement: Evidence log records every strip operation
 

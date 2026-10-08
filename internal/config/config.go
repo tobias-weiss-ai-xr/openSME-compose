@@ -13,12 +13,13 @@ import (
 // Config is the effective agent configuration. Secrets (LLMKey) are never
 // logged; String() omits them.
 type Config struct {
-	Interval  time.Duration
-	Watch     []string
-	StateDir  string
-	AllowHeal bool
-	APIAddr   string
-	LLM       LLMConfig
+	Interval   time.Duration
+	Watch      []string
+	StateDir   string
+	AllowHeal  bool
+	APIAddr    string
+	HistoryMax int // cap on persisted history+evidence entries
+	LLM        LLMConfig
 	// Hostnames is the extra hostname list the anonymizer scrubs.
 	Hostnames []string
 }
@@ -35,12 +36,13 @@ type LLMConfig struct {
 // FromEnv builds a Config from the environment, applying spec defaults.
 func FromEnv() (*Config, error) {
 	c := &Config{
-		Interval:  60 * time.Second,
-		Watch:     []string{"opensme"},
-		StateDir:  "/var/lib/opensme/bot",
-		AllowHeal: false,
-		APIAddr:   "0.0.0.0:8082",
-		LLM:       LLMConfig{Backend: "none"},
+		Interval:   60 * time.Second,
+		Watch:      []string{"opensme"},
+		StateDir:   "/var/lib/opensme/bot",
+		AllowHeal:  false,
+		APIAddr:    "0.0.0.0:8082",
+		HistoryMax: 100,
+		LLM:        LLMConfig{Backend: "none"},
 	}
 
 	if v := os.Getenv("DEV_AGENT_INTERVAL"); v != "" {
@@ -69,6 +71,13 @@ func FromEnv() (*Config, error) {
 	if v := os.Getenv("DEV_AGENT_HOSTNAMES"); v != "" {
 		c.Hostnames = splitList(v)
 	}
+	if v := os.Getenv("DEV_AGENT_HISTORY_MAX"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return nil, fmt.Errorf("DEV_AGENT_HISTORY_MAX: %w", err)
+		}
+		c.HistoryMax = n
+	}
 
 	// LLM backend (off by default).
 	backend := strings.ToLower(os.Getenv("DEV_AGENT_LLM_BACKEND"))
@@ -91,8 +100,8 @@ func FromEnv() (*Config, error) {
 
 // String renders the effective configuration WITHOUT secrets.
 func (c *Config) String() string {
-	return fmt.Sprintf("interval=%s watch=%s state-dir=%s allow-heal=%t api=%s llm-backend=%s",
-		c.Interval, strings.Join(c.Watch, ","), c.StateDir, c.AllowHeal, c.APIAddr, c.LLM.Backend)
+	return fmt.Sprintf("interval=%s watch=%s state-dir=%s allow-heal=%t api=%s history-max=%d llm-backend=%s",
+		c.Interval, strings.Join(c.Watch, ","), c.StateDir, c.AllowHeal, c.APIAddr, c.HistoryMax, c.LLM.Backend)
 }
 
 func splitList(v string) []string {

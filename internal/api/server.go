@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,6 +54,13 @@ type Server struct {
 	history    []healer.Receipt
 	evidence   []EvidenceEntry
 	checked    bool
+
+	// Counters for /metrics (Prometheus format)
+	reconciles int
+	healCount  int
+	llmCalls   int
+	llmErrors  int
+	llmLatency time.Duration
 }
 
 // New wires the server. It loads persisted history/evidence from the state
@@ -72,6 +80,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/history", s.handleHistory)
 	mux.HandleFunc("/evidence", s.handleEvidence)
 	mux.HandleFunc("/heal", s.handleHeal)
+	mux.HandleFunc("/metrics", s.handleMetrics)
+	mux.HandleFunc("/knowledge", s.handleKnowledge)
 	return mux
 }
 
@@ -80,6 +90,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) Reconcile(ctx context.Context) error {
 	findings, err := s.chk.Inspect(ctx)
 	if err != nil {
+		slog.Error("reconcile: inspect failed", "err", err)
 		return err
 	}
 	// Log samples may contain secrets — strip BEFORE anything is stored or served.
@@ -91,6 +102,7 @@ func (s *Server) Reconcile(ctx context.Context) error {
 	s.mu.Lock()
 	s.containers = findings
 	s.matches = map[string][]knowledge.Match{}
+	s.reconciles++
 	s.mu.Unlock()
 
 	for _, f := range findings {
@@ -101,8 +113,17 @@ func (s *Server) Reconcile(ctx context.Context) error {
 		}
 		// LLM analysis: opt-in only, anonymized only.
 		if s.llm != nil && s.llm.Enabled() {
+			start := time.Now()
 			analysis, err := s.llm.Analyze(ctx, s, f)
+			s.mu.Lock()
+			s.llmCalls++
+			s.llmLatency = time.Since(start)
 			if err != nil {
+				s.llmErrors++
+			}
+			s.mu.Unlock()
+			if err != nil {
+				slog.Warn("llm analysis failed", "container", f.Container, "err", err)
 				s.addEvidence(EvidenceEntry{Time: time.Now().UTC(), Kind: "strip",
 					What: "llm analysis error", Where: f.Container, Why: err.Error()})
 				continue
@@ -115,6 +136,7 @@ func (s *Server) Reconcile(ctx context.Context) error {
 	s.mu.Lock()
 	s.checked = true
 	s.mu.Unlock()
+	slog.Info("reconcile complete", "findings", len(findings), "matches", len(s.matches))
 	return s.Save()
 }
 
@@ -127,7 +149,23 @@ func (s *Server) addMatch(service string, m knowledge.Match) {
 func (s *Server) addEvidence(e EvidenceEntry) {
 	s.mu.Lock()
 	s.evidence = append(s.evidence, e)
+	s.trimLocked()
 	s.mu.Unlock()
+}
+
+// trimLocked caps history and evidence to cfg.HistoryMax entries (newest
+// kept). Caller must hold s.mu.
+func (s *Server) trimLocked() {
+	max := s.cfg.HistoryMax
+	if max <= 0 {
+		max = 100 // safe default if misconfigured
+	}
+	if len(s.history) > max {
+		s.history = s.history[len(s.history)-max:]
+	}
+	if len(s.evidence) > max {
+		s.evidence = s.evidence[len(s.evidence)-max:]
+	}
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
@@ -176,6 +214,54 @@ func (s *Server) handleEvidence(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.evidence)
 }
 
+// handleMetrics emits Prometheus-format metrics for the agent.
+func (s *Server) handleMetrics(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var b strings.Builder
+	fmt.Fprintf(&b, "# HELP dev_agent_reconciles_total Total reconcile passes\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_reconciles_total counter\n")
+	fmt.Fprintf(&b, "dev_agent_reconciles_total %d\n", s.reconciles)
+	fmt.Fprintf(&b, "# HELP dev_agent_findings_current Current unhealthy findings\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_findings_current gauge\n")
+	fmt.Fprintf(&b, "dev_agent_findings_current %d\n", len(s.containers))
+	fmt.Fprintf(&b, "# HELP dev_agent_heals_total Total heal actions attempted\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_heals_total counter\n")
+	fmt.Fprintf(&b, "dev_agent_heals_total %d\n", s.healCount)
+	fmt.Fprintf(&b, "# HELP dev_agent_llm_calls_total Total LLM analysis calls\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_llm_calls_total counter\n")
+	fmt.Fprintf(&b, "dev_agent_llm_calls_total %d\n", s.llmCalls)
+	fmt.Fprintf(&b, "# HELP dev_agent_llm_errors_total Total LLM analysis errors\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_llm_errors_total counter\n")
+	fmt.Fprintf(&b, "dev_agent_llm_errors_total %d\n", s.llmErrors)
+	fmt.Fprintf(&b, "# HELP dev_agent_llm_latency_seconds_last Last LLM call latency in seconds\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_llm_latency_seconds_last gauge\n")
+	fmt.Fprintf(&b, "dev_agent_llm_latency_seconds_last %.4f\n", s.llmLatency.Seconds())
+	fmt.Fprintf(&b, "# HELP dev_agent_history_entries Current history entry count\n")
+	fmt.Fprintf(&b, "# TYPE dev_agent_history_entries gauge\n")
+	fmt.Fprintf(&b, "dev_agent_history_entries %d\n", len(s.history))
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(b.String()))
+}
+
+// handleKnowledge queries the embedded runbook KB by service or symptom.
+// GET /knowledge                → list all services with runbooks
+// GET /knowledge?service=xxx    → runbooks for a service
+// GET /knowledge?symptom=xxx    → runbooks matching a symptom substring
+func (s *Server) handleKnowledge(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if svc := q.Get("service"); svc != "" {
+		writeJSON(w, http.StatusOK, s.kb.Query(svc))
+		return
+	}
+	if sym := q.Get("symptom"); sym != "" {
+		writeJSON(w, http.StatusOK, s.kb.MatchSymptom(sym))
+		return
+	}
+	writeJSON(w, http.StatusOK, s.kb.Services())
+}
+
 // healRequest is the POST /heal body.
 type healRequest struct {
 	Action string `json:"action"`
@@ -195,13 +281,16 @@ func (s *Server) handleHeal(w http.ResponseWriter, r *http.Request) {
 	rc := s.heal.Execute(r.Context(), req.Action, req.Target)
 	s.mu.Lock()
 	s.history = append(s.history, rc)
+	s.healCount++
 	s.evidence = append(s.evidence, EvidenceEntry{
 		Time: rc.Time, Kind: "heal",
 		What:  fmt.Sprintf("action=%s executed=%t", rc.Action, rc.Executed),
 		Where: rc.Target, Why: rc.Output,
 	})
+	s.trimLocked()
 	s.mu.Unlock()
 	_ = s.Save()
+	slog.Info("heal executed", "action", rc.Action, "target", rc.Target, "executed", rc.Executed)
 	writeJSON(w, http.StatusOK, rc)
 }
 
@@ -284,10 +373,14 @@ func firstLine(s string) string {
 // --- anonymizer (dev-agent-privacy: strip-then-review) ---
 
 var (
-	reSecret = regexp.MustCompile(`(?i)\b((?:api[_-]?key|apikey|key|token|secret|password|passwd|authorization|bearer)["']?\s*[:=]\s*"?)[^\s"',}]+`)
-	reIPv4   = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
-	reHome   = regexp.MustCompile(`/home/[a-zA-Z0-9_.-]+|/Users/[a-zA-Z0-9_.-]+|/root\b`)
-	reHost   = regexp.MustCompile(`\b[a-z0-9][a-z0-9-]{2,}\.(?:local|internal|home\.arpa|lan)\b`)
+	reSecret    = regexp.MustCompile(`(?i)\b((?:api[_-]?key|apikey|key|token|secret|password|passwd|authorization|bearer)["']?\s*[:=]\s*"?)[^\s"',}]+`)
+	reIPv4      = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
+	reHome      = regexp.MustCompile(`/home/[a-zA-Z0-9_.-]+|/Users/[a-zA-Z0-9_.-]+|/root\b`)
+	reHost      = regexp.MustCompile(`\b[a-z0-9][a-z0-9-]{2,}\.(?:local|internal|home\.arpa|lan)\b`)
+	reJWT       = regexp.MustCompile(`eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`)
+	reConnStr   = regexp.MustCompile(`(?i)\b(?:postgres|postgresql|redis|mongodb|mysql|amqp|amqps)://[^\s"']*`)
+	reEmail     = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	reBasicAuth = regexp.MustCompile(`(?i)basic [A-Za-z0-9+/=]+`)
 )
 
 // Anonymize strips secrets, IPs, hostnames and user paths from raw, returning
@@ -298,29 +391,59 @@ func (s *Server) Anonymize(raw string) (string, []StripRecord) {
 	add := func(what, why string) {
 		rec = append(rec, StripRecord{What: what, Where: "llm-context", Why: why})
 	}
-	out := reSecret.ReplaceAllString(raw, `${1}***`)
+	// JWT tokens (eyJ...)
+	out := reJWT.ReplaceAllString(raw, "<jwt>")
 	if out != raw {
+		add("jwt token", "JWT tokens must not leave the host")
+	}
+	// Connection strings (postgres://user:pass@host, redis://...)
+	prev := out
+	out = reConnStr.ReplaceAllString(out, "<conn-str>")
+	if out != prev {
+		add("connection string", "connection strings contain credentials")
+	}
+	// Basic auth headers (Authorization: Basic dXNlcjpwYXNz)
+	prev = out
+	out = reBasicAuth.ReplaceAllString(out, "basic <redacted>")
+	if out != prev {
+		add("basic auth", "basic auth credentials must not leave the host")
+	}
+	// Secret values (api_key=..., token=..., password=...)
+	prev = out
+	out = reSecret.ReplaceAllString(out, `${1}***`)
+	if out != prev {
 		add("secret value", "credentials must not leave the host")
 	}
-	clean := reIPv4.ReplaceAllString(out, "<ip>")
-	if clean != out {
+	// Email addresses
+	prev = out
+	out = reEmail.ReplaceAllString(out, "<email>")
+	if out != prev {
+		add("email", "email addresses are private")
+	}
+	// Private IPs
+	prev = out
+	out = reIPv4.ReplaceAllString(out, "<ip>")
+	if out != prev {
 		add("ip address", "network topology is private")
 	}
-	prev := clean
-	clean = reHome.ReplaceAllString(clean, "/home/<user>")
-	if clean != prev {
+	// User paths
+	prev = out
+	out = reHome.ReplaceAllString(out, "/home/<user>")
+	if out != prev {
 		add("user path", "user identity is private")
 	}
+	// Internal hostnames
+	prev = out
 	hosts := s.cfg.Hostnames
 	for _, h := range hosts {
-		clean = strings.ReplaceAll(clean, h, "<host>")
+		out = strings.ReplaceAll(out, h, "<host>")
 	}
-	clean = reHost.ReplaceAllString(clean, "<host>")
-	if clean != prev {
+	out = reHost.ReplaceAllString(out, "<host>")
+	if out != prev {
 		add("hostname", "host identity is private")
 	}
 	for _, r := range rec {
 		s.addEvidence(EvidenceEntry{Time: time.Now().UTC(), Kind: "strip", What: r.What, Where: r.Where, Why: r.Why})
 	}
-	return clean, rec
+	return out, rec
 }
