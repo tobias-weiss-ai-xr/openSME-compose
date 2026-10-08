@@ -214,12 +214,18 @@ fn build_landing_page(config: &AppConfig) -> String {
     let domain = html_escape(&config.opensme_domain);
 
     format!(
-        r#"<!DOCTYPE html>
+        r##"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>openSME Portal</title>
+    <meta name="description" content="openSME — your self-hosted productivity suite: cloud storage, mail, collaboration, identity, and workflow automation.">
+    <meta name="theme-color" content="#0f172a">
+    <meta property="og:title" content="openSME Portal">
+    <meta property="og:description" content="Your self-hosted productivity suite.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2360a5fa'/%3E%3Ctext x='16' y='22' font-family='system-ui,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EoS%3C/text%3E%3C/svg%3E">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self';">
     <script src="/app.js" defer></script>
     <style>
@@ -459,7 +465,7 @@ fn build_landing_page(config: &AppConfig) -> String {
         openSME Portal &mdash; {domain}
     </footer>
 </body>
-</html>"#
+</html>"##
     )
 }
 
@@ -1040,6 +1046,18 @@ mod tests {
         let html = build_landing_page(&cfg_with("", None, ""));
         assert!(html.contains("data-pal="));
         assert!(html.contains("/app.js"));
+    }
+
+    #[test]
+    fn head_carries_favicon_and_meta() {
+        let html = build_landing_page(&cfg_with("", None, ""));
+        // Inline SVG favicon (data URI — CSP allows img-src data:)
+        assert!(html.contains("rel=\"icon\""));
+        assert!(html.contains("data:image/svg+xml"));
+        // Social / search metadata
+        assert!(html.contains("name=\"description\""));
+        assert!(html.contains("og:title"));
+        assert!(html.contains("name=\"theme-color\""));
     }
 
     #[test]
