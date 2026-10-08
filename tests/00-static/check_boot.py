@@ -60,6 +60,8 @@ MUTABLE_IMAGES = {
                         # line publishes :latest only (LTS is a paid offering)
     "sogo",             # salvoxia/sogo:latest is the only maintained tag
     "paperless-ngx",    # official guidance: track :latest for migrations
+    "paperless-gotenberg",  # gotenberg: upstream :latest is the maintained tag
+    "paperless-tika",      # apache/tika:latest, optional profile
     "invoiceninja",     # major-version tag (invoiceninja:5), battletested
     "gotenberg",        # major-version tag (gotenberg:8)
     "tika",             # apache/tika:latest, optional profile
@@ -68,6 +70,13 @@ MUTABLE_IMAGES = {
                         # CMS_IMAGE once tags exist)
     "crap-cms",         # see "cms" above (image base name)
     "casdoor",          # optional demo IAM, auth playground only
+    "collabora",        # collabora/code:latest — upstream ships :latest only
+    "cryptpad",         # cryptpad/cryptpad:latest — upstream ships :latest only
+    "synapse",          # element-hq/synapse:latest — upstream ships :latest only
+    "element-web",      # elementio/element-web:latest — upstream ships :latest only
+    "notes-y-provider",  # lasuite/impress-y-provider:latest — upstream :latest only
+    "pgbouncer",        # bitnamilegacy/pgbouncer:latest — legacy bitnami image
+    "dev-maintenance-bot",  # built from repo source, :latest is the local tag
     "dev-agent",        # built from repo source (role uses a local version tag)
     "predictive-agent",
     "taskfleet",
