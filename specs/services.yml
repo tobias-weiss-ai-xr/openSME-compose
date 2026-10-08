@@ -250,6 +250,7 @@ services:
       - camunda-data:/camunda/data
     env:
       - CAMUNDA_DB_PASSWORD
+      - CAMUNDA_DOMAIN
     traefik_labels: true
     resource_limits:
       memory: 1G

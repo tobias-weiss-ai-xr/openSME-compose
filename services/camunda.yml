@@ -53,7 +53,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.camunda.rule=Host(`bpm.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.camunda.rule=Host(`${CAMUNDA_DOMAIN:-bpm.${OPENSME_DOMAIN:-opensme.org}}`)"
       - "traefik.http.routers.camunda.tls=true"
       - "traefik.http.routers.camunda.entrypoints=websecure"
       - "traefik.http.services.camunda.loadbalancer.server.port=8080"
