@@ -78,9 +78,8 @@ def main() -> int:
         print()
         return 0
 
-    calm = requests.get(portal + "/api/services", timeout=10,
-                        verify=False).json()
-    calm_ids = sorted(s.get("id", "") for s in calm.get("services", []))
+    calm_names = catalog_names(requests.get(portal + "/api/services",
+                                             timeout=10, verify=False).text)
 
     def one(i: int):
         path = PATHS[i % len(PATHS)]
@@ -117,13 +116,15 @@ def main() -> int:
     )
 
     catalogs = [o[3] for o in outcomes if o[0] == "/api/services" and o[1] == 200]
-    consistent = all(
-        sorted(s.get("id", "") for s in json_of(body).get("services", []))
-        == calm_ids for body in catalogs
-    ) if catalogs else False
+    consistent = bool(catalogs) and all(
+        catalog_names(body) == calm_names for body in catalogs)
     (result.ok if consistent else result.fail)(
-        f"catalog consistent under load ({len(catalogs)} responses)"
-        if consistent else "catalog inconsistent under burst"
+        f"catalog consistent under load ({len(catalogs)} responses, "
+        f"{len(calm_names)} services)"
+        if consistent
+        else "catalog inconsistent under burst: "
+             f"calm={calm_names} "
+             f"distinct={sorted({tuple(catalog_names(b)) for b in catalogs})[:3]}"
     )
 
     print()
@@ -137,6 +138,12 @@ def json_of(body: str):
         return json.loads(body)
     except json.JSONDecodeError:
         return {}
+
+
+def catalog_names(body: str) -> list[str]:
+    """The advertised service names — the catalog's identity under load."""
+    return sorted(str(s.get("name", ""))
+                  for s in json_of(body).get("services", []))
 
 
 if __name__ == "__main__":
