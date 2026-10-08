@@ -38,8 +38,13 @@ FORBIDDEN = [
 # Tracked names that are templates by design, not live secrets.
 ALLOWED = {".env.example", ".env.demo"}
 
-# Ignore probes: the artifact dirs must stay ignored so `git add -A` is safe.
-IGNORE_PROBES = ["backups/probe.sql.gz"]
+# Ignore probes: (label, path) that must stay ignored so `git add -A` is safe.
+IGNORE_PROBES = [
+    ("backups/", "backups/probe.sql.gz"),
+    (".env", ".env"),
+    ("idm/secrets/", "idm/secrets/masterkey"),
+    ("certs/", "certs/probe.pem"),
+]
 
 
 def tracked_files() -> list[str] | None:
@@ -87,12 +92,12 @@ def main() -> int:
     else:
         result.ok(f"no runtime artifacts among {len(files)} tracked files")
 
-    for probe in IGNORE_PROBES:
+    for label, probe in IGNORE_PROBES:
         if is_ignored(probe):
-            result.ok(f"{probe.split('/')[0]}/ is gitignored")
+            result.ok(f"{label} is gitignored")
         else:
             result.fail(
-                f"{probe.split('/')[0]}/ is not gitignored — "
+                f"{label} is not gitignored — "
                 "a `git add -A` could commit secrets"
             )
 
