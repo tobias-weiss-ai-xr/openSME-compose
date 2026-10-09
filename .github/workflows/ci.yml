@@ -142,6 +142,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     # Heavy job: builds the portal (rust) and boots the demo stack.
+    # NOTE: This job launches containers from Docker Hub. Without repo
+    # secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN set, it may hit
+    # unauthenticated rate limits. To stabilize E2E, add these secrets.
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
