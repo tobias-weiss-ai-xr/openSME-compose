@@ -875,7 +875,10 @@ fn load_config() -> Arc<AppConfig> {
             .timeout(Duration::from_secs(300))
             .build()
             .unwrap_or_default(),
-        intercom: intercom::IntercomConfig::from_env(&load_env("OPENSME_DOMAIN", "opensme.graphwiz.ai")),
+        intercom: intercom::IntercomConfig::from_env(&load_env(
+            "OPENSME_DOMAIN",
+            "opensme.graphwiz.ai",
+        )),
         intercom_store: Arc::new(intercom::IntercomStore::default()),
         intercom_client: reqwest::Client::builder()
             .timeout(Duration::from_secs(15))
