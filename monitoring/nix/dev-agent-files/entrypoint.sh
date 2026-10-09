@@ -7,7 +7,7 @@ echo "[INFO] Ollama URL: ${OLLAMA_URL:-http://ollama:11434}"
 echo "[INFO] Ollama Model: ${OLLAMA_MODEL:-qwen3-30b-a3b:latest}"
 echo "[INFO] Watch namespaces: ${OPERATOR_WATCH_NAMESPACES:-opensme,default}"
 echo "[INFO] Reconcile interval: ${RECONCILE_INTERVAL:-60}s"
-echo "[INFO] Health probe: ${OPERATOR_HEALTH_PROBE_BIND_ADDRESS:-0.0.0.0:8081}"
+echo "[INFO] HTTP server (probes+metrics+api): ${OPERATOR_METRICS_BIND_ADDRESS:-0.0.0.0:8080}"
 echo "[INFO] Metrics bind: ${OPERATOR_METRICS_BIND_ADDRESS:-0.0.0.0:8080}"
 
 # Create runtime directories

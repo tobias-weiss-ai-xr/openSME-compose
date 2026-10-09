@@ -40,7 +40,7 @@ MAX_PODS_PER_CYCLE = int(os.environ.get("MAX_PODS_PER_CYCLE", "3"))
 LOG_VERBOSITY = os.environ.get("LOG_VERBOSITY", "info")
 HISTORY_FILE = os.environ.get("HISTORY_FILE", "/var/lib/opensme/analysis-history.json")
 HISTORY_MAX = int(os.environ.get("HISTORY_MAX", "100"))
-HEALTH_PORT = int(os.environ.get("OPERATOR_HEALTH_PROBE_BIND_ADDRESS", "0.0.0.0:8081").split(":")[-1])
+# All HTTP endpoints (probes + metrics + API) share one server on this port.
 METRICS_PORT = int(os.environ.get("OPERATOR_METRICS_BIND_ADDRESS", "0.0.0.0:8080").split(":")[-1])
 
 # LLM backend config
@@ -48,6 +48,9 @@ LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")
 SAIA_API_URL = os.environ.get("SAIA_API_URL", "")
 SAIA_API_KEY = os.environ.get("SAIA_API_KEY", "")
 SAIA_MODEL = os.environ.get("SAIA_MODEL", "qwen3.5-35b-a3b")
+TUD_API_URL = os.environ.get("TUD_API_URL", "")
+TUD_API_KEY = os.environ.get("TUD_API_KEY", "")
+TUD_MODEL = os.environ.get("TUD_MODEL", "GLM-5.2-AWQ-INT4")
 OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
@@ -373,6 +376,24 @@ def set_cached(key, analysis):
 
 
 # ─── Reconcile loop ──────────────────────────────────────────────────────────
+def load_history():
+    """Restore persisted analysis history (survives container restarts).
+
+    The history is written after every reconcile; without this load the
+    volume would only ever accumulate files that nothing reads back.
+    Malformed/legacy files are dropped silently (best effort).
+    """
+    global analysis_history
+    try:
+        with open(HISTORY_FILE, "r") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            analysis_history = deque(data[-HISTORY_MAX:], maxlen=HISTORY_MAX)
+            print(f"[INFO] Restored {len(analysis_history)} history entries", flush=True)
+    except (OSError, json.JSONDecodeError):
+        pass
+
+
 def reconcile():
     """Main reconcile loop: detect unhealthy containers, analyze with LLM."""
     global last_reconcile, last_analysis
@@ -389,15 +410,16 @@ def reconcile():
     containers = get_containers()
     unhealthy = [c for c in containers if is_unhealthy(c)]
 
-    # Filter by watch namespaces (container name prefix)
+    # Filter by watch namespaces (container-name substring match,
+    # e.g. "opensme" matches containers named "opensme-portal", ...).
+    # Note: this is name-based, NOT the compose project name — container
+    # names here are "opensme-*", so a project name like "opensme-compose"
+    # would match nothing.
     if WATCH_NAMESPACES and WATCH_NAMESPACES != [""]:
-        # In Docker, we filter by container name prefix
-        # e.g., "opensme-" prefix matches containers in the "opensme" namespace
-        ns_prefixes = [ns.replace("-", "-") for ns in WATCH_NAMESPACES if ns]
+        ns_prefixes = [ns.strip() for ns in WATCH_NAMESPACES if ns.strip()]
         if ns_prefixes:
             unhealthy = [c for c in unhealthy
-                         if any(c.get("name", "").startswith(p) for p in ns_prefixes)
-                         or any(p in c.get("name", "") for p in ns_prefixes)]
+                         if any(p in c.get("name", "") for p in ns_prefixes)]
 
     metrics["unhealthy_containers_total"] = len(unhealthy)
 
@@ -537,6 +559,9 @@ def main():
     print(f"[INFO] Docker available: {docker_available()}", flush=True)
     print(f"[INFO] LLM: {LLM_BACKEND} / {OLLAMA_MODEL}", flush=True)
     print(f"[INFO] Reconcile interval: {RECONCILE_INTERVAL}s", flush=True)
+
+    # Restore persisted history (volume-backed) before serving
+    load_history()
 
     # Start metrics server
     server = start_server()

@@ -52,7 +52,7 @@ services:
       OPERATOR_NAMESPACE: opensme
       OPERATOR_VERSION: "3.1.0"
       OPERATOR_LOG_LEVEL: ${LOG_LEVEL:-info}
-      OPERATOR_WATCH_NAMESPACES: ${DEV_AGENT_WATCH_NAMESPACES:-opensme-compose,default}
+      OPERATOR_WATCH_NAMESPACES: ${DEV_AGENT_WATCH_NAMESPACES:-opensme,default}
       # LLM backend (ollama | saia | tud | openai)
       LLM_BACKEND: ${DEV_AGENT_LLM_BACKEND:-ollama}
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
@@ -77,7 +77,6 @@ services:
       HISTORY_MAX: ${DEV_AGENT_HISTORY_MAX:-100}
       # HTTP
       OPERATOR_METRICS_BIND_ADDRESS: "0.0.0.0:8080"
-      OPERATOR_HEALTH_PROBE_BIND_ADDRESS: "0.0.0.0:8081"
       TZ: ${TZ:-Europe/Berlin}
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8080/healthz"]
