@@ -216,32 +216,62 @@ halving the service count for the IAM layer.
 
 ## Quick Start
 
-### 1. Clone &amp; configure
+Same repository, two ways in:
+
+- **Evaluate in ~2 minutes** — clone, run [`scripts/demo.sh`](#evaluate-in-2-minutes), open
+  http://localhost:8080. Random passwords, Zitadel seeded, health summary printed — no config.
+- **Install it properly** — clone, [`scripts/init-env.sh`](#1-clone--configure) to generate a
+  secure `.env`, then `make up PROFILE=…` and add overlays. This is the path for a real
+  deployment you own.
+
+> Requirements: Linux with Docker 24+ and Compose v2.20+; 2 vCPU / 4 GB RAM minimum.
+
+### Evaluate in 2 minutes
 
 ```bash
 git clone https://github.com/tobias-weiss-ai-xr/openSME-compose.git
 cd openSME-compose
-./scripts/init-env.sh   # generate .env with random passwords (never ships CHANGEME)
-# Edit .env — review domains; adjust passwords to your policy if you like
+./scripts/demo.sh          # creates .env, seeds Zitadel, boots, prints credentials
 ```
 
-> Zero-friction alternative: `./scripts/demo.sh` bootstraps a full demo
-> stack in one command (generates `.env`, seeds Zitadel, boots, prints
-> credentials and a health summary).
+- **Portal:** http://localhost:8080
+- **Zitadel &amp; OpenCloud** over Traefik TLS (self-signed) — map their names to `127.0.0.1`
+  once, then open the HTTPS URLs:
+  ```bash
+  echo '127.0.0.1 auth.opensme.local cloud.opensme.local' | sudo tee -a /etc/hosts
+  # https://auth.opensme.local  ·  https://cloud.opensme.local
+  ```
 
-### 2. Start core services
+The script waits for the Portal to answer before finishing and prints a per-service
+health overview. Needs **2 vCPU / 4 GB RAM**.
+
+### Manual install
+
+#### 1. Clone &amp; configure
 
 ```bash
-# Using Makefile (recommended):
+git clone https://github.com/tobias-weiss-ai-xr/openSME-compose.git
+cd openSME-compose
+./scripts/init-env.sh   # generate a secure .env — every CHANGEME_* becomes a random value
+# Edit .env — set your domains; adjust any passwords to your own policy
+```
+
+#### 2. Start core services
+
+```bash
+# Via the Makefile (recommended):
 make up PROFILE=soho      # 4c/8G — core only
 make up PROFILE=small     # 8c/24G — core + office + paperless
 make up PROFILE=medium    # 16c/48G — core + all services
 
-# Or using docker compose directly:
+# Or with plain docker compose:
 docker compose up -d      # Portal + Traefik + PostgreSQL + Redis + Memcached
 ```
 
-### 3. Add features (overlays)
+> `make up` reads your generated `.env` when present and falls back to the template
+> otherwise — after `init-env.sh` nothing else is required to boot a real stack.
+
+#### 3. Add features (overlays)
 
 ```bash
 # Core + IAM + file sync + online office
@@ -258,18 +288,6 @@ docker compose --profile chat --profile element up -d        # Matrix chat
 docker compose --profile collab up -d                       # CryptPad
 docker compose --profile notes up -d                        # Collaborative notes
 ```
-
-### 4. Try the demo (minimal resources)
-
-```bash
-./scripts/demo.sh
-# → Portal:    http://localhost:8080
-# → Zitadel & OpenCloud via Traefik TLS (self-signed):
-#     echo '127.0.0.1 auth.opensme.local cloud.opensme.local' | sudo tee -a /etc/hosts
-#     https://auth.opensme.local  ·  https://cloud.opensme.local
-```
-
-Requires **2 vCPU / 4 GB RAM** — perfect for evaluation.
 
 ## Hardware Tiers
 
@@ -813,8 +831,10 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `CAMUNDA_DB_PASSWORD` | `CHANGEME_*` | Operaton BPMN DB password (required for `--profile camunda`) |
 | `CAMUNDA_IMAGE` | `operaton/operaton:2.1.5` | Operaton image override (pin to a specific tag) |
 
-> **⚠️ Change all `CHANGEME_*` passwords before production!**
-> Use `openssl rand -base64 24` to generate secure values.
+> **Secrets:** `scripts/init-env.sh` (or `make bootstrap`) already replaces every
+> `CHANGEME_*` placeholder with a random value when it generates `.env` — don't copy
+> the template by hand. For existing installs, re-run it or rotate the values manually
+> (`openssl rand -base64 24`).
 
 ### Optional components — maturity notes
 
@@ -1044,22 +1064,28 @@ docker compose exec postgres psql -U opensme -c '\dt'
 
 ### Version pins
 
-Images are pinned to major versions for stability:
+Core images are pinned (or explicitly allow-listed) so `docker compose up -d`
+always reproduces a known-good stack:
 
-| Component | Image | Version |
+| Component | Default image | Version |
 |---|---|---|
-| PostgreSQL | `postgres:17-alpine` | 17.x |
-| Redis | `redis:7-alpine` | 7.x |
-| Zitadel | `ghcr.io/zitadel/zitadel:latest` | (rolling) |
-| OpenCloud | `opencloudeu/opencloud-rolling:6.0.0` | 6.0.x |
-| Collabora | `collabora/code:24.04.13.3.1` | 24.04.x |
-| Traefik | `traefik:v3.3` | 3.3.x |
+| Traefik | `traefik:v3.7.13` | 3.7.x |
+| PostgreSQL | `postgres:17` | 17.x |
+| Redis | `redis:alpine` | rolling (`alpine` tag) |
+| Memcached | `memcached:alpine` | rolling (`alpine` tag) |
+| Zitadel | `ghcr.io/zitadel/zitadel:v4.19.4` | 4.19.x |
+| OpenCloud | `opencloudeu/opencloud-rolling:8.0.1` | 8.0.x |
+| Stalwart (mail) | `stalwartlabs/stalwart:v0.15` | v0.15 |
+| Collabora | `collabora/code:latest` | rolling (`latest`) |
 | SeaweedFS | `chrislusf/seaweedfs:3.99` | 3.99.x |
+| Operaton (BPMN) | `operaton/operaton:2.1.5` | 2.1.x |
 | llama.cpp | `ghcr.io/ggml-org/llama.cpp:server-b11223` | build `b11223` |
 
-Pin overrides live in `.env` (`ZITADEL_IMAGE`, `TRAEFIK_IMAGE`, `AI_IMAGE`,
-…). The static suite fails the build when a core image drifts to `:latest`.
-Rolling lines (Zitadel, OpenCloud) are documented exceptions.
+Pin overrides live in `.env` (`TRAEFIK_IMAGE`, `ZITADEL_IMAGE`, `AI_IMAGE`,
+`COLLABORA_IMAGE`, `CAMUNDA_IMAGE`, …). The static suite fails the build when a
+core image drifts to `:latest`. The documented exceptions are Collabora
+(`:latest`), the floating `redis:alpine` / `memcached:alpine` tags, and the
+OpenCloud `rolling:` line (pinned at build 8.0.1).
 
 ## License
 

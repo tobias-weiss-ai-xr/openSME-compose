@@ -51,7 +51,10 @@ PROFILE    ?= soho
 # host); a make-command-line override (make e2e DOMAIN=x) still wins.
 DOMAIN     := $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
 COMPOSE    ?= docker compose
-TEST_ENV   ?= .env.example
+# Use the generated .env when present (manual installs via init-env.sh /
+# demo.sh); fall back to the template so CI/static runs stay hermetic (they
+# have no .env). An explicit TEST_ENV=… always overrides.
+TEST_ENV   := $(if $(wildcard .env),.env,.env.example)
 PYTHON     ?= python3
 # Go toolchain for lint-code. Override when an old system Go shadows a newer
 # one: `GO=/usr/local/go/bin/go make lint-code`.
