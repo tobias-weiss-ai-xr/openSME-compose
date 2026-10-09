@@ -142,6 +142,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     # Heavy job: builds the portal (rust) and boots the demo stack.
+    # NOTE: This job launches containers from Docker Hub. Without repo
+    # secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN set, it may hit
+    # unauthenticated rate limits. To stabilize E2E, add these secrets.
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
@@ -172,6 +175,19 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq busybox
           cp $(which busybox) idm/zitadel/busybox
           chmod +x idm/zitadel/busybox
+
+      - name: Log in to Docker Hub (if token provided)
+        # Docker Hub unauthenticated pull rate limiting is the most common
+        # cause of flaky E2E runs. When DOCKERHUB_TOKEN is set (repo secret),
+        # authenticating raises the quota substantially. Continue on error
+        # in case secrets are not configured.
+        continue-on-error: true
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          else
+            echo "::warning::DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not configured — Docker Hub pulls will use the unauthenticated (lower) rate limit"
+          fi
 
       - name: Boot demo stack (generates .env with random passwords)
         run: bash scripts/demo.sh
