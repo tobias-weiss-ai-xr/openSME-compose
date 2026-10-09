@@ -2,9 +2,9 @@
 # Minimal image: the operator itself needs no third-party dependencies.
 # Runs as root because it must READ the (read-only mounted) Docker socket —
 # mitigated by the compose overlay: :ro mount, init:true, no-new-privileges.
-FROM python:3.12-slim
+FROM python:3.13-slim
 
-ARG DOCKER_VERSION=26.1.4
+ARG DOCKER_VERSION=29.9.0
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
