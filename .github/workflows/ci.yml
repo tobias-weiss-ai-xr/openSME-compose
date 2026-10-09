@@ -173,6 +173,13 @@ jobs:
           cp $(which busybox) idm/zitadel/busybox
           chmod +x idm/zitadel/busybox
 
+      - name: Log in to Docker Hub (if token provided)
+        # Docker Hub unauthenticated pull rate limiting is the most common
+        # cause of flaky E2E runs. When DOCKERHUB_TOKEN is set (repo secret),
+        # authenticating raises the quota substantially.
+        if: secrets.DOCKERHUB_TOKEN != ''
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Boot demo stack (generates .env with random passwords)
         run: bash scripts/demo.sh
 
