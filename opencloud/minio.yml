@@ -31,12 +31,16 @@ x-service-defaults: &service-defaults
 services:
   seaweedfs:
     <<: *service-defaults
-    image: chrislusf/seaweedfs:3.99
+    image: registry.hrz.uni-marburg.de/dockerio-cache/chrislusf/seaweedfs:latest
     container_name: opensme-seaweedfs
     restart: unless-stopped
     stop_grace_period: 60s
     cap_drop:
       - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
     command: server -dir=/data -master.volumeSizeLimitMB=10240 -s3 -s3.port=9000 -s3.config=/etc/seaweedfs/s3.json
     environment:
       HTTP_PROXY: ""
