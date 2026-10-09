@@ -89,3 +89,9 @@ curl -X POST "https://bpm.<domain>/engine-rest/task/<task-id>/complete" \
   `<process>` element, or Operaton rejects the deployment.
 - **Portal banners** — set `PORTAL_ANNOUNCEMENTS` in `.env` to a JSON
   array of `{"level":"info|warn","text":"…"}` objects.
+
+## seed-content/
+
+Human-readable sample documents for your document store (Cloud /
+Paperless) and as reference for operators. Not boot-consumed and never run
+in CI — see `seed-content/README.md` for how to load each file.

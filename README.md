@@ -840,6 +840,9 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
   Seed BPMN processes are in `bootstrap/bpmn/` — deploy with
   `make bpm-deploy` or `./bootstrap/bpmn-deploy.sh` (auto-detects the
   engine via docker exec or `BPM_URL`).
+  Human-readable seed documents (onboarding, charter, decision records)
+  are in `bootstrap/seed-content/` — see its README for how to load them
+  into the Cloud / Paperless / Team Notes.
 - **crap-cms** (`--profile cms`): alpha software; upstream publishes
   `:latest` only (no semver tags yet — pin via `CMS_IMAGE` once they do).
   First login: `admin@crap.studio` / `admin123` — **change immediately**.
