@@ -164,14 +164,13 @@ jobs:
 
       - name: Provision deploy-time Zitadel artifacts (masterkey + busybox)
         # Both are gitignored and normally created by the ansible deploy role.
-        # The masterkey must be exactly 32 bytes with no trailing newline
-        # (`openssl rand -base64 32` yields 44 chars + newline → rejected).
+        # Use host-provided busybox (via apt) to avoid Docker Hub rate limits
+        # in GitHub Actions.
         run: |
           printf '%s' "$(openssl rand -base64 24)" > idm/secrets/masterkey
           mkdir -p idm/zitadel
-          cid=$(docker create busybox:stable-musl true)
-          docker cp "$cid":/bin/busybox idm/zitadel/busybox
-          docker rm "$cid" >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq busybox
+          cp $(which busybox) idm/zitadel/busybox
           chmod +x idm/zitadel/busybox
 
       - name: Boot demo stack (generates .env with random passwords)
