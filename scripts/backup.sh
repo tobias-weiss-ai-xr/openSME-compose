@@ -180,11 +180,14 @@ if [ "$BACKUP_VOLUMES" = true ]; then
       || echo "   ⚠ Volume $vol skipped (not found)"
   done
 
-  # Combine volume backups
+  # Combine volume backups into ONE outer tar containing the per-volume
+  # <vol>.tar.gz members — that is exactly the shape restore.sh expects
+  # (extract outer archive → loop over member tarballs → one volume each).
+  # Byte-concatenating the gzip members (cat a.tar.gz b.tar.gz) is NOT a
+  # valid archive: tar stops at the first member's end-of-archive marker
+  # and the remaining volumes are silently dropped.
   if [ -d "$PARTIAL_DIR" ] && ls "$PARTIAL_DIR"/*.tar.gz >/dev/null 2>&1; then
-    find "$PARTIAL_DIR" -name '*.tar.gz' | sort | while read -r part; do
-      cat "$part"
-    done > "${BACKUP_DIR}/volumes_${TIMESTAMP}.tar.gz"
+    ( cd "$PARTIAL_DIR" && tar czf "${BACKUP_DIR}/volumes_${TIMESTAMP}.tar.gz" ./*.tar.gz )
     rm -rf "$PARTIAL_DIR"
   fi
 fi
@@ -203,7 +206,6 @@ echo "   Directory: ${BACKUP_DIR}/"
 ls -lh "${BACKUP_DIR}/"*"_${TIMESTAMP}.*" 2>/dev/null || true
 
 # ── Retention (keep 7 days) ───────────────────
-find "$BACKUP_DIR" -name "backup-*.tar.gz" -type f -mtime +7 -delete 2>/dev/null || true
 find "$BACKUP_DIR" -name "*_*.sql.gz" -type f -mtime +7 -delete 2>/dev/null || true
 find "$BACKUP_DIR" -name "*_*.tar.gz" -type f -mtime +7 -delete 2>/dev/null || true
 echo "   Retention: Keeping last 7 days"

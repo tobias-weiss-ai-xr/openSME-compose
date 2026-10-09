@@ -150,11 +150,19 @@ if [ "$PG_ONLY" = false ] && [ -f "$VOLUMES_FILE" ]; then
   TEMP_DIR="${BACKUP_DIR}/restore-temp-${BACKUP_PREFIX}"
 
   mkdir -p "$TEMP_DIR"
-  tar -xzf "$VOLUMES_FILE" -C "$TEMP_DIR" 2>/dev/null || true
+  # The combined archive must be a valid outer tar — a corrupt or
+  # wrong-format backup must fail loudly here, not pretend to restore.
+  if ! tar -xzf "$VOLUMES_FILE" -C "$TEMP_DIR"; then
+    echo "   ✗ Combined volume archive is not a valid tar: $VOLUMES_FILE" >&2
+    rm -rf "$TEMP_DIR"
+    exit 1
+  fi
 
   # Extract individual volume archives
+  restored=0
   for vol_archive in "$TEMP_DIR"/*.tar.gz; do
     [ -f "$vol_archive" ] || continue
+    restored=$((restored + 1))
     vol_name=$(basename "$vol_archive" .tar.gz)
     full_vol="${PROJECT_NAME}_${vol_name}"
 
@@ -169,7 +177,11 @@ if [ "$PG_ONLY" = false ] && [ -f "$VOLUMES_FILE" ]; then
   done
 
   rm -rf "$TEMP_DIR"
-  echo "   ✓ Volumes restored"
+  if [ "$restored" -eq 0 ]; then
+    echo "   ✗ No per-volume archives inside $VOLUMES_FILE — nothing restored" >&2
+    exit 1
+  fi
+  echo "   ✓ Volumes restored (${restored} volume(s))"
 elif [ "$PG_ONLY" = false ]; then
   echo "   ⚠ Volumes backup not found: ${VOLUMES_FILE}"
 fi
