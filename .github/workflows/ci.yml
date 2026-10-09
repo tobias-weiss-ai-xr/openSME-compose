@@ -144,7 +144,10 @@ jobs:
     # Heavy job: builds the portal (rust) and boots the demo stack.
     # NOTE: This job launches containers from Docker Hub. Without repo
     # secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN set, it may hit
-    # unauthenticated rate limits. To stabilize E2E, add these secrets.
+    # unauthenticated rate limits.
+    # To stabilize E2E, either:
+    #  1. Add DOCKERHUB_USERNAME + DOCKERHUB_TOKEN repo secrets, or
+    #  2. Run on a self-hosted runner with authenticated Docker.
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
