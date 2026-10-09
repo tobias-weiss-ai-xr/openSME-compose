@@ -40,7 +40,7 @@ services:
       PAPERLESS_DBNAME: paperless_db
       PAPERLESS_DBUSER: paperless_user
       PAPERLESS_DBPASS: ${PAPERLESS_DB_PASSWORD:-CHANGEME_paperless}
-      PAPERLESS_URL: https://paperless.${OPENSME_DOMAIN:-opensme.org}
+      PAPERLESS_URL: https://paperless.${OPENSME_DOMAIN:-opensme.graphwiz.ai}
       PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:-CHANGEME_generate_64_chars}
       PAPERLESS_TIME_ZONE: ${TZ:-Europe/Berlin}
       PAPERLESS_OCR_LANGUAGE: deu+eng
@@ -72,7 +72,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.paperless.rule=Host(`paperless.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.paperless.rule=Host(`paperless.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.paperless.tls=true"
       - "traefik.http.routers.paperless.tls.certresolver=letsencrypt"
       - "traefik.http.routers.paperless.entrypoints=websecure"

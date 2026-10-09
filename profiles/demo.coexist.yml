@@ -55,7 +55,7 @@ services:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opensme-portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.opensme-portal.rule=Host(`${PORTAL_DOMAIN:-home.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.opensme-portal.tls=true"
       - "traefik.http.routers.opensme-portal.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-portal.loadbalancer.server.port=8080"
@@ -65,7 +65,7 @@ services:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opensme-zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.opensme-zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.opensme-zitadel.tls=true"
       - "traefik.http.routers.opensme-zitadel.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-zitadel.loadbalancer.server.port=8080"
@@ -79,7 +79,7 @@ services:
     networks: []
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.opensme-opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
+      - "traefik.http.routers.opensme-opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.opensme-opencloud.tls=true"
       - "traefik.http.routers.opensme-opencloud.entrypoints=${EXISTING_TRAEFIK_HTTPS:-websecure}"
       - "traefik.http.services.opensme-opencloud.loadbalancer.server.port=9200"

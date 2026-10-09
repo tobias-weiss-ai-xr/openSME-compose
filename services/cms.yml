@@ -47,7 +47,7 @@ services:
       # alpha + :latest tag — no silent auto-updates
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.enable=true"
-      - "traefik.http.routers.cms.rule=Host(`www.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.cms.rule=Host(`www.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.cms.tls=true"
       - "traefik.http.routers.cms.entrypoints=websecure"
       - "traefik.http.services.cms.loadbalancer.server.port=3000"

@@ -856,9 +856,9 @@ fn load_config() -> Arc<AppConfig> {
     let announcements = Arc::new(parse_announcements(&load_env("PORTAL_ANNOUNCEMENTS", "")));
 
     Arc::new(AppConfig {
-        portal_domain: load_env("PORTAL_DOMAIN", "portal.opensme.org"),
-        opensme_domain: load_env("OPENSME_DOMAIN", "opensme.org"),
-        opencloud_url: load_env("OPENCLOUD_URL", "https://cloud.opensme.org"),
+        portal_domain: load_env("PORTAL_DOMAIN", "portal.opensme.graphwiz.ai"),
+        opensme_domain: load_env("OPENSME_DOMAIN", "opensme.graphwiz.ai"),
+        opencloud_url: load_env("OPENCLOUD_URL", "https://cloud.opensme.graphwiz.ai"),
         mail_url: load_env("MAIL_URL", ""),
         idp_url: load_env("IDP_URL", ""),
         collabora_url: load_env("COLLABORA_URL", ""),
@@ -875,7 +875,7 @@ fn load_config() -> Arc<AppConfig> {
             .timeout(Duration::from_secs(300))
             .build()
             .unwrap_or_default(),
-        intercom: intercom::IntercomConfig::from_env(&load_env("OPENSME_DOMAIN", "opensme.org")),
+        intercom: intercom::IntercomConfig::from_env(&load_env("OPENSME_DOMAIN", "opensme.graphwiz.ai")),
         intercom_store: Arc::new(intercom::IntercomStore::default()),
         intercom_client: reqwest::Client::builder()
             .timeout(Duration::from_secs(15))

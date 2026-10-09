@@ -21,7 +21,7 @@ services:
     <<: *service-defaults
     image: ${STALWART_IMAGE:-stalwartlabs/stalwart:v0.15}
     container_name: opensme-stalwart
-    hostname: mail.${OPENSME_DOMAIN:-opensme.org}
+    hostname: mail.${OPENSME_DOMAIN:-opensme.graphwiz.ai}
     restart: unless-stopped
     stop_grace_period: 120s
     depends_on:
@@ -34,8 +34,8 @@ services:
       # 465/993 implicit-TLS listeners need certificates; TLS is terminated by Traefik
     environment:
       TZ: Europe/Berlin
-      MAIL_DOMAIN: ${MAIL_DOMAIN:-mail.opensme.org}
-      STALWART_PUBLIC_URL: https://${MAIL_DOMAIN:-mail.opensme.org}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-mail.opensme.graphwiz.ai}
+      STALWART_PUBLIC_URL: https://${MAIL_DOMAIN:-mail.opensme.graphwiz.ai}
       STALWART_ADMIN_PASSWORD: ${STALWART_ADMIN_PASSWORD:-CHANGEME_stalwart_admin}
     volumes:
       - stalwart-etc:/opt/stalwart/etc
@@ -60,7 +60,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.org}`)"
+      - "traefik.http.routers.stalwart.rule=Host(`${MAIL_DOMAIN:-mail.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.stalwart.tls=true"
       - "traefik.http.routers.stalwart.tls.certresolver=letsencrypt"
       - "traefik.http.routers.stalwart.entrypoints=websecure"

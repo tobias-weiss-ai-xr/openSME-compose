@@ -11,7 +11,7 @@
       "title": "Update runbook.md and PLANIO_WIKI.textile with the verified end-to-end mail flow",
       "deps": [],
       "scope": ["docs/runbook.md", "docs/PLANIO_WIKI.textile"],
-      "accept": "grep -qi 'dkimpy-milter' docs/runbook.md && grep -qi 'stalwart-cli' docs/runbook.md && grep -qi 'mail.opensme.org' docs/runbook.md && grep -qiE 'DNS|Stalwart' docs/PLANIO_WIKI.textile",
+      "accept": "grep -qi 'dkimpy-milter' docs/runbook.md && grep -qi 'stalwart-cli' docs/runbook.md && grep -qi 'mail.opensme.graphwiz.ai' docs/runbook.md && grep -qiE 'DNS|Stalwart' docs/PLANIO_WIKI.textile",
       "acceptance_prose": "runbook.md documents the working flow Postfix -> LDAP (openldap) -> dkimpy-milter (DKIM s1) -> Stalwart (JMAP), incl. stalwart-cli apply snippets and DNS record locations; PLANIO_WIKI.textile reflects current architecture",
       "manual": false
     },

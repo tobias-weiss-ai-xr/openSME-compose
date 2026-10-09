@@ -66,7 +66,7 @@ services:
     restart: unless-stopped
     profiles: ["invoice"]
     environment:
-      APP_URL: "https://invoices.${OPENSME_DOMAIN:-opensme.org}"
+      APP_URL: "https://invoices.${OPENSME_DOMAIN:-opensme.graphwiz.ai}"
       # The entrypoint bakes .env into the container layer on first boot — a
       # recreate loses it (and the APP_KEY it auto-generated), so the key must
       # be supplied explicitly and persisted in the host .env.
@@ -136,7 +136,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.invoices.rule=Host(`invoices.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.invoices.rule=Host(`invoices.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.invoices.tls=true"
       - "traefik.http.routers.invoices.entrypoints=websecure"
       - "traefik.http.services.invoices.loadbalancer.server.port=80"

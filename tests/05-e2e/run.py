@@ -39,7 +39,7 @@ Local demo domains (*.local) get two conveniences automatically:
 Usage:
   python3 tests/05-e2e/run.py                  # domain from .env / localhost
   python3 tests/05-e2e/run.py opensme.local
-  make e2e DOMAIN=opensme.org
+  make e2e DOMAIN=opensme.local
 
 Exit codes: 0 = pass, 1 = one or more checks failed (skips don't fail).
 """

@@ -14,9 +14,9 @@ mkdir -p "$OUTDIR"
 if [ -f "$TEMPLATE" ]; then
   echo "[stalwart-entrypoint] Rendering $TEMPLATE -> $OUTPUT"
   sed \
-    -e "s|\${MAIL_DOMAIN}|${MAIL_DOMAIN:-mail.opensme.org}|g" \
+    -e "s|\${MAIL_DOMAIN}|${MAIL_DOMAIN:-mail.opensme.graphwiz.ai}|g" \
     -e "s|\${STALWART_ADMIN_PASSWORD}|${STALWART_ADMIN_PASSWORD:-CHANGEME_stalwart_admin}|g" \
-    -e "s|\${STALWART_PUBLIC_URL}|${STALWART_PUBLIC_URL:-https://mail.opensme.org}|g" \
+    -e "s|\${STALWART_PUBLIC_URL}|${STALWART_PUBLIC_URL:-https://mail.opensme.graphwiz.ai}|g" \
     "$TEMPLATE" > "$OUTPUT"
   echo "[stalwart-entrypoint] Done."
 else

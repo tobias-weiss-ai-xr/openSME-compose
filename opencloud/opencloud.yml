@@ -59,10 +59,10 @@ services:
       OC_LOG_PRETTY: ${LOG_PRETTY:-true}
       OC_ADMIN_USERNAME: ${OC_ADMIN_USERNAME:-admin}
       OC_ADMIN_PASSWORD: ${OC_ADMIN_PASSWORD:-CHANGEME_oc_admin}
-      OC_DOMAIN: ${OPENCLOUD_DOMAIN:-cloud.opensme.org}
-      OC_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}
-      OC_IDP_URL: https://${ZITADEL_DOMAIN:-auth.opensme.org}
-      OC_OIDC_ISSUER: https://${ZITADEL_DOMAIN:-auth.opensme.org}
+      OC_DOMAIN: ${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}
+      OC_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}
+      OC_IDP_URL: https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}
+      OC_OIDC_ISSUER: https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}
       OC_OIDC_CLIENT_ID: ${OC_OIDC_CLIENT_ID:-opencloud}
       OC_OIDC_CLIENT_SECRET: ${OC_OIDC_SECRET:-CHANGEME_oidc_secret}
       PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
@@ -74,12 +74,12 @@ services:
       # (struct tag env:"NOTIFICATIONS_SMTP_SENDER"), so the bare names are
       # required. Startup only validates the sender format; actual delivery
       # needs a matching Stalwart account (configure OC_SMTP_* in your .env).
-      NOTIFICATIONS_SMTP_SENDER: ${OC_SMTP_SENDER:-noreply@${OPENSME_DOMAIN:-opensme.org}}
+      NOTIFICATIONS_SMTP_SENDER: ${OC_SMTP_SENDER:-noreply@${OPENSME_DOMAIN:-opensme.graphwiz.ai}}
       NOTIFICATIONS_SMTP_HOST: ${OC_SMTP_HOST:-stalwart}
       NOTIFICATIONS_SMTP_PORT: ${OC_SMTP_PORT:-587}
       NOTIFICATIONS_SMTP_TLS_INSECURE: ${OC_SMTP_TLS_INSECURE:-true}
       NOTIFICATIONS_SMTP_AUTHENTICATION: ${OC_SMTP_AUTHENTICATION:-login}
-      NOTIFICATIONS_SMTP_USERNAME: ${OC_SMTP_USERNAME:-noreply@${OPENSME_DOMAIN:-opensme.org}}
+      NOTIFICATIONS_SMTP_USERNAME: ${OC_SMTP_USERNAME:-noreply@${OPENSME_DOMAIN:-opensme.graphwiz.ai}}
       # empty default: mail is an opt-in feature — a CHANGEME placeholder
       # would sit in the live container env of every SMTP-less deployment
       NOTIFICATIONS_SMTP_PASSWORD: ${OC_SMTP_PASSWORD:-}
@@ -104,7 +104,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
+      - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.opencloud.tls=true"
       - "traefik.http.routers.opencloud.entrypoints=websecure"
       - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
@@ -132,14 +132,14 @@ services:
         max-file: "3"
     shm_size: 512M
     environment:
-      aliasgroup1: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}:443
+      aliasgroup1: https://${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}:443
       extra_params: >-
         --o:ssl.enable=false
         --o:ssl.termination=true
         --o:num_prespawn_children=4
         --o:max_connections=200
         --o:max_documents=100
-      domain: ${OPENSME_DOMAIN:-opensme.org}
+      domain: ${OPENSME_DOMAIN:-opensme.graphwiz.ai}
       DONT_GEN_SSL_CERT: true
       username: ${COLLABORA_USERNAME:-admin}
       password: ${COLLABORA_PASSWORD:-CHANGEME_collabora}
@@ -155,7 +155,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.org}`)"
+      - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.collabora.tls=true"
       - "traefik.http.routers.collabora.entrypoints=websecure"
       - "traefik.http.services.collabora.loadbalancer.server.port=9980"

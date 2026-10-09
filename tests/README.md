@@ -94,7 +94,7 @@ python3 tests/run.py --static
 python3 tests/run.py --layer 0,1,2
 
 # Run smoke tests (requires running stack)
-python3 tests/run.py --smoke --domain opensme.org
+python3 tests/run.py --smoke --domain opensme.graphwiz.ai
 
 # Run cross-service integration contracts (requires running stack, same
 # COMPOSE_FILE selection as the stack)
@@ -112,7 +112,7 @@ python3 tests/run.py --e2e --domain opensme.local
 python3 tests/run.py --k8s
 
 # Run everything
-python3 tests/run.py --domain opensme.org
+python3 tests/run.py --domain opensme.graphwiz.ai
 ```
 
 ## Makefile integration

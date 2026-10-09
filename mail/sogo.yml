@@ -43,9 +43,9 @@ services:
     environment:
       TZ: ${TZ:-Europe/Berlin}
       SOGO_DB_PASSWORD: ${SOGO_DB_PASSWORD:-CHANGEME_sogo}
-      LDAP_ROOT_DN: ${LDAP_ROOT_DN:-dc=opensme,dc=org}
+      LDAP_ROOT_DN: ${LDAP_ROOT_DN:-dc=opensme,dc=graphwiz,dc=ai}
       LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}
-      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
+      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.graphwiz.ai}
     entrypoint: ["/sogo-entrypoint.sh"]
     command: ["sogod"]
     healthcheck:
@@ -59,7 +59,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.org}`) && PathPrefix(`/SOGo`)"
+      - "traefik.http.routers.sogo.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.graphwiz.ai}`) && PathPrefix(`/SOGo`)"
       - "traefik.http.routers.sogo.tls=true"
       - "traefik.http.routers.sogo.tls.certresolver=letsencrypt"
       - "traefik.http.routers.sogo.entrypoints=websecure"
@@ -67,12 +67,12 @@ services:
       # older builds exposed sope directly on :20000 (loopback-only)
       - "traefik.http.services.sogo.loadbalancer.server.port=80"
       # send bare-host requests to the SOGo app root instead of a 404
-      - "traefik.http.routers.sogo-root.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.org}`) && Path(`/`)"
+      - "traefik.http.routers.sogo-root.rule=Host(`${SOGO_DOMAIN:-webmail.opensme.graphwiz.ai}`) && Path(`/`)"
       - "traefik.http.routers.sogo-root.tls=true"
       - "traefik.http.routers.sogo-root.entrypoints=websecure"
       - "traefik.http.routers.sogo-root.middlewares=sogo-root-redirect@docker"
       - "traefik.http.middlewares.sogo-root-redirect.redirectregex.regex=^https?://[^/]+/?$$"
-      - "traefik.http.middlewares.sogo-root-redirect.redirectregex.replacement=https://${SOGO_DOMAIN:-webmail.opensme.org}/SOGo/"
+      - "traefik.http.middlewares.sogo-root-redirect.redirectregex.replacement=https://${SOGO_DOMAIN:-webmail.opensme.graphwiz.ai}/SOGo/"
       - "traefik.http.middlewares.sogo-root-redirect.redirectregex.permanent=true"
     deploy:
       resources:

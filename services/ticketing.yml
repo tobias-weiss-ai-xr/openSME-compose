@@ -45,12 +45,12 @@ services:
       ENVIRONMENT: production
       HOST: 0.0.0.0
       PORT: "8080"
-      FRONTEND_URL: https://help.${OPENSME_DOMAIN:-opensme.org}
+      FRONTEND_URL: https://help.${OPENSME_DOMAIN:-opensme.graphwiz.ai}
       # ── Optional SSO via Zitadel (create an OIDC app first, see README) ──
       OIDC_ISSUER_URL: ${NOSDESK_OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${NOSDESK_OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${NOSDESK_OIDC_CLIENT_SECRET:-}
-      OIDC_REDIRECT_URI: https://help.${OPENSME_DOMAIN:-opensme.org}/auth/oidc/callback
+      OIDC_REDIRECT_URI: https://help.${OPENSME_DOMAIN:-opensme.graphwiz.ai}/auth/oidc/callback
       OIDC_DISPLAY_NAME: openSME SSO
     volumes:
       - nosdesk-uploads:/app/uploads
@@ -61,7 +61,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ticketing.rule=Host(`help.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.ticketing.rule=Host(`help.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.ticketing.tls=true"
       - "traefik.http.routers.ticketing.entrypoints=websecure"
       - "traefik.http.services.ticketing.loadbalancer.server.port=8080"

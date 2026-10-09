@@ -33,12 +33,12 @@ services:
         condition: service_healthy
     profiles: ["element"]
     environment:
-      ELEMENT_DEFAULT_SERVER_URL: "https://matrix.${OPENSME_DOMAIN:-opensme.org}"
+      ELEMENT_DEFAULT_SERVER_URL: "https://matrix.${OPENSME_DOMAIN:-opensme.graphwiz.ai}"
     networks:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.element.rule=Host(`element.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.element.rule=Host(`element.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.element.tls=true"
       - "traefik.http.routers.element.tls.certresolver=letsencrypt"
       - "traefik.http.routers.element.entrypoints=websecure"
