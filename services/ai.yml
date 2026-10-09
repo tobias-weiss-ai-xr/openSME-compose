@@ -57,7 +57,7 @@ services:
       - ai-models:/models
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ai.rule=Host(`ai.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.ai.rule=Host(`ai.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.ai.tls=true"
       - "traefik.http.routers.ai.entrypoints=websecure"
       - "traefik.http.services.ai.loadbalancer.server.port=8080"

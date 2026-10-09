@@ -30,8 +30,8 @@ services:
     restart: unless-stopped
     profiles: ["chat"]
     environment:
-      DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
-      SYNAPSE_SERVER_NAME: "matrix.${OPENSME_DOMAIN:-opensme.org}"
+      DOMAIN: ${OPENSME_DOMAIN:-opensme.graphwiz.ai}
+      SYNAPSE_SERVER_NAME: "matrix.${OPENSME_DOMAIN:-opensme.graphwiz.ai}"
       SYNAPSE_REPORT_STATS: "no"
       POSTGRES_USER: synapse_user
       POSTGRES_PASSWORD: ${SYNAPSE_DB_PASSWORD:-CHANGEME_synapse}
@@ -51,7 +51,7 @@ services:
     command: ["-c", "sh /entrypoint-setup.sh && exec /usr/local/bin/python -m synapse.app.homeserver --config-path /data/homeserver.yaml --daemonize=false"]
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.matrix.rule=Host(`matrix.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.matrix.rule=Host(`matrix.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.matrix.tls=true"
       - "traefik.http.routers.matrix.tls.certresolver=letsencrypt"
       - "traefik.http.routers.matrix.entrypoints=websecure"

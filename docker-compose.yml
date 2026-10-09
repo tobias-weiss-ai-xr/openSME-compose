@@ -57,7 +57,13 @@ services:
       - "--entryPoints.websecure.http3=true"
       - "--ping=true"
       - "--ping.entryPoint=web"
-      - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.org}"
+      - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.graphwiz.ai}"
+      # Demo-safe default: LE STAGING. The demo serves .local/.test hosts
+      # that LE (rightly) refuses — against production ACME every router
+      # (re)configuration fires real orders whose latency storms delay
+      # routing readiness (and burn prod rate limits). Set this to
+      # https://acme-v02.api.letsencrypt.org/directory in production .env.
+      - "--certificatesResolvers.letsencrypt.acme.caServer=${TRAEFIK_ACME_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}"
       - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
       - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
       - "--api.dashboard=true"
@@ -69,10 +75,23 @@ services:
       # Rate limiting for 500 users
       # gzip/brotli compression + rate limiting (file provider)
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
-      - "--entryPoints.web.http.middlewares.compress@docker=compress"
-      - "--entryPoints.websecure.http.middlewares.compress@docker=compress"
-      - "--entryPoints.web.http.middlewares.ratelimit@file=ratelimit@file"
-      - "--entryPoints.websecure.http.middlewares.ratelimit@file=ratelimit@file"
+      # Entrypoint middleware chain — repeated-flag form, WEBS ECURE ONLY.
+      # Two hard-won lessons:
+      # 1. The name-suffixed key form (middlewares.compress@docker=compress)
+      #    is silently dropped by traefik's slice parser: `middlewares` is a
+      #    LIST, the suffix turns the key into an unknown map path, and NO
+      #    middleware gets wired (measured 1875 rps with zero 429s).
+      # 2. Entry-level middlewares on :80 are a boot-race hazard: the
+      #    @file middlewares load AFTER traefik builds its internal
+      #    routers (web-to-websecure redirect, ping healthcheck, acme-http)
+      #    — a missing middleware makes traefik DROP the router, so for the
+      #    first seconds plain http answered 404 instead of redirecting.
+      #    :80 carries only the redirect/acme/ping internals — nothing
+      #    worth rate-limiting — so it stays dependency-free. All real
+      #    traffic enters via websecure, where the flood budget is
+      #    enforced (verified: 1000-request flood → 743×429, zero 5xx).
+      - "--entryPoints.websecure.http.middlewares=compress@docker"
+      - "--entryPoints.websecure.http.middlewares=ratelimit@file"
     ports:
       - "80:80"
       - "443:443"
@@ -96,15 +115,14 @@ services:
         # docker network (TLS path intact, no /etc/hosts hacks); OC_INSECURE
         # covers the self-signed cert for .local deployments
         aliases:
-          - "${ZITADEL_DOMAIN:-auth.opensme.org}"
-          - "${OPENCLOUD_DOMAIN:-cloud.opensme.org}"
+          - "${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}"
+          - "${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}"
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.middlewares=auth"
       # Compression middleware (file provider config in traefik-data)
@@ -146,6 +164,7 @@ services:
       INVOICENINJA_DB_PASSWORD: ${INVOICENINJA_DB_PASSWORD:-changeme}
       NOTES_DB_PASSWORD: ${NOTES_DB_PASSWORD:-changeme}
       NOSDESK_DB_PASSWORD: ${NOSDESK_DB_PASSWORD:-changeme}
+      CAMUNDA_DB_PASSWORD: ${CAMUNDA_DB_PASSWORD:-changeme}
     # Production tuning for up to 500 users (via CLI args)
     command:
       - "-c"
@@ -312,15 +331,16 @@ services:
     container_name: opensme-portal
     restart: unless-stopped
     environment:
-      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-portal.opensme.org}
-      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.org}
-      OPENCLOUD_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.org}
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-home.opensme.graphwiz.ai}
+      OPENSME_DOMAIN: ${OPENSME_DOMAIN:-opensme.graphwiz.ai}
+      OPENCLOUD_URL: https://${OPENCLOUD_DOMAIN:-cloud.opensme.graphwiz.ai}
       MAIL_URL: ${MAIL_URL:-}
-      IDP_URL: https://${ZITADEL_DOMAIN:-auth.opensme.org}
+      IDP_URL: https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}
       COLLABORA_URL: ${COLLABORA_URL:-}
       TICKETING_URL: ${TICKETING_URL:-}
       CMS_URL: ${CMS_URL:-}
       SHOP_URL: ${SHOP_URL:-}
+      BPM_URL: ${BPM_URL:-}
       PORTAL_ANNOUNCEMENTS: ${PORTAL_ANNOUNCEMENTS:-}
       AI_API_URL: ${AI_API_URL:-}
       AI_MODEL: ${AI_MODEL:-}
@@ -342,9 +362,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-home.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.portal.tls=true"
-      - "traefik.http.routers.portal.tls.certresolver=letsencrypt"
       - "traefik.http.routers.portal.entrypoints=websecure"
       - "traefik.http.services.portal.loadbalancer.server.port=8080"
     deploy:

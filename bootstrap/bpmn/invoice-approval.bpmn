@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:operaton="http://operaton.org/schema/1.0/bpmn"
-             targetNamespace="http://opensme.org/bpmn"
+             targetNamespace="http://opensme.graphwiz.ai/bpmn"
              id="opensme-invoice-approval-definitions">
 
   <process id="opensme-invoice-approval" name="Invoice Approval" isExecutable="true"

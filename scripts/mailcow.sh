@@ -25,8 +25,8 @@
 #   scripts/mailcow.sh logs [service]   # follow logs
 #
 # Env:
-#   MAILCOW_HOSTNAME   FQDN of the web UI   (default: mail.${OPENSME_DOMAIN:-opensme.org})
-#   OPENSME_DOMAIN     mail domain for the demo (default: opensme.org)
+#   MAILCOW_HOSTNAME   FQDN of the web UI   (default: mail.${OPENSME_DOMAIN:-opensme.graphwiz.ai})
+#   OPENSME_DOMAIN     mail domain for the demo (default: opensme.graphwiz.ai)
 #   MAILCOW_SKIP_CLAMD default y | SKIP_FTS default y — keep the demo lean
 #   MAILCOW_{SMTP,SMTPS,SUBMISSION,IMAP,IMAPS,POP,POPS}_PORT
 #                      host-side mail-port binds (defaults 25/465/587/143/993/
@@ -53,8 +53,8 @@ info() { echo "${GREEN}→${NC} $*"; }
 warn() { echo "${YELLOW}⚠${NC} $*"; }
 die()  { echo "${RED}✗${NC} $*" >&2; exit 1; }
 
-MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME:-mail.${OPENSME_DOMAIN:-opensme.org}}"
-MAIL_DOMAIN="${OPENSME_DOMAIN:-opensme.org}"
+MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME:-mail.${OPENSME_DOMAIN:-opensme.graphwiz.ai}}"
+MAIL_DOMAIN="${OPENSME_DOMAIN:-opensme.graphwiz.ai}"
 
 require_submodule() {
   [[ -f "${SUBMODULE_DIR}/docker-compose.yml" ]] || die \

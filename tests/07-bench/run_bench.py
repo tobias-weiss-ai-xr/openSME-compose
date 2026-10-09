@@ -32,9 +32,9 @@ OUT_DIR = ROOT / "docs" / "perf"
 
 # target name -> (Host header, path) routed through Traefik
 TARGETS = [
-    ("portal", "portal.opensme.org", "/health"),
-    ("opencloud", "cloud.opensme.org", "/healthz"),
-    ("paperless", "paperless.opensme.org", "/"),
+    ("portal", "portal.opensme.graphwiz.ai", "/health"),
+    ("opencloud", "cloud.opensme.graphwiz.ai", "/healthz"),
+    ("paperless", "paperless.opensme.graphwiz.ai", "/"),
 ]
 
 

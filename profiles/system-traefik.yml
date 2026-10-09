@@ -28,10 +28,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-web"
-      - "traefik.http.routers.portal-http.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.portal-http.rule=Host(`${PORTAL_DOMAIN:-home.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.portal-http.entrypoints=web"
       - "traefik.http.routers.portal-http.middlewares=https-redirect@file"
-      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-portal.opensme.org}`)"
+      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-home.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.portal.entrypoints=websecure"
       - "traefik.http.routers.portal.tls.certresolver=mytlschallenge"
       - "traefik.http.services.portal.loadbalancer.server.port=8080"

@@ -45,7 +45,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.casdoor.rule=Host(`${CASDOOR_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.casdoor.rule=Host(`${CASDOOR_DOMAIN:-auth.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.casdoor.tls=true"
       - "traefik.http.routers.casdoor.entrypoints=websecure"
       - "traefik.http.services.casdoor.loadbalancer.server.port=8000"

@@ -487,10 +487,10 @@ Environment variables for local development:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PORTAL_DOMAIN` | `portal.opensme.org` | Portal hostname |
-| `OPENSME_DOMAIN` | `opensme.org` | Root domain |
+| `PORTAL_DOMAIN` | `home.opensme.graphwiz.ai` | Portal hostname |
+| `OPENSME_DOMAIN` | `opensme.graphwiz.ai` | Root domain |
 | `IDP_URL` | *(empty — card hidden)* | Zitadel link on landing page |
-| `OPENCLOUD_URL` | `https://cloud.opensme.org` | OpenCloud link |
+| `OPENCLOUD_URL` | `https://cloud.opensme.graphwiz.ai` | OpenCloud link |
 | `MAIL_URL` | *(empty — card hidden)* | Webmail link |
 | `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Support / Website / Shop cards |
@@ -588,9 +588,9 @@ Verify that `OC_OIDC_ISSUER` matches your Zitadel domain:
 
 ```bash
 # In .env:
-ZITADEL_DOMAIN=auth.opensme.org
+ZITADEL_DOMAIN=auth.opensme.graphwiz.ai
 # OpenCloud should have:
-OC_OIDC_ISSUER=https://auth.opensme.org
+OC_OIDC_ISSUER=https://auth.opensme.graphwiz.ai
 ```
 
 Then register OpenCloud as an OIDC client in Zitadel's console at
@@ -806,9 +806,9 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENSME_DOMAIN` | `opensme.org` | Root domain shared by all services |
-| `PORTAL_DOMAIN` | `portal.opensme.org` | Portal hostname |
-| `ZITADEL_DOMAIN` | `auth.opensme.org` | SSO hostname |
+| `OPENSME_DOMAIN` | `opensme.graphwiz.ai` | Root domain shared by all services |
+| `PORTAL_DOMAIN` | `home.opensme.graphwiz.ai` | Portal hostname |
+| `ZITADEL_DOMAIN` | `auth.opensme.graphwiz.ai` | SSO hostname |
 | `POSTGRES_PASSWORD` | `CHANGEME_*` | PostgreSQL superuser password |
 | `ZITADEL_ADMIN_PASSWORD` | `CHANGEME_*` | Zitadel admin password |
 | `ZITADEL_ADMIN_EMAIL` | `admin@...` | Zitadel admin email |
@@ -992,27 +992,27 @@ For automated daily backups:
 Each service needs an A record pointing to your server. For a single-IP deployment:
 
 ```
-opensme.org.          IN A   <your-server-ip>
-portal.opensme.org.   IN A   <your-server-ip>
-auth.opensme.org.     IN A   <your-server-ip>
-cloud.opensme.org.    IN A   <your-server-ip>
-collabora.opensme.org. IN A  <your-server-ip>
-webmail.opensme.org.  IN A  <your-server-ip>
-mail.opensme.org.     IN A   <your-server-ip>
+opensme.graphwiz.ai.          IN A   <your-server-ip>
+home.opensme.graphwiz.ai.   IN A   <your-server-ip>
+auth.opensme.graphwiz.ai.     IN A   <your-server-ip>
+cloud.opensme.graphwiz.ai.    IN A   <your-server-ip>
+collabora.opensme.graphwiz.ai. IN A  <your-server-ip>
+webmail.opensme.graphwiz.ai.  IN A  <your-server-ip>
+mail.opensme.graphwiz.ai.     IN A   <your-server-ip>
 ```
 
-Or use a wildcard: `*.opensme.org. IN A <your-server-ip>`.
+Or use a wildcard: `*.opensme.graphwiz.ai. IN A <your-server-ip>`.
 
 Optional services add more hostnames — `pad.*`, `notes.*`, `matrix.*`,
 `element.*`, `paperless.*`, `invoices.*`, `help.*`, `www.*`, `shop.*`,
 `ai.*` — all covered by the wildcard, otherwise add per-service A records.
 
-For the **live demo** (`home.opensme.org`), you only need:
+For the **live demo** (`home.opensme.graphwiz.ai`), you only need:
 
 ```
-home.opensme.org.        IN A   <your-server-ip>
-auth.home.opensme.org.   IN A   <your-server-ip>
-cloud.home.opensme.org.  IN A   <your-server-ip>
+home.opensme.graphwiz.ai.        IN A   <your-server-ip>
+auth.home.opensme.graphwiz.ai.   IN A   <your-server-ip>
+cloud.home.opensme.graphwiz.ai.  IN A   <your-server-ip>
 ```
 
 ## Security
@@ -1156,7 +1156,7 @@ consulting hour to a fixed-price enablement package. To be explicit:
 **what you buy is time, expertise, and enablement — not a product.**
 openSME itself remains 100% free open-source software; there is no paid
 edition, no license fees, and no vendor lock-in. Reach me at
-[hello@opensme.org](mailto:hello@opensme.org) or
+[opensme@graphwiz.ai](mailto:opensme@graphwiz.ai) or
 [graphwiz.ai](https://graphwiz.ai).
 
 ## Credits

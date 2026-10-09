@@ -49,7 +49,7 @@ PROFILE    ?= soho
 # DOMAIN: .env wins over the ambient environment (an exported $DOMAIN from
 # an unrelated shell would otherwise silently point tests at a foreign
 # host); a make-command-line override (make e2e DOMAIN=x) still wins.
-DOMAIN     := $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
+DOMAIN     := $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.local')
 COMPOSE    ?= docker compose
 # Use the generated .env when present (manual installs via init-env.sh /
 # demo.sh); fall back to the template so CI/static runs stay hermetic (they

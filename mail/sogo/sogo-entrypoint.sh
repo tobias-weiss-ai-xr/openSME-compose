@@ -16,9 +16,9 @@ if [ -f "$TEMPLATE" ]; then
   mkdir -p "$(dirname "$OUTPUT")"
   sed \
     -e "s|\${SOGO_DB_PASSWORD}|${SOGO_DB_PASSWORD:-CHANGEME_sogo}|g" \
-    -e "s|\${LDAP_ROOT_DN}|${LDAP_ROOT_DN:-dc=opensme,dc=org}|g" \
+    -e "s|\${LDAP_ROOT_DN}|${LDAP_ROOT_DN:-dc=opensme,dc=graphwiz,dc=ai}|g" \
     -e "s|\${LDAP_ADMIN_PASSWORD}|${LDAP_ADMIN_PASSWORD:-CHANGEME_ldap}|g" \
-    -e "s|\${OPENSME_DOMAIN}|${OPENSME_DOMAIN:-opensme.org}|g" \
+    -e "s|\${OPENSME_DOMAIN}|${OPENSME_DOMAIN:-opensme.graphwiz.ai}|g" \
     -e "s|\${TZ}|${TZ:-Europe/Berlin}|g" \
     "$TEMPLATE" > "$OUTPUT"
   chown sogo:sogo "$OUTPUT"

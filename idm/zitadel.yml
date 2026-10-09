@@ -57,7 +57,7 @@ services:
       ZITADEL_DATABASE_POSTGRES_SSL_MODE: disable
       ZITADEL_DATABASE_POSTGRES_USER_SSLMODE: disable
       # ── External domain ──
-      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-auth.opensme.org}
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}
       # System API user (JWT-profile auth) — lets the host manage instance
       # domains (e.g. after a domain rename) via the system API. Key lives in
       # the host .env; never bake a private key into the compose files.
@@ -75,7 +75,7 @@ services:
       # (unknowable ⇒ broken OIDC setup on fresh installs).
       ZITADEL_FIRSTINSTANCE_ORG_NAME: openSME
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: zitadel-admin
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.org}}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS: ${ZITADEL_ADMIN_EMAIL:-admin@${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}}}
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_FIRSTNAME: Admin
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_LASTNAME: openSME
       # must satisfy the default password complexity policy (min 8, upper,
@@ -124,7 +124,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "com.centurylinklabs.watchtower.enable=false"
-      - "traefik.http.routers.zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.org}`)"
+      - "traefik.http.routers.zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}`)"
       - "traefik.http.routers.zitadel.tls=true"
       - "traefik.http.routers.zitadel.entrypoints=websecure"
       - "traefik.http.services.zitadel.loadbalancer.server.port=8080"

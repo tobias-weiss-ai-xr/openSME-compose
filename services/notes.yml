@@ -32,7 +32,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: impress.settings.Production
       DJANGO_SECRET_KEY: ${NOTES_DJANGO_SECRET_KEY:-CHANGEME_notes}
-      ALLOWED_HOSTS: "notes.${OPENSME_DOMAIN:-opensme.org},notes-backend"
+      ALLOWED_HOSTS: "notes.${OPENSME_DOMAIN:-opensme.graphwiz.ai},notes-backend"
       DATA_DIR: /data
       DB_ENGINE: django.db.backends.postgresql
       DB_HOST: postgres
@@ -43,16 +43,16 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/1
       OIDC_RP_CLIENT_ID: "opensme-notes"
       OIDC_RP_CLIENT_SECRET: ${NOTES_OIDC_CLIENT_SECRET:-CHANGEME_notes_oidc}
-      OIDC_OP_JWKS_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/.well-known/openid-configuration/jwks"
-      OIDC_OP_AUTHORIZATION_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oauth/v2/authorize"
-      OIDC_OP_TOKEN_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oauth/v2/token"
-      OIDC_OP_USER_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.org}/oidc/v1/userinfo"
+      OIDC_OP_JWKS_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}/.well-known/openid-configuration/jwks"
+      OIDC_OP_AUTHORIZATION_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}/oauth/v2/authorize"
+      OIDC_OP_TOKEN_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}/oauth/v2/token"
+      OIDC_OP_USER_ENDPOINT: "https://${ZITADEL_DOMAIN:-auth.opensme.graphwiz.ai}/oidc/v1/userinfo"
       OIDC_RP_SCOPES: "openid profile email"
       OIDC_CREATE_USER: "true"
       OIDC_STORE_ID_TOKEN: "true"
-      LOGIN_REDIRECT_URL: "https://notes.${OPENSME_DOMAIN:-opensme.org}"
-      COLLABORATION_API_URL: "https://notes.${OPENSME_DOMAIN:-opensme.org}/collaboration/api/"
-      COLLABORATION_WS_URL: "wss://notes.${OPENSME_DOMAIN:-opensme.org}/collaboration/ws/"
+      LOGIN_REDIRECT_URL: "https://notes.${OPENSME_DOMAIN:-opensme.graphwiz.ai}"
+      COLLABORATION_API_URL: "https://notes.${OPENSME_DOMAIN:-opensme.graphwiz.ai}/collaboration/api/"
+      COLLABORATION_WS_URL: "wss://notes.${OPENSME_DOMAIN:-opensme.graphwiz.ai}/collaboration/ws/"
       COLLABORATION_SERVER_SECRET: ${NOTES_COLLABORATION_SECRET:-CHANGEME_notes_collab}
       Y_PROVIDER_API_BASE_URL: http://notes-y-provider:1234
       Y_PROVIDER_API_KEY: ${NOTES_COLLABORATION_SECRET:-CHANGEME_notes_collab}
@@ -102,7 +102,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.notes.rule=Host(`notes.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.notes.rule=Host(`notes.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.notes.tls=true"
       - "traefik.http.routers.notes.tls.certresolver=letsencrypt"
       - "traefik.http.routers.notes.entrypoints=websecure"

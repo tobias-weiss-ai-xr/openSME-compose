@@ -29,10 +29,10 @@ services:
     profiles: ["collab"]
     environment:
       CPAD_HTTP_UNSAFE: "http://cryptpad:3000"
-      CPAD_HTTP_SAFE: "https://pad.${OPENSME_DOMAIN:-opensme.org}"
+      CPAD_HTTP_SAFE: "https://pad.${OPENSME_DOMAIN:-opensme.graphwiz.ai}"
       CPAD_MAIN_DOMAIN: "http://cryptpad:3000"
       CPAD_SANDBOX_DOMAIN: "http://cryptpad:3000"
-      CPAD_ADMIN_EMAIL: ${CRYPTPAD_ADMIN_EMAIL:-admin@${OPENSME_DOMAIN:-opensme.org}}
+      CPAD_ADMIN_EMAIL: ${CRYPTPAD_ADMIN_EMAIL:-admin@${OPENSME_DOMAIN:-opensme.graphwiz.ai}}
       CPAD_CONF: /cryptpad/config/config.js
     volumes:
       - cryptpad-data:/cryptpad/data
@@ -42,7 +42,7 @@ services:
       - opensme-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pad.rule=Host(`pad.${OPENSME_DOMAIN:-opensme.org}`)"
+      - "traefik.http.routers.pad.rule=Host(`pad.${OPENSME_DOMAIN:-opensme.graphwiz.ai}`)"
       - "traefik.http.routers.pad.tls=true"
       - "traefik.http.routers.pad.tls.certresolver=letsencrypt"
       - "traefik.http.routers.pad.entrypoints=websecure"

@@ -2,7 +2,7 @@
 # ═══════════════════════════════════════════════════════════════
 # openSME — Live Demo Deployer
 # ═══════════════════════════════════════════════════════════════
-# One-command deploy for home.opensme.org.
+# One-command deploy for home.opensme.graphwiz.ai.
 # Starts: Portal, PostgreSQL, Redis, Memcached, Zitadel, OpenCloud.
 # Skips:  PgBouncer, LDAP, Collabora, Stalwart, SOGo.
 #
@@ -12,8 +12,8 @@
 #
 # Prerequisites:
 #   - Docker + Compose v2
-#   - DNS: A records for home.opensme.org, auth.home.opensme.org,
-#           cloud.home.opensme.org → your server IP
+#   - DNS: A records for home.opensme.graphwiz.ai, auth.home.opensme.graphwiz.ai,
+#           cloud.home.opensme.graphwiz.ai → your server IP
 #   - Ports 80 + 443 open and pointing to this host
 #
 # Usage:
@@ -92,14 +92,14 @@ if [[ "$FORCE_ENV" == true ]] || [[ ! -f .env ]]; then
 # Generated: $(date -Iseconds)
 
 # ── Domains ──
-OPENSME_DOMAIN=home.opensme.org
-PORTAL_DOMAIN=home.opensme.org
-ZITADEL_DOMAIN=auth.home.opensme.org
+OPENSME_DOMAIN=home.opensme.graphwiz.ai
+PORTAL_DOMAIN=home.opensme.graphwiz.ai
+ZITADEL_DOMAIN=auth.home.opensme.graphwiz.ai
 IDP_URL=https://"$ZITADEL_DOMAIN"
-OPENCLOUD_DOMAIN=cloud.home.opensme.org
+OPENCLOUD_DOMAIN=cloud.home.opensme.graphwiz.ai
 
 # ── LDAP ──
-LDAP_ROOT_DN=dc=opensme,dc=org
+LDAP_ROOT_DN=dc=opensme,dc=graphwiz,dc=ai
 
 # ── Database ──
 POSTGRES_PASSWORD=$(pw)
