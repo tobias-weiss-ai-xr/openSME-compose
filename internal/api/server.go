@@ -41,13 +41,17 @@ type StripRecord struct {
 
 // Server is the agent's HTTP surface and reconcile state.
 type Server struct {
-	cfg   *config.Config
-	kb    *knowledge.Store
-	chk   *checker.Checker
-	heal  *healer.Healer
-	llm   *LLM
-	mu    sync.Mutex
-	start time.Time
+	cfg  *config.Config
+	kb   *knowledge.Store
+	chk  *checker.Checker
+	heal *healer.Healer
+	llm  *LLM
+	mu   sync.Mutex
+	// saveMu serializes state.json writes (used from the SIGTERM handler, the
+	// reconcile ticker and /heal — concurrently) and pairs each write with an
+	// atomic temp+rename so a reader never observes a torn file.
+	saveMu sync.Mutex
+	start  time.Time
 
 	containers []checker.Finding
 	matches    map[string][]knowledge.Match
@@ -124,8 +128,12 @@ func (s *Server) Reconcile(ctx context.Context) error {
 			s.mu.Unlock()
 			if err != nil {
 				slog.Warn("llm analysis failed", "container", f.Container, "err", err)
+				// The error text can embed the backend URL/host/IP — run it
+				// through the anonymizer so raw values never reach the evidence
+				// log (dev-agent-privacy: strip-then-review).
+				why, _ := s.Anonymize(err.Error())
 				s.addEvidence(EvidenceEntry{Time: time.Now().UTC(), Kind: "strip",
-					What: "llm analysis error", Where: f.Container, Why: err.Error()})
+					What: "llm analysis error", Where: f.Container, Why: why})
 				continue
 			}
 			s.addMatch(f.Service, knowledge.Match{Service: f.Service, Runbook: knowledge.Runbook{
@@ -318,7 +326,9 @@ type persisted struct {
 
 func (s *Server) stateFile() string { return filepath.Join(s.cfg.StateDir, "state.json") }
 
-// Save writes history+evidence to the state dir (best effort).
+// Save writes history+evidence to the state dir (best effort). Concurrent
+// callers (reconcile ticker, /heal, SIGTERM) are serialized, and the file is
+// replaced atomically so it is never observed half-written.
 func (s *Server) Save() error {
 	if err := os.MkdirAll(s.cfg.StateDir, 0o700); err != nil {
 		return fmt.Errorf("state dir: %w", err)
@@ -330,7 +340,13 @@ func (s *Server) Save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.stateFile(), raw, 0o600)
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
+	tmp := s.stateFile() + ".tmp"
+	if err := os.WriteFile(tmp, raw, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, s.stateFile())
 }
 
 func (s *Server) load() {

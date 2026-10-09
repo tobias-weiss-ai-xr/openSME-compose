@@ -57,9 +57,11 @@ func (l *LLM) Enabled() bool { return l != nil }
 
 // findingContext renders one finding into a compact context blob. It runs
 // through the server anonymizer BEFORE any byte leaves the host.
+//
+// No s.mu is taken here on purpose: Anonymize already self-synchronizes via
+// addEvidence (which itself locks s.mu). Holding the lock across Anonymize
+// would risk a re-entrant lock the moment a strip record fires.
 func (s *Server) findingContext(f checker.Finding) string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	raw := fmt.Sprintf("container=%s service=%s state=%s health=%s restarts=%d oom=%t mem_pct=%.1f symptoms=%s detail=%q",
 		f.Container, f.Service, f.State, f.Health, f.RestartCount, f.OOMKilled, f.MemPct,
 		joinSymptoms(f.Symptoms), f.Detail)

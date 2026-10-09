@@ -125,11 +125,13 @@ def run_script(name: str, script_path: str, domain: str = "localhost",
         return False, f"{script_path} not found"
 
     cmd = [sys.executable, str(full_path)]
-    # e2e resolves the domain itself from .env (OPENSME_DOMAIN) unless the
-    # caller was explicit — "localhost" would hide a demo-domain .env
-    if domain and "smoke" in script_path:
+    # Smoke always targets the local port. E2E, by contrast, resolves the
+    # domain itself from .env (OPENSME_DOMAIN) unless the caller was
+    # explicit — passing the default "localhost" would hide a demo-domain
+    # .env, so only append a domain argument when --domain was given.
+    if "smoke" in script_path:
         cmd.append(domain)
-    elif domain and "e2e" in script_path and not e2e:
+    elif "e2e" in script_path and e2e:
         cmd.append(domain)
 
     try:
