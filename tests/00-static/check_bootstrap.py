@@ -17,7 +17,10 @@ demo time — Operaton rejects a deployment (HTTP 400) when:
 Usage: python3 tests/00-static/check_bootstrap.py
 """
 
+import shutil
+import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -26,6 +29,7 @@ from conftest import Result, ROOT  # noqa: E402
 
 BPMN_DIR = ROOT / "bootstrap" / "bpmn"
 DEPLOY_SCRIPT = ROOT / "bootstrap" / "bpmn-deploy.sh"
+ENV_GEN_SCRIPT = ROOT / "scripts" / "init-env.sh"
 OPERATON_NS = "http://operaton.org/schema/1.0/bpmn"
 
 
@@ -105,6 +109,62 @@ def check_deploy_script(result: Result) -> None:
         result.ok("bootstrap/bpmn-deploy.sh executable")
 
 
+def check_env_generator(result: Result) -> None:
+    """scripts/init-env.sh must emit a working .env: every CHANGEME_
+    placeholder replaced with a random value, an apr1 Traefik hash, and
+    0600 permissions — and must refuse to clobber an existing .env."""
+    if not ENV_GEN_SCRIPT.is_file():
+        result.fail("scripts/init-env.sh missing")
+        return
+    result.ok("scripts/init-env.sh present")
+
+    with tempfile.TemporaryDirectory() as td:
+        tdir = Path(td)
+        (tdir / "scripts").mkdir()
+        shutil.copy(ENV_GEN_SCRIPT, tdir / "scripts" / "init-env.sh")
+        shutil.copy(ROOT / ".env.example", tdir / ".env.example")
+
+        env = {**__import__("os").environ}
+        env.pop("ENV_GEN_SKIP", None)
+        run = subprocess.run(
+            ["bash", "scripts/init-env.sh"], cwd=tdir, env=env,
+            capture_output=True, text=True,
+        )
+        if run.returncode != 0:
+            result.fail(f"init-env.sh exit={run.returncode}: {run.stderr.strip()}")
+            return
+        out = (tdir / ".env").read_text()
+
+        if "=CHANGEME_" in out:
+            result.fail("init-env.sh left unresolved CHANGEME_ placeholder(s)")
+        else:
+            result.ok("init-env.sh replaced all CHANGEME_ placeholders")
+
+        traefik = next(
+            (ln for ln in out.splitlines() if ln.startswith("TRAEFIK_USERS=")), ""
+        )
+        if "$apr1$" not in traefik and "$$apr1$$" not in traefik:
+            result.fail(f"init-env.sh TRAEFIK_USERS is not an apr1 hash: {traefik!r}")
+        else:
+            result.ok("init-env.sh produced apr1 Traefik hash")
+
+        if (tdir / ".env").stat().st_mode & 0o777 != 0o600:
+            result.fail("init-env.sh .env is not mode 0600")
+        else:
+            result.ok("init-env.sh .env locked to 0600")
+
+        # ── idempotency: second run must refuse to clobber ──
+        before = (tdir / ".env").read_text()
+        run2 = subprocess.run(
+            ["bash", "scripts/init-env.sh"], cwd=tdir, env=env,
+            capture_output=True, text=True,
+        )
+        if run2.returncode != 0 or (tdir / ".env").read_text() != before:
+            result.fail("init-env.sh is not idempotent (clobbered existing .env)")
+        else:
+            result.ok("init-env.sh is idempotent (no-clobber)")
+
+
 def main() -> int:
     result = Result("bootstrap-seed-data")
     if not BPMN_DIR.is_dir():
@@ -117,6 +177,7 @@ def main() -> int:
     for f in files:
         check_file(f, result)
     check_deploy_script(result)
+    check_env_generator(result)
     return 0 if result.summary() else 1
 
 

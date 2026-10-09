@@ -322,11 +322,10 @@ restore-from:
 # ---------------------------------------------------------------------------
 bootstrap:
 	@echo -e "$(BLUE)── bootstrapping ──$(NC)"
-	@cp -n .env.example .env 2>/dev/null || true
+	@./scripts/init-env.sh
 	@pip install -r tests/requirements.txt 2>/dev/null || \
 		echo -e "$(YELLOW)⚠ pip install skipped (install pyyaml manually: pip install pyyaml)$(NC)"
-	@echo -e "$(GREEN)✅ Bootstrap complete$(NC)"
-	@echo -e "  Edit .env with your settings, then: make up PROFILE=soho"
+	@echo -e "$(GREEN)✅ Bootstrap complete — configure .env if needed, then: make up PROFILE=soho"
 
 bpm-deploy:
 	@echo -e "$(BLUE)── deploying BPMN seed processes ──$(NC)"
@@ -408,7 +407,7 @@ help:
 	@echo "    make agent-status         Print the bot's persisted status"
 	@echo ""
 	@echo -e "  $(GREEN)Other$(NC)"
-	@echo "    make bootstrap           Create .env from .env.example"
+	@echo "    make bootstrap           Generate a working .env (random secrets) + test deps"
 	@echo "    make bpm-deploy          Deploy seed BPMN processes to the Operaton engine"
 	@echo "    make clean               Remove test artifacts"
 	@echo ""

@@ -221,9 +221,13 @@ halving the service count for the IAM layer.
 ```bash
 git clone https://github.com/tobias-weiss-ai-xr/openSME-compose.git
 cd openSME-compose
-cp .env.example .env
-# Edit .env — set your domains and passwords
+./scripts/init-env.sh   # generate .env with random passwords (never ships CHANGEME)
+# Edit .env — review domains; adjust passwords to your policy if you like
 ```
+
+> Zero-friction alternative: `./scripts/demo.sh` bootstraps a full demo
+> stack in one command (generates `.env`, seeds Zitadel, boots, prints
+> credentials and a health summary).
 
 ### 2. Start core services
 
@@ -436,6 +440,7 @@ openSME-compose/
 │   ├── Dockerfile
 │   └── src/main.rs
 ├── scripts/
+│   ├── init-env.sh           # Generate working .env (random secrets)
 │   ├── start.sh               # Start stack (core + zitadel + opencloud)
 │   ├── stop.sh                # Stop all opensme containers
 │   ├── demo.sh                # One-command demo with random passwords
@@ -901,7 +906,8 @@ make restore-from BACKUP=<ts>  # Restore from backup
 |---|---|
 | `scripts/start.sh` | Start the stack (core + zitadel + opencloud) |
 | `scripts/stop.sh` | Stop all opensme containers |
-| `scripts/demo.sh` | Launch minimal demo with random passwords |
+| `scripts/init-env.sh` | Generate a working `.env` from `.env.example` (random secrets; refuses to clobber) |
+| `scripts/demo.sh` | Launch minimal demo with random passwords (boots + prints health summary) |
 | `scripts/demo-live.sh` | Deploy to server with Let's Encrypt |
 | `scripts/backup.sh` | Backup PostgreSQL + Traefik + volumes (`--volumes`, `--dry-run`, `--services`) |
 | `scripts/restore.sh` | Restore from backup (`--list`, `--pg-only`, `--volumes-only`) |

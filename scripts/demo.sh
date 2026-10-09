@@ -213,6 +213,36 @@ docker compose \
 echo ""
 ok "openSME Demo is running!"
 
+# ── Verify the stack actually came up ────────
+# A one-command bootstrap should not print "running" while the Portal is
+# still unreachable. The wait is bounded and never fails the boot: a slow
+# or absent container reports status instead of aborting.
+info "Waiting for the Portal to be reachable..."
+PORTAL_READY="no"
+for _ in $(seq 1 45); do
+  health=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
+    http://localhost:8080/health 2>/dev/null || echo 000)
+  [[ "$health" == "200" ]] && { PORTAL_READY="yes"; break; }
+  sleep 5
+done
+if [[ "$PORTAL_READY" == "yes" ]]; then
+  ok "Portal is up (http://localhost:8080/health)"
+else
+  warn "Portal did not answer on http://localhost:8080/health yet."
+  warn "Check the logs: docker compose ${CF[*]} logs portal"
+fi
+
+echo ""
+info "Service health overview:"
+for c in opensme-portal opensme-zitadel opensme-opencloud \
+         opensme-postgres opensme-redis opensme-memcached opensme-traefik; do
+  st=$(docker inspect --format '{{.State.Health.Status}}' "$c" 2>/dev/null || echo "absent")
+  case "$st" in
+    healthy)  echo -e "  ${GREEN}✓${NC} $c (healthy)";;
+    *)        echo -e "  ${YELLOW}…${NC} $c ($st)";;
+  esac
+done
+
 # ── Get admin password ────────────────────────
 ADMIN_PW=$(grep ZITADEL_ADMIN_PASSWORD .env | cut -d= -f2)
 OC_ADMIN=$(grep OC_ADMIN_PASSWORD .env | cut -d= -f2)
@@ -246,3 +276,14 @@ echo ""
 info "To stop:   docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml down"
 info "To follow: docker compose logs -f"
 info "For public HTTPS demo, see scripts/demo-live.sh"
+echo ""
+# ── Seed next steps (zero-friction hints) ────
+# Bootstrap is two more deliberate steps away from a fully packed demo:
+#  1. Workflow processes (BPMN) — only when the engine is enabled.
+#  2. Sample documents — human-readable content, never run in CI.
+if docker ps --format '{{.Names}}' | grep -qi 'opensme-camunda\|opensme-operaton'; then
+  info "Workflow engine detected — deploy the sample processes:"
+  info "    make bpm-deploy   # or: ./bootstrap/bpmn-deploy.sh"
+fi
+info "Sample documents (loading guide + files): bootstrap/seed-content/"
+info "    see bootstrap/seed-content/README.md — load into Cloud / Paperless / Team Notes"
