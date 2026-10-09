@@ -1,0 +1,81 @@
+# ── Global defaults ──────────────────────────────────
+# Inherited by every service in this file via: <<: *service-defaults
+x-service-defaults: &service-defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+# ═══════════════════════════════════════════════════════════════
+# openSME — Operaton (BPMN workflow & decision engine)
+# ═══════════════════════════════════════════════════════════════
+# Operaton — the community-owned Apache 2.0 successor of Camunda 7 CE
+# (same engine lineage, API/model/DB-schema compatible).  Spring Boot
+# distribution: BPMN 2.0 process engine, DMN decision tables, REST API
+# (/engine-rest/), and web apps (Cockpit, Tasklist, Admin) at
+# https://bpm.<domain>/operaton/app/
+#
+# Include via: COMPOSE_FILE=…:services/camunda.yml
+# Or via profile: docker compose --profile camunda up -d
+#
+# Requires: PostgreSQL (core, camunda_db)
+#
+# The upstream image ships H2/MySQL/PostgreSQL JDBC drivers; no
+# custom build is needed. DB_* env vars configure the datasource at
+# boot (the entrypoint translates them to SPRING_DATASOURCE_*).
+# WAIT_FOR pauses boot until postgres is accepting TCP connections.
+#
+# Service name and profile retain the "camunda" label for backward
+# compatibility — the image is swappable via CAMUNDA_IMAGE.
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  camunda:
+    <<: *service-defaults
+    image: ${CAMUNDA_IMAGE:-operaton/operaton:2.1.5}
+    container_name: opensme-camunda
+    restart: unless-stopped
+    profiles: ["camunda"]
+    environment:
+      DB_DRIVER: org.postgresql.Driver
+      DB_URL: jdbc:postgresql://postgres:5432/camunda_db
+      DB_USERNAME: camunda_user
+      DB_PASSWORD: ${CAMUNDA_DB_PASSWORD:?CAMUNDA_DB_PASSWORD must be set in .env}
+      WAIT_FOR: postgres:5432
+      WAIT_FOR_TIMEOUT: "60"
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - camunda-data:/operaton/configuration/userlib
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.camunda.rule=Host(`${CAMUNDA_DOMAIN:-bpm.${OPENSME_DOMAIN:-opensme.org}}`)"
+      - "traefik.http.routers.camunda.tls=true"
+      - "traefik.http.routers.camunda.entrypoints=websecure"
+      - "traefik.http.services.camunda.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/engine-rest/engine"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Spring Boot cold start: first boot creates schema + indexes
+      start_period: 120s
+    networks:
+      - opensme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+volumes:
+  camunda-data:

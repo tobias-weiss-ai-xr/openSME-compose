@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:operaton="http://operaton.org/schema/1.0/bpmn"
+             targetNamespace="http://opensme.org/bpmn"
+             id="opensme-vacation-request-definitions">
+
+  <process id="opensme-vacation-request" name="Vacation Request" isExecutable="true"
+           operaton:historyTimeToLive="P365D">
+
+    <!-- Start: employee submits a vacation request -->
+    <startEvent id="request-submitted" name="Request submitted">
+      <documentation>An employee submits a vacation request with a start date, end date and optional substitute.</documentation>
+    </startEvent>
+    <sequenceFlow id="flow-1" sourceRef="request-submitted" targetRef="check-duration" />
+
+    <!-- Short requests (≤ 3 days) skip the second approval level -->
+    <exclusiveGateway id="check-duration" name="&gt; 3 days?" />
+    <sequenceFlow id="flow-2" sourceRef="check-duration" targetRef="team-lead-approval">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${days &gt; 3}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-3" sourceRef="check-duration" targetRef="lead-approval">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${days &lt;= 3}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Level 1: team lead (always) -->
+    <userTask id="team-lead-approval" name="Team lead approval"
+              operaton:assignee="${teamLead}"
+              operaton:formKey="embedded:app:forms/approve-vacation.html">
+      <documentation>Team lead reviews the request and the requested substitute.</documentation>
+    </userTask>
+    <sequenceFlow id="flow-4" sourceRef="team-lead-approval" targetRef="lead-decision" />
+    <exclusiveGateway id="lead-decision" name="Lead approved?" />
+    <sequenceFlow id="flow-5" sourceRef="lead-decision" targetRef="hr-approval">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${leadApproved}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-6" sourceRef="lead-decision" targetRef="notify-rejection">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${!leadApproved}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Level 2: HR (only for long requests) -->
+    <userTask id="hr-approval" name="HR approval"
+              operaton:candidateGroups="hr"
+              operaton:formKey="embedded:app:forms/approve-vacation.html">
+      <documentation>HR confirms the request against the absence calendar and the remaining leave balance.</documentation>
+    </userTask>
+    <sequenceFlow id="flow-7" sourceRef="hr-approval" targetRef="hr-decision" />
+    <exclusiveGateway id="hr-decision" name="HR approved?" />
+    <sequenceFlow id="flow-8" sourceRef="hr-decision" targetRef="book-absence">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${hrApproved}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-9" sourceRef="hr-decision" targetRef="notify-rejection">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${!hrApproved}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Short path: lead approval is final -->
+    <userTask id="lead-approval" name="Lead approval (short request)"
+              operaton:assignee="${teamLead}">
+      <documentation>Short requests only need the team lead's sign-off.</documentation>
+    </userTask>
+    <sequenceFlow id="flow-10" sourceRef="lead-approval" targetRef="short-decision" />
+    <exclusiveGateway id="short-decision" name="Approved?" />
+    <sequenceFlow id="flow-11" sourceRef="short-decision" targetRef="book-absence">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${approved}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-12" sourceRef="short-decision" targetRef="notify-rejection">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${!approved}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Book the absence (sets a process variable) -->
+    <serviceTask id="book-absence" name="Book absence"
+                 operaton:expression="${execution.setVariable('bookingStatus', 'booked')}">
+      <documentation>Writes the approved absence to the team calendar.</documentation>
+    </serviceTask>
+    <sequenceFlow id="flow-13" sourceRef="book-absence" targetRef="notify-approval" />
+
+    <serviceTask id="notify-approval" name="Notify approval"
+                 operaton:expression="${execution.setVariable('notification', 'approved')}">
+      <documentation>Emails the employee that the request was approved.</documentation>
+    </serviceTask>
+    <sequenceFlow id="flow-14" sourceRef="notify-approval" targetRef="request-approved" />
+
+    <!-- Rejection -->
+    <serviceTask id="notify-rejection" name="Notify rejection"
+                 operaton:expression="${execution.setVariable('notification', 'rejected')}">
+      <documentation>Emails the employee that the request was rejected, with the reason.</documentation>
+    </serviceTask>
+    <sequenceFlow id="flow-15" sourceRef="notify-rejection" targetRef="request-rejected" />
+
+    <!-- End events -->
+    <endEvent id="request-approved" name="Request approved" />
+    <endEvent id="request-rejected" name="Request rejected" />
+
+  </process>
+</definitions>

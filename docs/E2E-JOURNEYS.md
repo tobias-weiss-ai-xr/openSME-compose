@@ -329,6 +329,140 @@ This is the boot-strapping promise as a test: setup steps and seeding
 are idempotent, volumes hold state, and a re-run converges instead of
 diverging.
 
+## Epic Y — Disaster recovery: a backup that has survived its drill
+
+> *Als Betreiber will ich aus einem echten Total-Verlust (Volumen weg,
+> Datenbank weg) mit dem Bordmittel wiederherstellen können — und zwar
+> so, dass es einer vorher geprüft hat.*
+
+| # | User story | Test |
+|---|------------|------|
+| Y1 | Mein Restore-Punkt ist vollständig | `backup.sh` produces the SQL dump (with the drill marker database in it) and non-empty volume archives |
+| Y2 | Ich sehe vorher, was passieren würde | `restore.sh --dry-run <prefix>` exits 0 and names the artifacts |
+| Y3 | Der Ernstfall läuft durch | the marker database is DESTROYED (`DROP DATABASE`, verified gone), then the interactive `restore.sh` is answered "yes" — it takes the stack down, restores PostgreSQL + volumes and boots it back |
+| Y4 | Die Daten sind wirklich zurück | the marker row resurrects byte-for-byte from the dump (`SELECT` returns the exact buried value) |
+| Y5 | Danach ist der Stack wieder sauber online | the portal answers 200 on the public route after the drill |
+
+The drill drives the stack lifecycle like persistence does, but goes
+further: it destroys state for real and puts it back with the
+operator's own tooling.
+
+## Epic Z — Trust & transport at the edge: the contract of the front door
+
+> *Als Nutzer will ich, dass der Transport mirror-sicher ist: Klartext
+> landet nirgends, keine Antwort verrät Interna, Management-Flächen
+> verlangen Beweise.*
+
+| # | User story | Test |
+|---|------------|------|
+| Z1 | Klartext-HTTP gibt es nicht | every public hostname (portal/auth/cloud) answers plain http with a 3xx redirect to the https URL |
+| Z2 | Jede Antwort trägt die Sicherheits-Header | page AND API responses carry `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and a CSP |
+| Z3 | Fehlerseiten verraten nichts | unknown paths answer 404 with a body containing no framework names, no panics, no stack traces |
+| Z4 | Das Traefik-Dashboard bleibt hinter Basic-Auth | the dashboard router answers 401 without credentials |
+| Z5 | Fremde Hostnamen bekommen nichts | an unknown vhost gets traefik's default 404 — no other component answers for it |
+
+## Epic AB — Document hygiene: the SSR markup is the interface
+
+> *Als Nutzer mit Screenreader (oder altem Browser) will ich, dass die
+> server-rendered Seite alleine schon sauber strukturiert ist — ohne
+> dass JavaScript nötig wäre.*
+
+| # | User story | Test |
+|---|------------|------|
+| AB1 | Das Dokument erklärt sich | `<html lang>` set, viewport meta present, non-empty `<title>` |
+| AB2 | Bilder haben Alternativtexte | every `<img>` carries an alt attribute (decorative `alt=""` counts — it must EXIST) |
+| AB3 | Jedes Formularfeld ist beschriftet | every input/textarea has aria-label, aria-labelledby or an associated `<label for>` |
+| AB4 | Keine Inline-Event-Handler | no `onclick=`-style attributes — behaviour lives in `/app.js` (CSP `script-src 'self'` without unsafe-inline) |
+| AB5 | Die Überschriften-Gliederung stimmt | exactly one `<h1>`, no heading level is skipped on the way down |
+| AB6 | Interaktive Elemente sind benannt | every link/button has visible text or an aria-label |
+
+Journeys here parse the landing page with the stdlib HTML parser —
+no browser, no JS, pure document truth.
+
+## Epic AC — Hostile input: nothing breaks out of the renderer
+
+> *Als Angreifer will ich Skripte und Tricks durch Notizen und
+> Anhänge in die Seite schmuggeln — als Betreiber will ich, dass der
+> Renderer jede Attacke zu inertem Text degradiert.*
+
+| # | User story | Test |
+|---|------------|------|
+| AC1 | Event-Handler-Injection scheitert | `<img onerror>`, `<svg onload>`, script tags and broken-tag smuggles reach the intercom list ONLY html-escaped — no raw handler attribute in the served segment (the page's own script tag is out of scope) |
+| AC2 | Feindliche Attachment-URLs werden abgewiesen | `javascript:`, `data:`, credential-bearing and explicit-port URLs are rejected or refused storage — no 5xx, never a live link |
+| AC3 | Unicode überlebt den Round-Trip | umlauts, emoji and RTL text survive POST → API → page byte-identically (raw or html-escaped spelling) |
+| AC4 | API und Seite erzählen absichtlich verschiedene Wahrheiten | the API serves the raw text (machine truth), the page serves the escaped form (human safety) — the contrast holds for a probe payload |
+| AC5 | Die Liste bleibt begrenzt | the 51st note is answered honestly (201 or 4xx) and the served list never exceeds MAX_MESSAGES (50) — no unbounded growth |
+
+## Epic AD — Rolling recreate: deploy without turbulence
+
+> *Als Betreiber will ich das Portal unter laufendem Verkehr neu
+> erstellen können (Upgrade, Konfig-Änderung), ohne dass Nutzer einen
+> Hänger sehen.*
+
+| # | User story | Test |
+|---|------------|------|
+| AD1 | Fehler bleiben im Fenster | a traffic poller (≈8 rps across / and /health) runs through a forced portal recreate — every failure (5xx or connection-level) falls INSIDE the recreate window, the in-window 5xx budget is small, and nothing errors after the window closes |
+| AD2 | Der Verkehr erholt sich vollständig | the tail of the run is 100% ok — full success rate after the recreate, conn-level failures bounded |
+| AD3 | Der Inhalt bleibt unberührt | stack healthy and the intercom API answers after the recreate — the recreation was transparent to content |
+
+## Epic AE — Abuse resistance: the edge limiter actually limits
+
+> *Als Betreiber will ich, dass die zugesagte Ratenbegrenzung (100
+> req/s, burst 200) eine gefeuerte Zusage ist — nicht Dekoration.*
+
+| # | User story | Test |
+|---|------------|------|
+| AE1 | Die Middleware ist verkabelt | the ratelimit middleware is declared in `traefik/dynamic.yml` AND mounted into the running traefik container |
+| AE2 | Normaler Verkehr wird nie bestraft | 100 sequential requests: zero 429, zero 5xx |
+| AE3 | Der Flood trifft die Grenze — und der Eddge überlebt | a 1000-request concurrent flood trips the limiter (429s appear, no 5xx), and after a short cool-down ordinary traffic flows freely again (bucket refills) |
+
+## Epic AF — Secret surface: least privilege, measured
+
+> *Als Angreifer will ich aus irgendeinem Container passende Schlüssel
+> mitnehmen — als Betreiber will ich, dass jedes Secret genau so viel
+> Fläche hat, wie sein Dienst braucht.*
+
+| # | User story | Test |
+|---|------------|------|
+| AF1 | Der Edge trägt keine Geheimnisse | traefik's REAL environment (docker inspect) holds no secret-shaped env vars — the most exposed surface has nothing worth stealing |
+| AF2 | Das Portal sieht nie das DB-Passwort | the portal talks HTTP to the world, not SQL to postgres — no POSTGRES/DB password in its env |
+| AF3 | Der Machinekey hat einen Halter | the zitadel machinekey volume is mounted by exactly one container — zitadel itself |
+| AF4 | `.env` wird nie whole-mount | no container mounts the repo's `.env` — host config must not become a wholesale secret dump |
+| AF5 | Dashboard-Credentials sind gehasht | the traefik basic-auth users label is an apr1/bcrypt-shaped hash, never plaintext |
+
+Generic by design: a new container that starts consuming the DB
+password or mounting `.env` trips this journey without list upkeep.
+
+## Epic AG — TLS contract at the crypto edge
+
+> *Als Betreiber will ich, dass „nur TLS" eine gemessene Zusicherung
+> ist: alte Protokolle abgelehnt, moderne akzeptiert, HSTS gesetzt,
+> Zertifikat im Fenster.*
+
+| # | User story | Test |
+|---|------------|------|
+| AG1 | Legacy TLS wird abgewiesen | handshakes capped at TLS 1.0/1.1 are refused at the edge (stdlib ssl) |
+| AG2 | Modernes TLS verbindet | TLS 1.2 and 1.3 handshakes succeed |
+| AG3 | HSTS ist gesetzt | every response carries `strict-transport-security: max-age≥31536000; includeSubDomains` — browsers never try plain http again (pinned by a portal unit test too) |
+| AG4 | Das Zertifikat ist im Fenster | the served cert's validity covers now (parsed with openssl like an operator would) — catches stale or swapped certs |
+
+## Epic AH — Concurrent writers: the store holds under contention
+
+> *Als Team wollen wir zwanzig Notizen im selben Augenblick schreiben
+> können, ohne dass eine verloren geht oder die Seite bricht.*
+
+| # | User story | Test |
+|---|------------|------|
+| AH1 | Parallele Schreiber kommen alle durch | 20 concurrent intercom POSTs all answer 201 — no deadlock, no dropped writers |
+| AH2 | Keine Note geht verloren | every posted note is in the store afterwards — no lost update, no interleaving corruption |
+| AH3 | Leser sehen nie Halbfertiges | 10 readers DURING the storm all see valid HTTP-200 JSON |
+| AH4 | Die Seite trägt den Sturm | the rendered page carries the notes that survived the contention |
+
+This journey exists because the wiring was found DEAD: the
+name-suffixed key form of the entrypoint middleware flags was silently
+dropped by traefik's slice parser — 1875 rps, zero 429s. The fix
+(repeated-flag form) is pinned by measuring, not by reading config.
+
 ## Epic MA — Mail, for real: mailcow delivers actual mail
 
 > *Als Betreiber will ich die volle Mail-Server-Option (mailcow-dockerized,
@@ -401,8 +535,31 @@ python3 tests/05-e2e/ai_journey.py opensme.local
 python3 tests/05-e2e/burst.py opensme.local
 python3 tests/05-e2e/hygiene.py opensme.local
 
+# transport + accessibility (read-only edge/document audits):
+python3 tests/05-e2e/transport.py opensme.local
+python3 tests/05-e2e/accessibility.py opensme.local
+
+# rate limit journey (fires a flood at the edge limiter, measures 429s):
+python3 tests/05-e2e/rate_limit.py opensme.local
+
+# tls contract + secret surface journeys (crypto edge + least privilege):
+python3 tests/05-e2e/tls_contract.py opensme.local
+python3 tests/05-e2e/secret_surface.py opensme.local
+
+# concurrent writers journey (20 writers + 10 readers at once):
+python3 tests/05-e2e/concurrent_writers.py opensme.local
+
+# hostile input journey (feeds XSS payloads through the intercom renderer):
+python3 tests/05-e2e/hostile_input.py opensme.local
+
+# rolling recreate journey (recreates the portal under synthetic traffic):
+python3 tests/05-e2e/rolling_recreate.py opensme.local
+
 # persistence journey (restarts the whole stack — run it last):
 python3 tests/05-e2e/persistence.py opensme.local
+
+# restore drill (runs backup.sh + restore.sh, drops/restores state — run LAST):
+python3 tests/05-e2e/restore_drill.py opensme.local
 
 # intercom journey (recreates the portal with an attachment-source mock):
 python3 tests/05-e2e/intercom.py opensme.local

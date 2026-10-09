@@ -2,9 +2,10 @@
 set -euo pipefail
 
 # openSME Dev Agent — container healthcheck
-# Probes the HTTP health server (default port 8081).
+# Probes the HTTP server where /healthz and /ready actually live (the
+# single metrics/probe server; OPERATOR_METRICS_BIND_ADDRESS, default 8080).
 
-HEALTH_ADDR="${OPERATOR_HEALTH_PROBE_BIND_ADDRESS:-0.0.0.0:8081}"
+HEALTH_ADDR="${OPERATOR_METRICS_BIND_ADDRESS:-0.0.0.0:8080}"
 HEALTH_PORT="${HEALTH_ADDR##*:}"
 
 case "${1:-liveness}" in

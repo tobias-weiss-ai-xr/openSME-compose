@@ -175,16 +175,29 @@ def main() -> int:
         else:
             # give the alias a moment to propagate into the embedded DNS
             time.sleep(2)
-            att = session.post(new_portal + "/api/intercom",
-                               json={"text": "Domain-Migration klappt",
-                                     "attachment_url":
-                                         f"http://cloud.{NEW_DOMAIN}/Angebot_2026.pdf"},
-                               timeout=30)
-            v3 = att.status_code == 201
+            # the portal POST races traefik's provider reload (the stand-in
+            # container events trigger a full router re-evaluation that can
+            # transiently drop the portal router in CI) — re-assert routing
+            # before every attempt instead of failing on a single 404
+            att = None
+            for _ in range(3):
+                if not ensure_portal_routed(session, new_portal):
+                    continue
+                att = session.post(new_portal + "/api/intercom",
+                                   json={"text": "Domain-Migration klappt",
+                                         "attachment_url":
+                                             f"http://cloud.{NEW_DOMAIN}/Angebot_2026.pdf"},
+                                   timeout=30)
+                if att.status_code != 404:
+                    break
+                time.sleep(3)
+            v3 = att is not None and att.status_code == 201
             (result.ok if v3 else result.fail)(
                 "derived allowlist follows the new domain (cloud.<domain> accepted)"
                 if v3
-                else f"default allowlist did not follow: HTTP {att.status_code} {att.text[:120]}"
+                else f"default allowlist did not follow: "
+                     f"HTTP {att.status_code if att else 'unroutable'} "
+                     f"{att.text[:120] if att else ''}"
             )
 
         # V4: rollback — original env restores the original routing

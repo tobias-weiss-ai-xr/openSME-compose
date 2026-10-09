@@ -434,19 +434,30 @@ def section_portal(result, session, portal_base, ai_configured=False):
         result.ok("portal landing page ok")
 
     # Trust & transport: plain HTTP must bounce to HTTPS (when served via
-    # Traefik; the plain-localhost variant is skipped)
+    # Traefik; the plain-localhost variant is skipped). Retried: during the
+    # first seconds of a fresh traefik boot internal routers may be rebuilt
+    # after the web entrypoint answers — a transient 404 must not fail the
+    # suite.
     if portal_base.startswith("https://"):
-        try:
-            rr = session.get("http://" + portal_base[len("https://"):],
-                             allow_redirects=False, timeout=T)
-            loc = rr.headers.get("Location", "")
-            if rr.status_code in REDIRECTS and loc.startswith("https://"):
-                result.ok("plain HTTP redirects to HTTPS")
-            else:
-                result.fail(f"HTTP did not redirect to HTTPS: "
-                            f"{rr.status_code} {loc[:60]}")
-        except requests.RequestException as e:
-            result.warn(f"HTTP→HTTPS probe failed: {e.__class__.__name__}")
+        rr, loc = None, ""
+        for attempt in range(4):
+            try:
+                rr = session.get("http://" + portal_base[len("https://"):],
+                                 allow_redirects=False, timeout=T)
+                loc = rr.headers.get("Location", "")
+                if rr.status_code in REDIRECTS and loc.startswith("https://"):
+                    break
+            except requests.RequestException as e:
+                result.warn(f"HTTP→HTTPS probe failed: "
+                            f"{e.__class__.__name__}")
+            time.sleep(2)
+        if rr is None:
+            pass  # probe never got through — already warned above
+        elif rr.status_code in REDIRECTS and loc.startswith("https://"):
+            result.ok("plain HTTP redirects to HTTPS")
+        else:
+            result.fail(f"HTTP did not redirect to HTTPS: "
+                        f"{rr.status_code} {loc[:60]}")
 
     # Trust in depth: security headers must survive 404s (they guard every
     # response, not just the happy path)

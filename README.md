@@ -112,6 +112,7 @@ COMPOSE_FILE="docker-compose.yml:idm/zitadel.yml" docker compose up -d
 | **Ticketing** | [Nosdesk](https://nosdesk.com/) — Rust helpdesk: tickets, kanban, knowledge base (optional) |
 | **Website** | [crap-cms](https://github.com/dkluhzeb/crap-cms) — lightweight Rust CMS, HTMX admin, embedded SQLite (optional) |
 | **Store** | [RaisFast](https://raisfast.com/) — Rust e-commerce: products, cart, orders (optional) |
+| **Workflow** | [Operaton](https://operaton.org/) — community successor of Camunda 7 CE; BPMN 2.0 process engine, DMN decision tables, REST API (optional) |
 | **AI** | [llama.cpp](https://github.com/ggml-org/llama.cpp) — local OpenAI-compatible inference, CPU-first (optional) |
 | **Database** | PostgreSQL 17 + PgBouncer connection pooling |
 | **Cache** | Redis 7 + Memcached 1.6 |
@@ -215,28 +216,62 @@ halving the service count for the IAM layer.
 
 ## Quick Start
 
-### 1. Clone &amp; configure
+Same repository, two ways in:
+
+- **Evaluate in ~2 minutes** — clone, run [`scripts/demo.sh`](#evaluate-in-2-minutes), open
+  http://localhost:8080. Random passwords, Zitadel seeded, health summary printed — no config.
+- **Install it properly** — clone, [`scripts/init-env.sh`](#1-clone--configure) to generate a
+  secure `.env`, then `make up PROFILE=…` and add overlays. This is the path for a real
+  deployment you own.
+
+> Requirements: Linux with Docker 24+ and Compose v2.20+; 2 vCPU / 4 GB RAM minimum.
+
+### Evaluate in 2 minutes
 
 ```bash
 git clone https://github.com/tobias-weiss-ai-xr/openSME-compose.git
 cd openSME-compose
-cp .env.example .env
-# Edit .env — set your domains and passwords
+./scripts/demo.sh          # creates .env, seeds Zitadel, boots, prints credentials
 ```
 
-### 2. Start core services
+- **Portal:** http://localhost:8080
+- **Zitadel &amp; OpenCloud** over Traefik TLS (self-signed) — map their names to `127.0.0.1`
+  once, then open the HTTPS URLs:
+  ```bash
+  echo '127.0.0.1 auth.opensme.local cloud.opensme.local' | sudo tee -a /etc/hosts
+  # https://auth.opensme.local  ·  https://cloud.opensme.local
+  ```
+
+The script waits for the Portal to answer before finishing and prints a per-service
+health overview. Needs **2 vCPU / 4 GB RAM**.
+
+### Manual install
+
+#### 1. Clone &amp; configure
 
 ```bash
-# Using Makefile (recommended):
+git clone https://github.com/tobias-weiss-ai-xr/openSME-compose.git
+cd openSME-compose
+./scripts/init-env.sh   # generate a secure .env — every CHANGEME_* becomes a random value
+# Edit .env — set your domains; adjust any passwords to your own policy
+```
+
+#### 2. Start core services
+
+```bash
+# Via the Makefile (recommended):
 make up PROFILE=soho      # 4c/8G — core only
 make up PROFILE=small     # 8c/24G — core + office + paperless
 make up PROFILE=medium    # 16c/48G — core + all services
 
-# Or using docker compose directly:
+# Or with plain docker compose:
 docker compose up -d      # Portal + Traefik + PostgreSQL + Redis + Memcached
 ```
 
-### 3. Add features (overlays)
+> `make up` reads your generated `.env` when present and falls back to the template
+> otherwise — after `init-env.sh` nothing else is required to boot a real stack.
+
+#### 3. Add features (overlays)
 
 ```bash
 # Core + IAM + file sync + online office
@@ -253,18 +288,6 @@ docker compose --profile chat --profile element up -d        # Matrix chat
 docker compose --profile collab up -d                       # CryptPad
 docker compose --profile notes up -d                        # Collaborative notes
 ```
-
-### 4. Try the demo (minimal resources)
-
-```bash
-./scripts/demo.sh
-# → Portal:    http://localhost:8080
-# → Zitadel & OpenCloud via Traefik TLS (self-signed):
-#     echo '127.0.0.1 auth.opensme.local cloud.opensme.local' | sudo tee -a /etc/hosts
-#     https://auth.opensme.local  ·  https://cloud.opensme.local
-```
-
-Requires **2 vCPU / 4 GB RAM** — perfect for evaluation.
 
 ## Hardware Tiers
 
@@ -327,6 +350,7 @@ Each feature is a separate Docker Compose file. Combine via `COMPOSE_FILE`:
 | `services/cms.yml` | crap-cms (website CMS) | `www.*` | For public website (`--profile cms`) |
 | `services/store.yml` | RaisFast (e-commerce) | `shop.*` | For storefront (`--profile store`) |
 | `services/ai.yml` | llama.cpp server (AI backend) | `ai.*` | For local AI (`--profile ai`) |
+| `services/camunda.yml` | Operaton (BPMN workflow) | `bpm.*` | For process automation (`--profile camunda`) |
 | `profiles/soho.yml` | (resource overrides) | — | SOHO tier (4c/8G) |
 | `profiles/small.yml` | (resource overrides) | — | Small tier (8c/24G) |
 | `profiles/medium.yml` | (resource overrides) | — | Medium tier (16c/48G) |
@@ -434,6 +458,7 @@ openSME-compose/
 │   ├── Dockerfile
 │   └── src/main.rs
 ├── scripts/
+│   ├── init-env.sh           # Generate working .env (random secrets)
 │   ├── start.sh               # Start stack (core + zitadel + opencloud)
 │   ├── stop.sh                # Stop all opensme containers
 │   ├── demo.sh                # One-command demo with random passwords
@@ -469,6 +494,7 @@ Environment variables for local development:
 | `MAIL_URL` | *(empty — card hidden)* | Webmail link |
 | `COLLABORA_URL` | *(empty — card hidden)* | Collabora link |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Support / Website / Shop cards |
+| `BPM_URL` | *(empty — card hidden)* | Workflow (Operaton) card — set to `https://bpm.<domain>` with `--profile camunda` |
 | `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON banner array (`info`/`warn`) |
 | `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | AI assistant (OpenAI-compatible `/v1/chat/completions`) — `AI_API_URL=http://ai:8080` with `--profile ai` |
 
@@ -797,13 +823,18 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
 | `STORE_ADMIN_PASSWORD` | *(random)* | RaisFast bootstrap admin password (else printed once to logs) |
 | `CMS_IMAGE` | upstream `:latest` | crap-cms image override — pin once upstream tags releases |
 | `TICKETING_URL` / `CMS_URL` / `SHOP_URL` | *(empty — cards hidden)* | Portal cards for ticketing / website / store |
+| `BPM_URL` | *(empty — card hidden)* | Portal card for the BPM/Workflow service (Operaton) |
 | `PORTAL_ANNOUNCEMENTS` | *(empty)* | JSON array of portal banners: `[{'level':'info\|warn','text':'…'}]` |
 | `AI_API_URL` / `AI_MODEL` / `AI_API_KEY` | *(empty — card hidden)* | OpenAI-compatible endpoint for the portal AI assistant — set `AI_API_URL=http://ai:8080` with `--profile ai` |
 | `AI_IMAGE` | `…llama.cpp:server-b11223` | llama.cpp image override (build-numbered tags) |
 | `AI_HF_MODEL` | `Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M` | HuggingFace model auto-downloaded on first boot (~1 GB) |
+| `CAMUNDA_DB_PASSWORD` | `CHANGEME_*` | Operaton BPMN DB password (required for `--profile camunda`) |
+| `CAMUNDA_IMAGE` | `operaton/operaton:2.1.5` | Operaton image override (pin to a specific tag) |
 
-> **⚠️ Change all `CHANGEME_*` passwords before production!**
-> Use `openssl rand -base64 24` to generate secure values.
+> **Secrets:** `scripts/init-env.sh` (or `make bootstrap`) already replaces every
+> `CHANGEME_*` placeholder with a random value when it generates `.env` — don't copy
+> the template by hand. For existing installs, re-run it or rotate the values manually
+> (`openssl rand -base64 24`).
 
 ### Optional components — maturity notes
 
@@ -817,6 +848,26 @@ All configuration via `.env`. See [`.env.example`](.env.example) for the full li
   [`postgres-init/01-create-users.sh`](postgres-init/01-create-users.sh)
   manually (roles `nosdesk_app`/`nosdesk_admin`, membership grants, DB
   ownership).
+- **Operaton** (`--profile camunda`): Operaton is the **community-owned
+  Apache 2.0 successor** of Camunda 7 CE (same engine lineage, API/model/
+  DB-schema compatible, monthly patch releases). The Spring Boot
+  distribution is single-container with a PostgreSQL backend — ideal for
+  SME-scale BPMN.  On **existing** PostgreSQL volumes (created before the
+  profile was enabled) the `camunda_db` database and `camunda_user` role
+  are only created by the init scripts on first init — enable the profile
+  on a fresh volume, or create them manually:
+  ```sql
+  CREATE DATABASE camunda_db;
+  CREATE USER camunda_user WITH PASSWORD '<your-password>';
+  GRANT ALL PRIVILEGES ON DATABASE camunda_db TO camunda_user;
+  ALTER DATABASE camunda_db OWNER TO camunda_user;
+  ```
+  Seed BPMN processes are in `bootstrap/bpmn/` — deploy with
+  `make bpm-deploy` or `./bootstrap/bpmn-deploy.sh` (auto-detects the
+  engine via docker exec or `BPM_URL`).
+  Human-readable seed documents (onboarding, charter, decision records)
+  are in `bootstrap/seed-content/` — see its README for how to load them
+  into the Cloud / Paperless / Team Notes.
 - **crap-cms** (`--profile cms`): alpha software; upstream publishes
   `:latest` only (no semver tags yet — pin via `CMS_IMAGE` once they do).
   First login: `admin@crap.studio` / `admin123` — **change immediately**.
@@ -875,10 +926,12 @@ make restore-from BACKUP=<ts>  # Restore from backup
 |---|---|
 | `scripts/start.sh` | Start the stack (core + zitadel + opencloud) |
 | `scripts/stop.sh` | Stop all opensme containers |
-| `scripts/demo.sh` | Launch minimal demo with random passwords |
+| `scripts/init-env.sh` | Generate a working `.env` from `.env.example` (random secrets; refuses to clobber) |
+| `scripts/demo.sh` | Launch minimal demo with random passwords (boots + prints health summary) |
 | `scripts/demo-live.sh` | Deploy to server with Let's Encrypt |
 | `scripts/backup.sh` | Backup PostgreSQL + Traefik + volumes (`--volumes`, `--dry-run`, `--services`) |
 | `scripts/restore.sh` | Restore from backup (`--list`, `--pg-only`, `--volumes-only`) |
+| `bootstrap/bpmn-deploy.sh` | Deploy sample BPMN processes to the Operaton engine |
 
 ## Backup &amp; Restore
 
@@ -902,6 +955,11 @@ Backups are stored in `./backups/` with timestamps:
 - `postgres_YYYYMMDD_HHMMSS.sql.gz` — PostgreSQL dump
 - `traefik_YYYYMMDD_HHMMSS.tar.gz` — Traefik ACME/SSL
 - `volumes_YYYYMMDD_HHMMSS.tar.gz` — Combined volume backup
+
+> **Never commit `./backups/`.** A volume backup carries the Zitadel machine
+> key, the login-client PAT, the OpenCloud config and the full PostgreSQL data
+> directory. The directory is gitignored, and `check_artifacts.py` fails CI if a
+> backup is ever staged.
 
 Retention: 7 days (automatic cleanup).
 
@@ -1006,22 +1064,28 @@ docker compose exec postgres psql -U opensme -c '\dt'
 
 ### Version pins
 
-Images are pinned to major versions for stability:
+Core images are pinned (or explicitly allow-listed) so `docker compose up -d`
+always reproduces a known-good stack:
 
-| Component | Image | Version |
+| Component | Default image | Version |
 |---|---|---|
-| PostgreSQL | `postgres:17-alpine` | 17.x |
-| Redis | `redis:7-alpine` | 7.x |
-| Zitadel | `ghcr.io/zitadel/zitadel:latest` | (rolling) |
-| OpenCloud | `opencloudeu/opencloud-rolling:6.0.0` | 6.0.x |
-| Collabora | `collabora/code:24.04.13.3.1` | 24.04.x |
-| Traefik | `traefik:v3.3` | 3.3.x |
+| Traefik | `traefik:v3.7.13` | 3.7.x |
+| PostgreSQL | `postgres:17` | 17.x |
+| Redis | `redis:alpine` | rolling (`alpine` tag) |
+| Memcached | `memcached:alpine` | rolling (`alpine` tag) |
+| Zitadel | `ghcr.io/zitadel/zitadel:v4.19.4` | 4.19.x |
+| OpenCloud | `opencloudeu/opencloud-rolling:8.0.1` | 8.0.x |
+| Stalwart (mail) | `stalwartlabs/stalwart:v0.15` | v0.15 |
+| Collabora | `collabora/code:latest` | rolling (`latest`) |
 | SeaweedFS | `chrislusf/seaweedfs:3.99` | 3.99.x |
+| Operaton (BPMN) | `operaton/operaton:2.1.5` | 2.1.x |
 | llama.cpp | `ghcr.io/ggml-org/llama.cpp:server-b11223` | build `b11223` |
 
-Pin overrides live in `.env` (`ZITADEL_IMAGE`, `TRAEFIK_IMAGE`, `AI_IMAGE`,
-…). The static suite fails the build when a core image drifts to `:latest`.
-Rolling lines (Zitadel, OpenCloud) are documented exceptions.
+Pin overrides live in `.env` (`TRAEFIK_IMAGE`, `ZITADEL_IMAGE`, `AI_IMAGE`,
+`COLLABORA_IMAGE`, `CAMUNDA_IMAGE`, …). The static suite fails the build when a
+core image drifts to `:latest`. The documented exceptions are Collabora
+(`:latest`), the floating `redis:alpine` / `memcached:alpine` tags, and the
+OpenCloud `rolling:` line (pinned at build 8.0.1).
 
 ## License
 

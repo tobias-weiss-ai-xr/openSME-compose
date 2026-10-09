@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,20 @@ import (
 // errorSpike is the number of error-ish log lines (in the tail) that counts
 // as a symptom.
 const errorSpike = 5
+
+// errorPatterns are the substrings (lowercase) that count as error-ish.
+// Expanded beyond error/fatal/panic to catch real-world log patterns:
+// connection refusals, failures, denials, timeouts, exceptions, etc.
+var errorPatterns = []string{
+	"error", "fatal", "panic", "critical",
+	"failed", "failure", "denied", "refused",
+	"timeout", "timed out", "exception",
+	"unable to", "cannot", "permission denied",
+}
+
+// memHighThreshold is the memory usage percentage above which a container
+// is flagged as about-to-OOM (proactive, before the kernel kills it).
+const memHighThreshold = 90.0 // percent
 
 // Finding is one unhealthy container with its detected symptoms.
 type Finding struct {
@@ -25,6 +40,8 @@ type Finding struct {
 	Health       string    `json:"health,omitempty"`
 	RestartCount int       `json:"restart_count"`
 	OOMKilled    bool      `json:"oom_killed"`
+	MemPct       float64   `json:"mem_pct,omitempty"` // docker stats memory usage %
+	CPUPct       float64   `json:"cpu_pct,omitempty"` // docker stats CPU usage %
 	Symptoms     []string  `json:"symptoms"`
 	Detail       string    `json:"detail,omitempty"`
 	Seen         time.Time `json:"seen"`
@@ -149,6 +166,15 @@ func (c *Checker) Inspect(ctx context.Context) ([]Finding, error) {
 			f.Symptoms = append(f.Symptoms, "log error spike")
 			f.Detail = detail
 		}
+		// Proactive OOM prediction: flag containers near memory limit even
+		// if not yet OOM-killed. docker stats --no-stream gives instantaneous
+		// usage. We only call this for already-unhealthy containers to keep
+		// the read-only command count bounded.
+		if cpu, mem, ok := c.memStats(ctx, p.Names); ok && mem >= memHighThreshold {
+			f.MemPct = mem
+			f.CPUPct = cpu
+			f.Symptoms = append(f.Symptoms, "memory near limit")
+		}
 		findings = append(findings, f)
 	}
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Container < findings[j].Container })
@@ -178,14 +204,41 @@ func (c *Checker) logSpike(ctx context.Context, name string) (bool, string) {
 	sample := ""
 	for _, ln := range strings.Split(out, "\n") {
 		low := strings.ToLower(ln)
-		if strings.Contains(low, "error") || strings.Contains(low, "fatal") || strings.Contains(low, "panic") {
-			n++
-			if sample == "" {
-				sample = ln
+		for _, p := range errorPatterns {
+			if strings.Contains(low, p) {
+				n++
+				if sample == "" {
+					sample = ln
+				}
+				break
 			}
 		}
 	}
 	return n >= errorSpike, sample
+}
+
+// memStats returns CPU% and memory% from `docker stats --no-stream` for a
+// container. Returns ok=false if stats are unavailable or unparseable.
+func (c *Checker) memStats(ctx context.Context, name string) (cpu, mem float64, ok bool) {
+	out, err := c.runner.Run(ctx, "stats", "--no-stream", "--format", "{{.CPUPerc}}\t{{.MemPerc}}", name)
+	if err != nil {
+		return 0, 0, false
+	}
+	fields := strings.Fields(strings.TrimSpace(out))
+	if len(fields) < 2 {
+		return 0, 0, false
+	}
+	cpu = parsePercent(fields[0])
+	mem = parsePercent(fields[1])
+	return cpu, mem, mem > 0
+}
+
+// parsePercent strips the trailing % from a docker stats value and parses
+// the float.
+func parsePercent(s string) float64 {
+	s = strings.TrimSuffix(strings.TrimSpace(s), "%")
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
 }
 
 // classify produces the symptom list from state fields (pure — unit-tested

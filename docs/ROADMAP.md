@@ -17,6 +17,7 @@ Status and direction of the openSME Compose distribution.
   `no-new-privileges`, `cap_drop`), per-tier Postgres/Redis/PgBouncer
   tuning, boot-ordering `depends_on`, live benchmark harness.
 - **Optional business services**: Nosdesk ticketing (`--profile ticketing`),
+  Operaton BPMN workflow (`--profile camunda`),
   crap-cms website (`--profile cms`), RaisFast store (`--profile store`),
   local AI via llama.cpp (`--profile ai`) with a portal AI assistant.
 - **Monitoring agents**: dev-agent (reactive, LLM root-cause),

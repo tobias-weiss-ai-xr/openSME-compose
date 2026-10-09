@@ -25,6 +25,7 @@ struct AppConfig {
     ticketing_url: String,
     cms_url: String,
     shop_url: String,
+    bpm_url: String,
     portal_domain: String,
     opensme_domain: String,
     announcements: Arc<Vec<Announcement>>,
@@ -51,6 +52,7 @@ struct Announcement {
 
 #[derive(Serialize)]
 struct Service {
+    id: String,
     name: String,
     description: String,
     url: String,
@@ -198,7 +200,7 @@ fn build_landing_page(config: &AppConfig) -> String {
     let ic_rendered = render_intercom(&config.intercom_store.list());
     let intercom_card = format!(
         r#"<div class="card intercom" id="intercom-card">
-                <h2>Intercom</h2>
+                <h2>Team Notes</h2>
                 <ul class="ic-list" id="ic-list" aria-live="polite">{ic_rendered}</ul>
                 <div class="ic-box">
                     <textarea class="ic-text" rows="2" placeholder="Short note for the team…" aria-label="Message" maxlength="2000"></textarea>
@@ -213,12 +215,18 @@ fn build_landing_page(config: &AppConfig) -> String {
     let domain = html_escape(&config.opensme_domain);
 
     format!(
-        r#"<!DOCTYPE html>
+        r##"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>openSME Portal</title>
+    <meta name="description" content="openSME — your self-hosted productivity suite: cloud storage, mail, collaboration, identity, and workflow automation.">
+    <meta name="theme-color" content="#0f172a">
+    <meta property="og:title" content="openSME Portal">
+    <meta property="og:description" content="Your self-hosted productivity suite.">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2360a5fa'/%3E%3Ctext x='16' y='22' font-family='system-ui,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EoS%3C/text%3E%3C/svg%3E">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self';">
     <script src="/app.js" defer></script>
     <style>
@@ -458,7 +466,7 @@ fn build_landing_page(config: &AppConfig) -> String {
         openSME Portal &mdash; {domain}
     </footer>
 </body>
-</html>"#
+</html>"##
     )
 }
 
@@ -468,6 +476,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
 
     if !config.idp_url.is_empty() {
         services.push(Service {
+            id: "identity".into(),
             name: "Identity".into(),
             description: "Single sign-on and user management".into(),
             url: config.idp_url.clone(),
@@ -477,6 +486,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // OpenCloud — only if URL differs from the raw default
     if !config.opencloud_url.is_empty() {
         services.push(Service {
+            id: "opencloud".into(),
             name: "OpenCloud".into(),
             description: "Cloud storage, file sharing and collaboration".into(),
             url: config.opencloud_url.clone(),
@@ -486,6 +496,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Collabora — only if explicitly configured (not empty)
     if !config.collabora_url.is_empty() {
         services.push(Service {
+            id: "collabora".into(),
             name: "Collabora".into(),
             description: "Online document editing".into(),
             url: config.collabora_url.clone(),
@@ -495,6 +506,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Webmail — only if explicitly configured (not empty)
     if !config.mail_url.is_empty() {
         services.push(Service {
+            id: "webmail".into(),
             name: "Webmail".into(),
             description: "Email, calendar and contacts".into(),
             url: config.mail_url.clone(),
@@ -504,6 +516,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Helpdesk — only if explicitly configured (not empty)
     if !config.ticketing_url.is_empty() {
         services.push(Service {
+            id: "support".into(),
             name: "Support".into(),
             description: "Helpdesk — tickets and knowledge base".into(),
             url: config.ticketing_url.clone(),
@@ -513,6 +526,7 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Website CMS — only if explicitly configured (not empty)
     if !config.cms_url.is_empty() {
         services.push(Service {
+            id: "website".into(),
             name: "Website".into(),
             description: "Content management — pages, news and blog".into(),
             url: config.cms_url.clone(),
@@ -522,9 +536,20 @@ fn get_services(config: &AppConfig) -> Vec<Service> {
     // Store — only if explicitly configured (not empty)
     if !config.shop_url.is_empty() {
         services.push(Service {
+            id: "shop".into(),
             name: "Shop".into(),
             description: "Storefront — products, cart and checkout".into(),
             url: config.shop_url.clone(),
+        });
+    }
+
+    // Workflow (Operaton) — only if explicitly configured (not empty)
+    if !config.bpm_url.is_empty() {
+        services.push(Service {
+            id: "workflow".into(),
+            name: "Workflow".into(),
+            description: "BPMN process engine — Cockpit, Tasklist and REST API".into(),
+            url: config.bpm_url.clone(),
         });
     }
 
@@ -645,6 +670,13 @@ async fn security_headers(
     let h = res.headers_mut();
     h.insert("x-content-type-options", "nosniff".parse().unwrap());
     h.insert("x-frame-options", "DENY".parse().unwrap());
+    // HSTS: the portal is served TLS-only (traefik redirects :80 → :443),
+    // so telling browsers to refuse plain-http for a year is always safe
+    // here — and it covers the JSON API responses too.
+    h.insert(
+        "strict-transport-security",
+        "max-age=31536000; includeSubDomains".parse().unwrap(),
+    );
     h.insert(
         "referrer-policy",
         "strict-origin-when-cross-origin".parse().unwrap(),
@@ -833,6 +865,7 @@ fn load_config() -> Arc<AppConfig> {
         ticketing_url: load_env("TICKETING_URL", ""),
         cms_url: load_env("CMS_URL", ""),
         shop_url: load_env("SHOP_URL", ""),
+        bpm_url: load_env("BPM_URL", ""),
         announcements,
         ai,
         // One shared client: connection pooling, 30s default timeout.
@@ -897,6 +930,7 @@ mod tests {
             ticketing_url: ticketing.into(),
             cms_url: String::new(),
             shop_url: String::new(),
+            bpm_url: String::new(),
             portal_domain: "portal.example".into(),
             opensme_domain: "example".into(),
             announcements: Arc::new(parse_announcements(announcements)),
@@ -981,6 +1015,48 @@ mod tests {
     }
 
     #[test]
+    fn bpm_card_gated_on_url() {
+        let mut c = cfg_with("", None, "");
+        assert!(!get_services(&c).iter().any(|s| s.name == "Workflow"));
+
+        c.bpm_url = "https://bpm.example".into();
+        let services = get_services(&c);
+        assert!(services.iter().any(|s| s.name == "Workflow"));
+        assert!(services.iter().any(|s| s.description.contains("BPMN")));
+    }
+
+    #[test]
+    fn service_ids_are_stable_unique_and_complete() {
+        // Fully-configured portal: every card carries a stable id.
+        let c = AppConfig {
+            collabora_url: "https://office.example".into(),
+            mail_url: "https://mail.example".into(),
+            ticketing_url: "https://help.example".into(),
+            cms_url: "https://www.example".into(),
+            shop_url: "https://shop.example".into(),
+            bpm_url: "https://bpm.example".into(),
+            ..cfg_with("", None, "")
+        };
+        let services = get_services(&c);
+        assert_eq!(services.len(), 8, "all eight cards configured");
+
+        let ids: Vec<&str> = services.iter().map(|s| s.id.as_str()).collect();
+        assert!(
+            ids.iter().all(|id| !id.is_empty()),
+            "every service needs an id: {ids:?}"
+        );
+        let unique: std::collections::HashSet<&str> = ids.iter().copied().collect();
+        assert_eq!(
+            unique.len(),
+            ids.len(),
+            "service ids must be unique: {ids:?}"
+        );
+        assert!(ids.contains(&"identity"));
+        assert!(ids.contains(&"opencloud"));
+        assert!(ids.contains(&"workflow"));
+    }
+
+    #[test]
     fn ai_card_and_page_wiring() {
         let ai = AiConfig {
             api_url: "http://vllm:8000".into(),
@@ -1010,6 +1086,18 @@ mod tests {
         let html = build_landing_page(&cfg_with("", None, ""));
         assert!(html.contains("data-pal="));
         assert!(html.contains("/app.js"));
+    }
+
+    #[test]
+    fn head_carries_favicon_and_meta() {
+        let html = build_landing_page(&cfg_with("", None, ""));
+        // Inline SVG favicon (data URI — CSP allows img-src data:)
+        assert!(html.contains("rel=\"icon\""));
+        assert!(html.contains("data:image/svg+xml"));
+        // Social / search metadata
+        assert!(html.contains("name=\"description\""));
+        assert!(html.contains("og:title"));
+        assert!(html.contains("name=\"theme-color\""));
     }
 
     #[test]
@@ -1094,6 +1182,9 @@ mod tests {
         );
         let csp = header(&resp, "content-security-policy");
         assert!(csp.contains("default-src 'self'"));
+        let hsts = header(&resp, "strict-transport-security");
+        assert!(hsts.contains("max-age=31536000"), "hsts: {hsts}");
+        assert!(hsts.contains("includeSubDomains"), "hsts: {hsts}");
     }
 
     #[tokio::test]

@@ -24,7 +24,7 @@
 .PHONY: test test-all test-static lint compose-check env-check secret-scan \
         specs contracts yaml-lint \
         container smoke integration e2e security \
-        bootstrap clean help \
+        bootstrap bpm-deploy clean help \
         up down status logs pull \
         up-soho up-small up-medium up-all \
         nix-build nix-load nix-images \
@@ -51,8 +51,14 @@ PROFILE    ?= soho
 # host); a make-command-line override (make e2e DOMAIN=x) still wins.
 DOMAIN     := $(shell grep -m1 '^OPENSME_DOMAIN=' .env 2>/dev/null | cut -d= -f2 || echo 'opensme.org')
 COMPOSE    ?= docker compose
-TEST_ENV   ?= .env.example
+# Use the generated .env when present (manual installs via init-env.sh /
+# demo.sh); fall back to the template so CI/static runs stay hermetic (they
+# have no .env). An explicit TEST_ENV=… always overrides.
+TEST_ENV   := $(if $(wildcard .env),.env,.env.example)
 PYTHON     ?= python3
+# Go toolchain for lint-code. Override when an old system Go shadows a newer
+# one: `GO=/usr/local/go/bin/go make lint-code`.
+GO         ?= go
 TEST_RUNNER := $(PYTHON) tests/run.py
 
 # ---------------------------------------------------------------------------
@@ -107,7 +113,7 @@ up-medium:
 up-all:
 	@echo -e "$(BLUE)── starting openSME (ALL services) ──$(NC)"
 	@$(FULL_COMPOSE) --env-file $(TEST_ENV) \
-		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes --profile ticketing --profile cms --profile store --profile ai \
+		--profile paperless --profile tika --profile invoice --profile chat --profile element --profile collab --profile notes --profile ticketing --profile cms --profile store --profile ai --profile camunda \
 		up -d
 	@echo -e "$(GREEN)✓ Stack started with all optional services$(NC)"
 
@@ -169,13 +175,16 @@ fmt: ## Apply all formatters (rustfmt, gofmt)
 	@echo -e "$(GREEN)✅ formats applied$(NC)"
 
 lint-code: ## Format checks + linters + unit tests (no fixes) — what CI enforces
+	@$(GO) version | awk '{ v=substr($$3,3)+0; if (v < 1.22) { \
+		printf "❌ Go >= 1.22 required, found %s\n", $$3; \
+		print "   hint: GO=/usr/local/go/bin/go make lint-code"; exit 1 } }'
 	cd portal && cargo fmt --check
 	cd portal && cargo clippy --all-targets -- -D warnings
 	cd portal && cargo test
 	@if [ -n "$$(gofmt -l . | grep -v node_modules)" ]; then \
 		echo "unformatted Go files: $$(gofmt -l . | grep -v node_modules)"; exit 1; fi
-	go vet ./...
-	go test ./...
+	$(GO) vet ./...
+	$(GO) test ./...
 	shellcheck scripts/*.sh
 	@echo -e "$(GREEN)✅ code quality gates passed$(NC)"
 
@@ -316,11 +325,14 @@ restore-from:
 # ---------------------------------------------------------------------------
 bootstrap:
 	@echo -e "$(BLUE)── bootstrapping ──$(NC)"
-	@cp -n .env.example .env 2>/dev/null || true
+	@./scripts/init-env.sh
 	@pip install -r tests/requirements.txt 2>/dev/null || \
 		echo -e "$(YELLOW)⚠ pip install skipped (install pyyaml manually: pip install pyyaml)$(NC)"
-	@echo -e "$(GREEN)✅ Bootstrap complete$(NC)"
-	@echo -e "  Edit .env with your settings, then: make up PROFILE=soho"
+	@echo -e "$(GREEN)✅ Bootstrap complete — configure .env if needed, then: make up PROFILE=soho"
+
+bpm-deploy:
+	@echo -e "$(BLUE)── deploying BPMN seed processes ──$(NC)"
+	@./bootstrap/bpmn-deploy.sh
 
 clean:
 	@rm -rf tests/05-e2e/test-results/ tests/05-e2e/playwright-report/
@@ -398,6 +410,7 @@ help:
 	@echo "    make agent-status         Print the bot's persisted status"
 	@echo ""
 	@echo -e "  $(GREEN)Other$(NC)"
-	@echo "    make bootstrap           Create .env from .env.example"
+	@echo "    make bootstrap           Generate a working .env (random secrets) + test deps"
+	@echo "    make bpm-deploy          Deploy seed BPMN processes to the Operaton engine"
 	@echo "    make clean               Remove test artifacts"
 	@echo ""

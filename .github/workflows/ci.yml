@@ -31,7 +31,7 @@ jobs:
         # SHA-pinned Swatinem/rust-cache v2 — cold CI runners otherwise
         # recompile the full test profile (axum + reqwest + proptest + tower)
         # from scratch, which can exceed the job timeout under contention.
-        uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: portal
       - name: cargo fmt --check (portal)
@@ -46,7 +46,7 @@ jobs:
 
       # ── Go (dev-agent) ───────────────────────────────────
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: false
@@ -150,7 +150,7 @@ jobs:
       - name: Cache cargo builds
         # SHA-pinned Swatinem/rust-cache v2 — the e2e job rebuilds the portal
         # image; cache keeps the cold docker build layer warm.
-        uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: portal
 
@@ -201,13 +201,31 @@ jobs:
         run: python3 tests/05-e2e/burst.py opensme.local
       - name: Run hygiene journey (no default creds, no open writes)
         run: python3 tests/05-e2e/hygiene.py opensme.local
+      - name: Run transport journey (redirects, security headers, no leaks)
+        run: python3 tests/05-e2e/transport.py opensme.local
+      - name: Run accessibility journey (SSR document hygiene)
+        run: python3 tests/05-e2e/accessibility.py opensme.local
+      - name: Run rate limit journey (the edge limiter actually limits)
+        run: python3 tests/05-e2e/rate_limit.py opensme.local
+      - name: Run tls contract journey (legacy TLS refused, HSTS, cert window)
+        run: python3 tests/05-e2e/tls_contract.py opensme.local
+      - name: Run secret surface journey (least privilege on secrets)
+        run: python3 tests/05-e2e/secret_surface.py opensme.local
       - name: Run observability journey (healthchecks + secrets-out-of-logs)
         run: python3 tests/05-e2e/observability.py opensme.local
       - name: Run portability journey (portal migrates to another domain)
         run: python3 tests/05-e2e/portability.py opensme.local
       - name: Run intercom journey (notes + cloud attachments, SSRF guard)
         run: python3 tests/05-e2e/intercom.py opensme.local
+      - name: Run hostile input journey (nothing breaks out of the renderer)
+        run: python3 tests/05-e2e/hostile_input.py opensme.local
+      - name: Run concurrent writers journey (the intercom store under contention)
+        run: python3 tests/05-e2e/concurrent_writers.py opensme.local
+      - name: Run rolling recreate journey (deploy without turbulence)
+        run: python3 tests/05-e2e/rolling_recreate.py opensme.local
       - name: Run idempotency journey (second boot converges, no duplicates)
         run: python3 tests/05-e2e/idempotency.py opensme.local
       - name: Run persistence journey (state survives full restart)
         run: python3 tests/05-e2e/persistence.py opensme.local
+      - name: Run restore drill (backup → destroy → restore → verify)
+        run: python3 tests/05-e2e/restore_drill.py opensme.local

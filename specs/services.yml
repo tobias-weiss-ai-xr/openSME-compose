@@ -235,3 +235,22 @@ services:
     traefik_labels: true
     resource_limits:
       memory: 2G
+
+  camunda:
+    # Operaton (community successor of Camunda 7 CE) — BPMN 2.0 workflow & decision engine
+    image: operaton/operaton:2.1.5
+    compose_file: services/camunda.yml
+    required: false
+    profiles: [camunda]
+    host_ports: []
+    healthcheck: true
+    networks: [opensme-net]
+    depends_on: [postgres]
+    volumes:
+      - camunda-data:/operaton/configuration/userlib
+    env:
+      - CAMUNDA_DB_PASSWORD
+      - CAMUNDA_DOMAIN
+    traefik_labels: true
+    resource_limits:
+      memory: 1G

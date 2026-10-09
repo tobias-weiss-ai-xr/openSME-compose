@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:operaton="http://operaton.org/schema/1.0/bpmn"
+             targetNamespace="http://opensme.org/bpmn"
+             id="opensme-invoice-approval-definitions">
+
+  <process id="opensme-invoice-approval" name="Invoice Approval" isExecutable="true"
+           operaton:historyTimeToLive="P180D">
+
+    <!-- Start: a new invoice arrives -->
+    <startEvent id="invoice-received" name="Invoice received">
+      <documentation>Triggered when a new invoice is uploaded to OpenCloud.</documentation>
+    </startEvent>
+
+    <sequenceFlow id="flow-1" sourceRef="invoice-received" targetRef="check-amount" />
+
+    <!-- Exclusive gateway: route by amount -->
+    <exclusiveGateway id="check-amount" name="Amount &gt; 500?" />
+    <sequenceFlow id="flow-2" sourceRef="check-amount" targetRef="approve-manager">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${amount &gt; 500}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-3" sourceRef="check-amount" targetRef="auto-approve">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${amount &lt;= 500}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Auto-approve small invoices (sets a process variable) -->
+    <serviceTask id="auto-approve"
+                 name="Auto-approve (small)"
+                 operaton:expression="${execution.setVariable('approvalResult', 'auto-approved')}">
+      <documentation>Invoices up to 500 are auto-approved.</documentation>
+    </serviceTask>
+    <sequenceFlow id="flow-4" sourceRef="auto-approve" targetRef="archive-invoice" />
+
+    <!-- Manager approval for large invoices -->
+    <userTask id="approve-manager"
+              name="Manager approval"
+              operaton:assignee="${manager}"
+              operaton:formKey="embedded:app:forms/approve-invoice.html">
+      <documentation>Manager reviews and approves or rejects invoices above 500.</documentation>
+    </userTask>
+
+    <sequenceFlow id="flow-5" sourceRef="approve-manager" targetRef="manager-decision" />
+
+    <exclusiveGateway id="manager-decision" name="Approved?" />
+    <sequenceFlow id="flow-6" sourceRef="manager-decision" targetRef="archive-invoice">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${approved}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow-7" sourceRef="manager-decision" targetRef="reject-invoice">
+      <conditionExpression xsi:type="tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${!approved}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Reject (sets a process variable) -->
+    <serviceTask id="reject-invoice" name="Notify rejection"
+                 operaton:expression="${execution.setVariable('rejectionResult', 'rejected')}">
+      <documentation>Sends a rejection notification to the invoice submitter.</documentation>
+    </serviceTask>
+    <sequenceFlow id="flow-8" sourceRef="reject-invoice" targetRef="invoice-rejected" />
+
+    <!-- Archive (sets a process variable) -->
+    <serviceTask id="archive-invoice" name="Archive to File-Cloud"
+                 operaton:expression="${execution.setVariable('archiveResult', 'archived')}">
+      <documentation>Archives the approved invoice PDF to the File-Cloud (OpenCloud) Rechnungen folder.</documentation>
+    </serviceTask>
+    <sequenceFlow id="flow-9" sourceRef="archive-invoice" targetRef="invoice-approved" />
+
+    <!-- End events -->
+    <endEvent id="invoice-approved" name="Invoice approved" />
+    <endEvent id="invoice-rejected" name="Invoice rejected" />
+
+  </process>
+</definitions>

@@ -43,6 +43,7 @@ rules:
       - predictive-agent
       - ollama
       - taskfleet
+      - camunda
 
   - type: no-host-network
     description: "No service may use network_mode: host"

@@ -8,6 +8,7 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -56,13 +57,14 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	fmt.Printf("dev-agent: %s\n", cfg.String())
+	slog.Info("dev-agent starting", "config", cfg.String())
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	if *once {
 		if err := srv.Reconcile(ctx); err != nil {
+			slog.Error("reconcile failed", "err", err)
 			fatal(err)
 		}
 		fmt.Print(srv.PrintStatus())
@@ -71,14 +73,16 @@ func main() {
 
 	// Serve mode: reconcile immediately, then loop/signal.
 	if err := srv.Reconcile(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "dev-agent: initial reconcile: %v\n", err)
+		slog.Error("initial reconcile", "err", err)
 	}
 	go tickerLoop(ctx, srv, cfg.Interval)
+	slog.Info("dev-agent serving", "addr", cfg.APIAddr, "interval", cfg.Interval)
 	err = srv.ListenAndServe(ctx)
 	_ = srv.Save() // SIGTERM persists history before exit
 	if err != nil && ctx.Err() == nil {
 		fatal(err)
 	}
+	slog.Info("dev-agent shutdown complete")
 }
 
 // tickerLoop reconciles on every interval tick until ctx is done.
@@ -91,14 +95,14 @@ func tickerLoop(ctx context.Context, srv *api.Server, interval time.Duration) {
 			return
 		case <-t.C:
 			if err := srv.Reconcile(ctx); err != nil {
-				fmt.Fprintf(os.Stderr, "dev-agent: reconcile: %v\n", err)
+				slog.Error("reconcile", "err", err)
 			}
 		}
 	}
 }
 
 func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "dev-agent: %v\n", err)
+	slog.Error("fatal", "err", err)
 	os.Exit(1)
 }
 

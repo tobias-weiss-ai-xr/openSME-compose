@@ -29,17 +29,25 @@ query APIs for runbook records of the form
   `listener flap` is queried
 - **THEN** the matching diagnosis and ordered remediation steps SHALL be returned
 
-### Requirement: Seed runbooks cover the eight core services
+### Requirement: Seed runbooks cover the core services plus cross-cutting patterns
 
-The knowledge base SHALL seed entries for traefik, postgres, casdoor,
-stalwart, sogo, opencloud, invoice-ninja and paperless, each with at least
-one symptom, a diagnosis and one remediation.
+The knowledge base SHALL seed entries for traefik, postgres, zitadel,
+stalwart, sogo, opencloud, invoice-ninja, paperless, operaton, and common
+cross-cutting patterns (image-pull, port-in-use, disk-full, volume-permission,
+healthcheck, restart-loop), each with at least one symptom, a diagnosis and
+one remediation.
 
 #### Scenario: Every core service has a runbook
 
 - **WHEN** the seed data is validated (static check)
-- **THEN** each of the eight core services SHALL have a record with a
+- **THEN** each of the core services SHALL have a record with a
   non-empty remediation list
+
+#### Scenario: Cross-cutting runbooks cover common failures
+
+- **WHEN** a query references a cross-cutting symptom (e.g. `image pull backoff`,
+  `port already in use`, `no space left on device`)
+- **THEN** the `common` runbook SHALL return a matching diagnosis and remediation
 
 #### Scenario: Unknown service returns no match
 

@@ -23,7 +23,6 @@ rules:
       - zitadel
       - casdoor
       - opencloud
-      - collabora
       - minio
       - stalwart
       - sogo
@@ -40,8 +39,12 @@ rules:
       - dev-agent
       - predictive-agent
       - ollama
+      - camunda
 
   - type: healthcheck-exempt
     services:
       - traefik    # no built-in healthcheck (uses ping endpoint instead)
       - taskfleet  # on-demand, not a daemon
+      - collabora  # collabora/code 26.04 ships no curl/wget/shell — in-
+                   # container healthchecks impossible (see opencloud.yml);
+                   # a dead coolwsd surfaces as Traefik 502

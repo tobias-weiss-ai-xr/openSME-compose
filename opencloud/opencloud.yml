@@ -106,7 +106,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.org}`)"
       - "traefik.http.routers.opencloud.tls=true"
-      - "traefik.http.routers.opencloud.tls.certresolver=letsencrypt"
       - "traefik.http.routers.opencloud.entrypoints=websecure"
       - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
     deploy:
@@ -158,7 +157,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.collabora.rule=Host(`${COLLABORA_DOMAIN:-collabora.opensme.org}`)"
       - "traefik.http.routers.collabora.tls=true"
-      - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
       - "traefik.http.routers.collabora.entrypoints=websecure"
       - "traefik.http.services.collabora.loadbalancer.server.port=9980"
     deploy:

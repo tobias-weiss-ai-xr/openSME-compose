@@ -39,6 +39,7 @@ rules:
       - predictive-agent
       - ollama
       - taskfleet
+      - camunda
 
   - type: allowed-host-ports
     services:

@@ -120,12 +120,23 @@ if [ "$VOLUMES_ONLY" = false ] && [ -f "$PG_FILE" ]; then
   echo "   → Restoring PostgreSQL..."
   # Start just postgres
   docker compose up -d postgres 2>/dev/null || true
-  sleep 10
+  # Wait for readiness — a blind sleep restores into a server that is
+  # still booting and silently drops the whole dump.
+  for i in $(seq 1 30); do
+    docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-opensme}" \
+      >/dev/null 2>&1 && break
+    [ "$i" = 30 ] && echo "   ⚠ postgres never became ready — aborting restore" >&2 && exit 1
+    sleep 2
+  done
 
-  # Restore
+  # Restore (stderr stays visible — a failed restore must be loud).
+  # NO ON_ERROR_STOP here: pg_dumpall emits bare `CREATE ROLE ...` — on a
+  # re-restore those legitimately fail with "already exists" and must not
+  # abort the remaining databases. Whether the restore actually WORKED is
+  # data, not exit codes — the e2e restore drill verifies a marker row.
   gunzip -c "$PG_FILE" | docker compose exec -T postgres \
-    psql -U "${POSTGRES_USER:-opensme}" -d postgres 2>/dev/null \
-    || echo "   ⚠ PostgreSQL restore failed (may need manual intervention)"
+    psql -U "${POSTGRES_USER:-opensme}" -d postgres \
+    || echo "   ⚠ PostgreSQL restore reported errors (check above)"
 
   echo "   ✓ PostgreSQL restored"
 elif [ "$VOLUMES_ONLY" = false ]; then
@@ -139,11 +150,19 @@ if [ "$PG_ONLY" = false ] && [ -f "$VOLUMES_FILE" ]; then
   TEMP_DIR="${BACKUP_DIR}/restore-temp-${BACKUP_PREFIX}"
 
   mkdir -p "$TEMP_DIR"
-  tar -xzf "$VOLUMES_FILE" -C "$TEMP_DIR" 2>/dev/null || true
+  # The combined archive must be a valid outer tar — a corrupt or
+  # wrong-format backup must fail loudly here, not pretend to restore.
+  if ! tar -xzf "$VOLUMES_FILE" -C "$TEMP_DIR"; then
+    echo "   ✗ Combined volume archive is not a valid tar: $VOLUMES_FILE" >&2
+    rm -rf "$TEMP_DIR"
+    exit 1
+  fi
 
   # Extract individual volume archives
+  restored=0
   for vol_archive in "$TEMP_DIR"/*.tar.gz; do
     [ -f "$vol_archive" ] || continue
+    restored=$((restored + 1))
     vol_name=$(basename "$vol_archive" .tar.gz)
     full_vol="${PROJECT_NAME}_${vol_name}"
 
@@ -151,14 +170,18 @@ if [ "$PG_ONLY" = false ] && [ -f "$VOLUMES_FILE" ]; then
     docker volume create "$full_vol" 2>/dev/null || true
     docker run --rm \
       -v "${full_vol}:/data" \
-      -v "$(pwd)/${TEMP_DIR}:/backups" \
+      -v "${TEMP_DIR}:/backups" \
       alpine:3.20 \
       tar xzf "/backups/$(basename "$vol_archive")" -C /data 2>/dev/null \
       || echo "     ⚠ Volume $vol_name restore failed"
   done
 
   rm -rf "$TEMP_DIR"
-  echo "   ✓ Volumes restored"
+  if [ "$restored" -eq 0 ]; then
+    echo "   ✗ No per-volume archives inside $VOLUMES_FILE — nothing restored" >&2
+    exit 1
+  fi
+  echo "   ✓ Volumes restored (${restored} volume(s))"
 elif [ "$PG_ONLY" = false ]; then
   echo "   ⚠ Volumes backup not found: ${VOLUMES_FILE}"
 fi

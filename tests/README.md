@@ -12,9 +12,12 @@ tests/
 ├── 00-static/                   # Layer 0: Static validation (no containers)
 │   ├── check_env.py             #   Env var completeness (.env.example)
 │   ├── scan_secrets.py          #   Secret scanning (no CHANGEME_ in compose)
+│   ├── check_artifacts.py       #   No committed backups/dumps/secrets
 │   ├── check_platform.py        #   Runtime platform min versions (k3s, docker)
 │   ├── check_perf.py            #   Perf gate: budgets, limits, log caps, healthchecks
 │   ├── check_boot.py            #   Boot contracts (image pins, entrypoints, Traefik…)
+│   ├── check_agent.py           #   Dev-maintenance-bot knowledge/spec parity
+│   ├── check_bootstrap.py       #   Seed BPMN deployable by Operaton
 │   ├── compose_config.py        #   Compose matrix: every overlay combo renders
 │   └── yaml_lint.py             #   YAML syntax + structure validation
 ├── 01-specs/                    # Layer 1: Spec compliance (no containers)
@@ -273,6 +276,53 @@ What is covered (full story catalog with Given/When/Then:
    an OIDC app provisioned before the boot still exists exactly once,
    the re-seeded automation PAT authenticates, stack healthy after.
    CI runs it before persistence (which restarts the stack anyway).
+24. **Disaster recovery drill** — `tests/05-e2e/restore_drill.py`:
+   runs `backup.sh` (with a marker database buried in the dump), then
+   DESTROYS the marker database for real, restores via the interactive
+   `restore.sh` ("yes" on stdin) and verifies the marker row comes back
+   byte-for-byte and the stack re-boots healthy. Run it LAST.
+25. **Transport & header semantics** — `tests/05-e2e/transport.py`:
+   plain http redirects to https on every public hostname, the portal
+   answers with the security-header contract (nosniff, frame-deny,
+   referrer-policy, CSP) on page AND API, 404s leak no framework
+   internals, the traefik dashboard demands basic auth, foreign vhosts
+   get nothing.
+26. **Accessibility & document hygiene (SSR)** —
+   `tests/05-e2e/accessibility.py`: parses the landing page with the
+   stdlib HTML parser — lang/viewport/title present, images carry alt,
+   form controls are labelled (aria or label-for), no inline event
+   handlers, one h1 with no skipped heading levels, links/buttons have
+   accessible names. No browser, no JS — pure document truth.
+27. **Hostile input (renderer safety)** — `tests/05-e2e/hostile_input.py`:
+   event-handler injection payloads render strictly escaped in the
+   intercom list, hostile attachment URLs (javascript:, data:,
+   credentials, port bypasses) are rejected, unicode round-trips
+   byte-identically, API serves raw truth vs page escaped markup,
+   list stays bounded at 50.
+28. **Rolling recreate (deploy under load)** —
+   `tests/05-e2e/rolling_recreate.py`: recreates the portal while a
+   traffic poller keeps probing — all failures confined to the
+   recreate window (small 5xx budget), tail of the run 100% ok, stack
+   healthy and content intact afterwards.
+29. **Rate limiting (edge abuse resistance)** —
+   `tests/05-e2e/rate_limit.py`: middleware declared AND mounted,
+   100 sequential requests never punished, a 1000-request flood trips
+   429s without a single 5xx, and the bucket refills so ordinary
+   traffic flows freely again. Pins the repeated-flag wiring fix by
+   measuring.
+30. **TLS contract (crypto edge)** — `tests/05-e2e/tls_contract.py`:
+   legacy TLS refused, TLS 1.2/1.3 connect, HSTS header present with a
+   year-long max-age (pinned by a portal unit test), certificate
+   inside its validity window.
+31. **Secret surface (least privilege)** —
+   `tests/05-e2e/secret_surface.py`: walks the RUNNING containers'
+   real environments — the edge carries no secret-shaped vars, the
+   portal never sees the DB password, the machinekey has exactly one
+   holder, `.env` is mounted into nothing, dashboard creds are hashed.
+32. **Concurrent writers (store correctness)** —
+   `tests/05-e2e/concurrent_writers.py`: 20 parallel intercom posts
+   all land, no lost updates, concurrent readers always see valid
+   JSON, the page carries the surviving notes.
 17. **Mailcow (full mail server)** — `tests/05-e2e/mailcow_journey.py`
    drives the vendored mailcow-dockerized submodule via
    `scripts/mailcow.sh`: admin UI through the openSME Traefik, SMTP

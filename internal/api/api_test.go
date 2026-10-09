@@ -144,14 +144,14 @@ func TestPersistenceRoundTrip(t *testing.T) {
 
 func TestAnonymize(t *testing.T) {
 	s, _ := testServer(t, false)
-	raw := `postgresql://user:pw@10.20.30.40:5432/db API_KEY=abcd1234 key=bare-secret-9 host=traefik.internal path=/home/alice/data token="xyz" stuff`
+	raw := `postgresql://user:pw@10.20.30.40:5432/db API_KEY=abcd1234 key=bare-secret-9 host=traefik.internal path=/home/alice/data token="xyz" standalone 192.168.1.1 stuff`
 	clean, recs := s.Anonymize(raw)
-	for _, leak := range []string{"abcd1234", "bare-secret-9", "10.20.30.40", "/home/alice", "traefik.internal", `token="xyz"`} {
+	for _, leak := range []string{"abcd1234", "bare-secret-9", "10.20.30.40", "/home/alice", "traefik.internal", `token="xyz"`, "192.168.1.1"} {
 		if strings.Contains(clean, leak) {
 			t.Errorf("raw value %q survived anonymization: %s", leak, clean)
 		}
 	}
-	for _, want := range []string{"***", "<ip>", "/home/<user>", "<host>"} {
+	for _, want := range []string{"<conn-str>", "***", "<ip>", "/home/<user>", "<host>"} {
 		if !strings.Contains(clean, want) {
 			t.Errorf("expected %q in %q", want, clean)
 		}
@@ -199,5 +199,121 @@ func TestStatusEndpoint(t *testing.T) {
 	}
 	if _, ok := out["kb_services"]; !ok {
 		t.Errorf("status missing kb_services: %s", rec.Body.String())
+	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	s, _ := testServer(t, false)
+	// Trigger a reconcile to increment counters
+	s.Reconcile(context.Background())
+	h := s.Handler()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metrics = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"dev_agent_reconciles_total",
+		"dev_agent_findings_current",
+		"dev_agent_heals_total",
+		"dev_agent_llm_calls_total",
+		"dev_agent_llm_errors_total",
+		"dev_agent_llm_latency_seconds_last",
+		"dev_agent_history_entries",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("metrics missing %q: %s", want, body)
+		}
+	}
+	if !strings.Contains(rec.Header().Get("Content-Type"), "text/plain") {
+		t.Errorf("metrics content-type should be text/plain: %s", rec.Header().Get("Content-Type"))
+	}
+}
+
+func TestKnowledgeEndpoint(t *testing.T) {
+	s, _ := testServer(t, false)
+	h := s.Handler()
+	// List all services
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/knowledge", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("knowledge list = %d", rec.Code)
+	}
+	var services []string
+	if err := json.Unmarshal(rec.Body.Bytes(), &services); err != nil {
+		t.Fatal(err)
+	}
+	if len(services) == 0 || services[0] != "stalwart" {
+		t.Errorf("knowledge list = %v", services)
+	}
+	// Query by service
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/knowledge?service=stalwart", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("knowledge service = %d", rec.Code)
+	}
+	var rbs []knowledge.Runbook
+	if err := json.Unmarshal(rec.Body.Bytes(), &rbs); err != nil {
+		t.Fatal(err)
+	}
+	if len(rbs) == 0 {
+		t.Errorf("stalwart runbooks empty")
+	}
+	// Query by symptom
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/knowledge?symptom=restarting", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("knowledge symptom = %d", rec.Code)
+	}
+	var matches []knowledge.Match
+	if err := json.Unmarshal(rec.Body.Bytes(), &matches); err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) == 0 {
+		t.Errorf("symptom 'restarting' should match")
+	}
+}
+
+func TestHistoryCap(t *testing.T) {
+	s, _ := testServer(t, false)
+	s.cfg.HistoryMax = 3
+	h := s.Handler()
+	body := `{"action":"wait","target":""}`
+	for i := 0; i < 5; i++ {
+		h.ServeHTTP(httptest.NewRecorder(),
+			httptest.NewRequest(http.MethodPost, "/heal", strings.NewReader(body)))
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/history", nil))
+	var hist []healer.Receipt
+	if err := json.Unmarshal(rec.Body.Bytes(), &hist); err != nil {
+		t.Fatal(err)
+	}
+	if len(hist) != 3 {
+		t.Errorf("history = %d, want 3 (capped at HistoryMax=3)", len(hist))
+	}
+}
+
+func TestAnonymizeExpanded(t *testing.T) {
+	s, _ := testServer(t, false)
+	raw := `postgres://user:secretpass@10.20.30.40:5432/db ` +
+		`Authorization: Basic dXNlcjpwYXNz ` +
+		`token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c ` +
+		`email=admin@example.com `
+	clean, _ := s.Anonymize(raw)
+	// Raw values must not survive.
+	for _, leak := range []string{
+		"secretpass", "dXNlcjpwYXNz", "eyJhbGciOiJIUzI1NiJ9", "admin@example.com", "10.20.30.40",
+	} {
+		if strings.Contains(clean, leak) {
+			t.Errorf("raw value %q survived: %s", leak, clean)
+		}
+	}
+	// Connection string and email must be redacted.
+	for _, want := range []string{"<conn-str>", "<email>", "***"} {
+		if !strings.Contains(clean, want) {
+			t.Errorf("expected %q in %q", want, clean)
+		}
 	}
 }
