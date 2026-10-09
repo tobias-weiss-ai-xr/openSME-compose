@@ -221,3 +221,43 @@ func has(list []string, s string) bool {
 	}
 	return false
 }
+
+// Regression: the compose project name is "opensme-compose" (not "opensme").
+// Inspect() filters on an EXACT match of com.docker.compose.project, so a
+// wrong watch default silently matches zero containers — the health bot
+// would never see anything to remediate. This locks in that the real label
+// is found when watched by its exact name.
+func TestRealComposeProjectNameMatchesWatch(t *testing.T) {
+	f := &fakeRunner{output: map[string]string{
+		"ps":      psJSON("opensme-stalwart-1", "restarting", "opensme-compose", "stalwart", "Restarting (1) 5 seconds ago") + "\n",
+		"inspect": `{"Restarting":true,"OOMKilled":false,"RestartCount":2}`,
+		"logs":    "stalwart listener started\n",
+	}}
+	c := New([]string{"opensme-compose"}, f)
+	findings, err := c.Inspect(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("findings = %d, want 1 (watch must match the real project label)", len(findings))
+	}
+}
+
+// And the corollary that makes the old default silently useless: watching
+// the bare "opensme" prefix does NOT match the hyphenated "opensme-compose"
+// project — so the default watch must be the full project name.
+func TestWrongDefaultPrefixDoesNotMatchRealProject(t *testing.T) {
+	f := &fakeRunner{output: map[string]string{
+		"ps":      psJSON("opensme-stalwart-1", "restarting", "opensme-compose", "stalwart", "Restarting (1) 5 seconds ago") + "\n",
+		"inspect": `{"Restarting":true,"OOMKilled":false,"RestartCount":2}`,
+		"logs":    "stalwart listener started\n",
+	}}
+	c := New([]string{"opensme"}, f)
+	findings, err := c.Inspect(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("findings = %d, want 0 (exact-match: 'opensme' must not match 'opensme-compose')", len(findings))
+	}
+}

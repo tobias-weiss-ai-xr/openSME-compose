@@ -21,8 +21,8 @@ func TestDefaults(t *testing.T) {
 	if c.Interval != 60*time.Second {
 		t.Errorf("interval default = %s, want 60s", c.Interval)
 	}
-	if len(c.Watch) != 1 || c.Watch[0] != "opensme" {
-		t.Errorf("watch default = %v, want [opensme]", c.Watch)
+	if len(c.Watch) != 1 || c.Watch[0] != "opensme-compose" {
+		t.Errorf("watch default = %v, want [opensme-compose]", c.Watch)
 	}
 	if c.AllowHeal {
 		t.Error("allow-heal must default to false")

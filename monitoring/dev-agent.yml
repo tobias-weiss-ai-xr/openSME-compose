@@ -119,7 +119,7 @@ services:
       - dev-maintenance-bot-state:/var/lib/opensme
     environment:
       DEV_AGENT_INTERVAL: ${DEV_AGENT_INTERVAL:-60s}
-      DEV_AGENT_WATCH: ${DEV_AGENT_WATCH:-opensme}
+      DEV_AGENT_WATCH: ${DEV_AGENT_WATCH:-opensme-compose}
       DEV_AGENT_STATE_DIR: /var/lib/opensme/bot
       DEV_AGENT_ALLOW_HEAL: ${DEV_AGENT_ALLOW_HEAL:-false}
       DEV_AGENT_API_ADDR: 0.0.0.0:8082

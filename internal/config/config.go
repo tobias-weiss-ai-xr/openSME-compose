@@ -37,7 +37,7 @@ type LLMConfig struct {
 func FromEnv() (*Config, error) {
 	c := &Config{
 		Interval:   60 * time.Second,
-		Watch:      []string{"opensme"},
+		Watch:      []string{"opensme-compose"},
 		StateDir:   "/var/lib/opensme/bot",
 		AllowHeal:  false,
 		APIAddr:    "0.0.0.0:8082",
