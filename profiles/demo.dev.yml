@@ -129,7 +129,23 @@ services:
     profiles:
       - donotstart
 
-  # ── SOGo (skip for demo/dev) ─────────────────
-  sogo:
-    profiles:
-      - donotstart
+  # ── Zitadel — Dev: serve plain HTTP on Port 80 aus 
+  zitadel:
+    labels:
+      - "traefik.http.routers.zitadel.tls=false"
+      - "traefik.http.routers.zitadel.entrypoints=web"
+
+  # ── Portal — Dev: serve plain HTTP on port 80
+  portal:
+    labels:
+      - "traefik.http.routers.opensme-portal.tls=false"
+      - "traefik.http.routers.opensme-portal.entrypoints=web"
+      - "traefik.http.routers.opensme-portal.rule=Host(`portal.${OPENSME_DOMAIN:-opensme.local}`)"
+
+  # ── OpenCloud — Dev: serve plain HTTP on port 80
+  opencloud:
+    labels:
+      - "traefik.http.routers.opensme-opencloud.tls=false"
+      - "traefik.http.routers.opensme-opencloud.entrypoints=web"
+      - "traefik.http.routers.opensme-opencloud.rule=Host(`cloud.${OPENCLOUD_DOMAIN:-cloud.opensme.local}`)"
+

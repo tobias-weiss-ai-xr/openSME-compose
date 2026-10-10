@@ -1018,13 +1018,14 @@ def main() -> bool:
     if localish or args.map_local:
         install_dns_fallback()
 
+    schema = "https://" if VERIFY else "http://"
     idp_host = cfg("ZITADEL_DOMAIN", f"auth.{domain}")
-    idp_base = args.idp_url or f"https://{idp_host}"
+    idp_base = args.idp_url or f"{schema}{idp_host}"
     portal_base = (
         "http://127.0.0.1:8080" if domain in ("localhost", "127.0.0.1")
-        else f"https://{cfg('PORTAL_DOMAIN', f'portal.{domain}')}"
+        else f"{schema}{cfg('PORTAL_DOMAIN', f'portal.{domain}')}"
     )
-    cloud_base = f"https://{cfg('OPENCLOUD_DOMAIN', f'cloud.{domain}')}"
+    cloud_base = f"{schema}{cfg('OPENCLOUD_DOMAIN', f'cloud.{domain}')}"
     webmail_base = f"https://{cfg('SOGO_DOMAIN', f'webmail.{domain}')}"
     matrix_base = f"https://matrix.{domain}"
     notes_base = f"https://notes.{domain}"
