@@ -146,6 +146,31 @@ services:
     profiles:
       - donotstart
 
+  # ── Traefik (HTTP-only for .local demo domains) ─
+  # The base command redirects the web entrypoint to websecure (HTTPS).
+  # .local hosts cannot get Let's Encrypt certs (no public DNS), so the
+  # demo serves plain HTTP on :80 only. This override removes the two
+  # redirect args; MUST stay in sync with the command in docker-compose.yml.
+  traefik:
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.network=opensme-net"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.websecure.http3=true"
+      - "--ping=true"
+      - "--ping.entryPoint=web"
+      - "--certificatesResolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:-admin@opensme.graphwiz.ai}"
+      - "--certificatesResolvers.letsencrypt.acme.caServer=${TRAEFIK_ACME_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}"
+      - "--certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme.json"
+      - "--certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web"
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--entryPoints.websecure.http.middlewares=compress@docker"
+      - "--entryPoints.websecure.http.middlewares=ratelimit@file"
+
   # ── SOGo (skip for demo/dev) ─────────────────
   sogo:
     profiles:
