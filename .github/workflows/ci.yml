@@ -198,8 +198,17 @@ jobs:
       - name: Wait for IdP and Portal
         # Dev mode uses plain HTTP on port 80 (LE cannot issue certs for .local).
         run: |
+          set +e
           timeout 300 bash -c 'until curl -sf --resolve auth.opensme.local:80:127.0.0.1 \
             http://auth.opensme.local/debug/ready >/dev/null 2>&1; do sleep 5; done'
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "::group::idp diagnostics (wait failed)"
+            docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml --profile standalone ps
+            docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml --profile standalone logs --tail 150 zitadel traefik
+            echo "::endgroup::"
+            exit $rc
+          fi
           timeout 120 bash -c 'until curl -sf http://127.0.0.1:8080/health >/dev/null 2>&1; do sleep 5; done'
 
       - name: Run e2e suite (Layer 5 — SSO flows)
