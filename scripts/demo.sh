@@ -181,7 +181,7 @@ fi
 # zitadel-machinekey volume (used by tests/05-e2e).
 # Array (not string): each -f must stay its own argv element — quoting a
 # flat string would pass the whole flag list as ONE argument.
-CF=(-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml)
+CF=(-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml --profile standalone)
 info "Waiting for PostgreSQL..."
 docker compose "${CF[@]}" up -d postgres
 for _ in $(seq 1 60); do
@@ -274,7 +274,7 @@ echo -e "    Password: ${TRAEFIK_PASS_DISPLAY}"
 echo ""
 echo -e "${GREEN}───────────────────────────────────────────${NC}"
 echo ""
-info "To stop:   docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml down"
+info "To stop:   docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml --profile standalone down"
 info "To follow: docker compose logs -f"
 info "For public HTTPS demo, see scripts/demo-live.sh"
 echo ""
