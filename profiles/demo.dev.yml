@@ -94,9 +94,12 @@ services:
           cpus: "0.1"
           memory: 64M
     labels:
-      - "traefik.http.routers.opensme-portal.tls=false"
-      - "traefik.http.routers.opensme-portal.entrypoints=web"
-      - "traefik.http.routers.opensme-portal.rule=Host(`portal.${OPENSME_DOMAIN:-opensme.local}`)"
+      - "traefik.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
+      - "traefik.http.routers.portal.rule=Host(`${PORTAL_DOMAIN:-home.opensme.local}`)"
+      - "traefik.http.routers.portal.tls=false"
+      - "traefik.http.routers.portal.entrypoints=web"
+      - "traefik.http.services.portal.loadbalancer.server.port=8080"
 
   # ── Zitadel (minimal, direct PG, no pool) ──
   zitadel:
@@ -109,8 +112,10 @@ services:
           cpus: "0.5"
           memory: 512M
     labels:
+      - "traefik.http.routers.zitadel.rule=Host(`${ZITADEL_DOMAIN:-auth.opensme.local}`)"
       - "traefik.http.routers.zitadel.tls=false"
       - "traefik.http.routers.zitadel.entrypoints=web"
+      - "traefik.http.services.zitadel.loadbalancer.server.port=8080"
 
   # ── OpenCloud (minimal, local storage, no antivirus) ─
   opencloud:
@@ -126,9 +131,10 @@ services:
           cpus: "0.5"
           memory: 512M
     labels:
-      - "traefik.http.routers.opensme-opencloud.tls=false"
-      - "traefik.http.routers.opensme-opencloud.entrypoints=web"
-      - "traefik.http.routers.opensme-opencloud.rule=Host(`cloud.${OPENCLOUD_DOMAIN:-cloud.opensme.local}`)"
+      - "traefik.http.routers.opencloud.rule=Host(`${OPENCLOUD_DOMAIN:-cloud.opensme.local}`)"
+      - "traefik.http.routers.opencloud.tls=false"
+      - "traefik.http.routers.opencloud.entrypoints=web"
+      - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
 
   # ── Collabora (skip for demo/dev - too heavy) ─
   collabora:
