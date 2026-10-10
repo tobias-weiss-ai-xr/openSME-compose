@@ -14,6 +14,7 @@ use tokio::signal;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
+mod feeds;
 mod intercom;
 
 #[derive(Clone)]
@@ -34,6 +35,7 @@ struct AppConfig {
     intercom: intercom::IntercomConfig,
     intercom_store: Arc<intercom::IntercomStore>,
     intercom_client: reqwest::Client,
+    feed_fetcher: Arc<feeds::FeedFetcher>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -166,18 +168,52 @@ fn render_announcements(announcements: &[Announcement]) -> String {
         .join("\n")
 }
 
+/// Emoji glyph for a service/func card (decorative, never user-controlled).
+fn service_icon(id: &str) -> &'static str {
+    match id {
+        "identity" => "🔐",
+        "opencloud" => "☁",
+        "collabora" => "📝",
+        "webmail" => "✉",
+        "support" => "🆘",
+        "website" => "🌐",
+        "shop" => "🛒",
+        "workflow" => "⚙",
+        _ => "🧩",
+    }
+}
+
+/// One news column card per configured feed column; the client fills the
+/// list from /api/feeds (CSP keeps connect-src 'self').
+fn render_feed_cards(columns: &[feeds::FeedColumn]) -> String {
+    columns
+        .iter()
+        .map(|c| {
+            let cid = html_escape(&c.id);
+            let title = html_escape(&c.title);
+            format!(
+                r#"<div class="feed-card"><h2>{title}</h2><ul id="feed-{cid}" aria-live="polite"><li class="loading">Lade Meldungen…</li></ul></div>"#
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn build_landing_page(config: &AppConfig) -> String {
     let services = get_services(config);
     let cards: String = services
         .iter()
         .map(|s| {
+            let icon = service_icon(&s.id);
             let name = html_escape(&s.name);
             let desc = html_escape(&s.description);
             let url = html_escape(&s.url);
             format!(
-                r#"<a href="{url}" class="card" data-pal="{name}" target="_blank" rel="noopener noreferrer">
-                <h2>{name}</h2>
-                <p>{desc}</p>
+                r#"<a href="{url}" class="card func-card" data-pal="{name}" target="_blank" rel="noopener noreferrer">
+                <span class="func-icon" aria-hidden="true">{icon}</span>
+                <h3>{name}</h3>
+                <p class="product">{desc}</p>
+                <span class="open">Öffnen</span>
             </a>"#
             )
         })
@@ -185,11 +221,13 @@ fn build_landing_page(config: &AppConfig) -> String {
         .join("\n");
 
     let ai_card = if config.ai.is_some() {
-        r#"<div class="card ai" id="ai-card">
-                <h2>AI Assistant</h2>
+        r#"<div class="card func-card ai" id="ai-card">
+                <span class="func-icon" aria-hidden="true">🧠</span>
+                <h3>KI-Assistent</h3>
+                <p class="product">Fragen an deine Wissensbasis</p>
                 <div class="ai-box">
-                    <input class="ai-q" type="text" placeholder="Ask a question…" aria-label="Question">
-                    <button class="ai-ask" type="button">Ask</button>
+                    <input class="ai-q" type="text" placeholder="Frage stellen…" aria-label="Frage">
+                    <button class="ai-ask" type="button">Stellen</button>
                     <p class="ai-out" hidden></p>
                 </div>
             </div>"#
@@ -199,271 +237,255 @@ fn build_landing_page(config: &AppConfig) -> String {
 
     let ic_rendered = render_intercom(&config.intercom_store.list());
     let intercom_card = format!(
-        r#"<div class="card intercom" id="intercom-card">
-                <h2>Team Notes</h2>
+        r#"<div class="card func-card intercom" id="intercom-card">
+                <span class="func-icon" aria-hidden="true">💬</span>
+                <h3>Team-Notizen</h3>
+                <p class="product">Kurze Notiz für das Team</p>
                 <ul class="ic-list" id="ic-list" aria-live="polite">{ic_rendered}</ul>
                 <div class="ic-box">
-                    <textarea class="ic-text" rows="2" placeholder="Short note for the team…" aria-label="Message" maxlength="2000"></textarea>
-                    <input class="ic-url" type="url" placeholder="Attachment from cloud — paste a share link (https://cloud…/s/…)" aria-label="Attachment URL">
-                    <button class="ic-send" type="button">Send</button>
+                    <textarea class="ic-text" rows="2" placeholder="Kurze Notiz für das Team…" aria-label="Nachricht" maxlength="2000"></textarea>
+                    <input class="ic-url" type="url" placeholder="Anhang aus der Cloud — geteilten Link einfügen (https://cloud…/s/…)" aria-label="Anhang-URL">
+                    <button class="ic-send" type="button">Senden</button>
                     <p class="ic-out" hidden></p>
                 </div>
             </div>"#
     );
 
     let announcements = render_announcements(&config.announcements);
+    let feed_cards = render_feed_cards(config.feed_fetcher.columns());
     let domain = html_escape(&config.opensme_domain);
 
     format!(
         r##"<!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>openSME Portal</title>
-    <meta name="description" content="openSME — your self-hosted productivity suite: cloud storage, mail, collaboration, identity, and workflow automation.">
-    <meta name="theme-color" content="#0f172a">
-    <meta property="og:title" content="openSME Portal">
-    <meta property="og:description" content="Your self-hosted productivity suite.">
+    <title>openSME-Portal</title>
+    <meta name="description" content="openSME — deine selbst gehostete Suite: Cloud, Mail, Zusammenarbeit, Identität und Workflow-Automatisierung.">
+    <meta name="theme-color" content="#005CB9">
+    <meta property="og:title" content="openSME-Portal">
+    <meta property="og:description" content="Dein Startpunkt für alle Dienste.">
     <meta property="og:type" content="website">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2360a5fa'/%3E%3Ctext x='16' y='22' font-family='system-ui,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EoS%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23005cb9'/%3E%3Ctext x='16' y='22' font-family='system-ui,sans-serif' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EoS%3C/text%3E%3C/svg%3E">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self';">
     <script src="/app.js" defer></script>
     <style>
+        :root {{
+            --bg: #F3F5F7;
+            --card: #FFFFFF;
+            --border: #E2E6EA;
+            --text: #22272E;
+            --text-dim: #5F6B7A;
+            --accent: #005CB9;
+            --accent-light: #E8F1FB;
+            --accent-hover: #E5732D;
+            --footer-bg: #003E7C;
+            --footer-text: #FFFFFF;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --radius: 10px;
+        }}
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }}
+        .container {{ width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px; }}
+        main.container {{ flex: 1; }}
+
+        /* Announcements (operator broadcast banners) */
         .announcement {{
             text-align: center;
             padding: 0.6rem 1rem;
             font-size: 0.92rem;
         }}
         .announcement .pill {{ opacity: 0.8; }}
-        .announcement.info {{ background: rgba(37, 99, 235, 0.22); color: #bfdbfe; }}
-        .announcement.warn {{ background: rgba(217, 119, 6, 0.25); color: #fde68a; }}
-        header {{
-            text-align: center;
-            padding: 3.5rem 2rem 1.5rem;
+        .announcement.info {{ background: var(--accent-light); color: var(--accent); border-bottom: 1px solid var(--border); }}
+        .announcement.warn {{ background: #FFF4E5; color: #B25E00; border-bottom: 1px solid var(--border); }}
+
+        /* Header */
+        header {{ background: var(--accent); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }}
+        .header-row {{
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 16px; padding: 18px 20px;
         }}
-        header h1 {{
-            font-size: 3rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.75rem;
+        .brand h1 {{ font-size: 26px; margin-bottom: 2px; letter-spacing: 0.3px; }}
+        .brand p {{ opacity: 0.9; font-size: 15px; }}
+        .user-nav {{ display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }}
+        .btn-ghost {{
+            text-decoration: none; font-size: 14px; font-weight: 600;
+            border-radius: 999px; padding: 7px 16px; color: #fff;
+            border: 1px solid rgba(255,255,255,0.6);
+            transition: background 0.2s, color 0.2s;
         }}
-        header p {{
-            color: #94a3b8;
-            font-size: 1.15rem;
-            line-height: 1.6;
-            max-width: 480px;
-            margin: 0 auto;
+        .btn-ghost:hover {{ background: rgba(255,255,255,0.15); }}
+
+        /* Sections */
+        .section-title {{ color: var(--accent); font-size: 20px; margin: 26px 0 14px; }}
+
+        /* Service + widget tiles */
+        .func-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }}
+        .func-card {{
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 22px 18px; text-align: center;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            display: flex; flex-direction: column; gap: 2px;
         }}
-        .grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.75rem;
-            padding: 3rem 2rem;
-            max-width: 960px;
-            margin: 0 auto;
-            width: 100%;
-            flex: 1;
+        a.func-card {{ text-decoration: none; color: inherit; }}
+        .func-card:hover {{ transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.12); }}
+        .func-icon {{
+            width: 50px; height: 50px; margin: 0 auto 10px;
+            display: grid; place-items: center; font-size: 24px;
+            background: var(--accent-light); color: var(--accent); border-radius: 14px;
         }}
-        .card {{
-            background: rgba(30, 41, 59, 0.8);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(148, 163, 184, 0.12);
-            border-radius: 1.25rem;
-            padding: 2rem;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.25s ease;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
+        .func-card h3 {{ color: var(--accent); margin-bottom: 2px; font-size: 15px; }}
+        .func-card .product {{ color: var(--text-dim); font-size: 13px; font-style: italic; }}
+        .func-card .open {{
+            display: block; margin-top: 12px;
+            background: var(--accent); color: #fff;
+            padding: 9px 14px; border-radius: 999px;
+            text-decoration: none; font-weight: 600; font-size: 14px;
         }}
-        .card:hover {{
-            border-color: rgba(96, 165, 250, 0.5);
-            transform: translateY(-3px);
-            box-shadow: 0 12px 32px rgba(96, 165, 250, 0.12);
-            background: rgba(30, 41, 59, 0.95);
+        a.func-card:hover .open {{ background: var(--accent-hover); }}
+
+        /* Feed columns */
+        .feeds {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 22px 0 4px; }}
+        .feed-card {{
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px;
         }}
-        .card h2 {{
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #f1f5f9;
-            letter-spacing: -0.01em;
-        }}
-        .card p {{
-            color: #94a3b8;
-            font-size: 0.95rem;
-            line-height: 1.65;
-        }}
-        .card.ai {{
-            border-style: dashed;
-        }}
-        .ai-box {{ display: flex; flex-direction: column; gap: 0.6rem; }}
+        .feed-card h2 {{ color: var(--accent); font-size: 16px; margin-bottom: 8px; border-bottom: 2px solid var(--accent-light); padding-bottom: 6px; }}
+        .feeds ul {{ list-style: none; padding: 0; }}
+        .feeds li {{ padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }}
+        .feeds li:last-child {{ border-bottom: none; }}
+        .feeds li a {{ color: var(--accent); text-decoration: none; }}
+        .feeds li a:hover {{ text-decoration: underline; }}
+        .feeds li .date {{ color: var(--text-dim); font-size: 11.5px; display: block; margin-top: 2px; }}
+        .loading, .error {{ color: var(--text-dim); font-style: italic; }}
+        .error {{ color: #d32f2f; }}
+
+        /* AI box (inside its func-card) */
+        .ai-box {{ display: flex; flex-direction: column; gap: 0.6rem; margin-top: 12px; text-align: left; }}
         .ai-q {{
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            border-radius: 0.6rem;
-            color: #e2e8f0;
-            padding: 0.55rem 0.75rem;
-            font-size: 0.95rem;
+            background: #fff; border: 1px solid var(--border); border-radius: 6px;
+            color: var(--text); padding: 8px 10px; font-size: 14px; width: 100%;
         }}
         .ai-ask {{
-            align-self: flex-start;
-            background: rgba(96, 165, 250, 0.18);
-            border: 1px solid rgba(96, 165, 250, 0.45);
-            border-radius: 0.6rem;
-            color: #bfdbfe;
-            padding: 0.45rem 1rem;
-            font-size: 0.92rem;
-            cursor: pointer;
+            align-self: flex-start; background: var(--accent); color: #fff;
+            border: none; border-radius: 999px; padding: 7px 16px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
         }}
-        .ai-ask:hover {{ background: rgba(96, 165, 250, 0.32); }}
-        .ai-out {{
-            color: #cbd5e1;
-            font-size: 0.92rem;
-            line-height: 1.55;
-            white-space: pre-wrap;
-        }}
+        .ai-ask:hover {{ background: var(--accent-hover); }}
+        .ai-out {{ color: var(--text); font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; }}
+
+        /* Intercom (team notes) */
         .ic-list {{
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            max-height: 16rem;
-            overflow-y: auto;
+            list-style: none; display: flex; flex-direction: column; gap: 0.5rem;
+            max-height: 16rem; overflow-y: auto; margin-top: 12px; text-align: left;
         }}
-        .ic-list li {{
-            color: #e2e8f0;
-            font-size: 0.92rem;
-            line-height: 1.5;
-            word-break: break-word;
-        }}
-        .ic-list .ic-att {{
-            display: block;
-            color: #93c5fd;
-            font-size: 0.85rem;
-            text-decoration: none;
-        }}
+        .ic-list li {{ color: var(--text); font-size: 0.92rem; line-height: 1.5; word-break: break-word; border-bottom: 1px solid var(--border); padding: 4px 0; }}
+        .ic-list li:last-child {{ border-bottom: none; }}
+        .ic-list .ic-att {{ display: block; color: var(--accent); font-size: 0.85rem; text-decoration: none; }}
         .ic-list .ic-att:hover {{ text-decoration: underline; }}
-        .ic-box {{ display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.75rem; }}
+        .ic-box {{ display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.75rem; text-align: left; }}
         .ic-text, .ic-url {{
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            border-radius: 0.6rem;
-            color: #e2e8f0;
-            padding: 0.55rem 0.75rem;
-            font-size: 0.92rem;
-            font-family: inherit;
-            resize: vertical;
+            border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+            font-size: 14px; width: 100%; color: var(--text); background: #fff;
+            font-family: inherit; resize: vertical;
         }}
         .ic-send {{
-            align-self: flex-start;
-            background: rgba(96, 165, 250, 0.18);
-            border: 1px solid rgba(96, 165, 250, 0.45);
-            border-radius: 0.6rem;
-            color: #bfdbfe;
-            padding: 0.45rem 1rem;
-            font-size: 0.92rem;
-            cursor: pointer;
+            align-self: flex-start; background: var(--accent); color: #fff;
+            border: none; border-radius: 999px; padding: 7px 16px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
         }}
-        .ic-send:hover {{ background: rgba(96, 165, 250, 0.32); }}
-        .ic-out {{
-            color: #cbd5e1;
-            font-size: 0.88rem;
-        }}
+        .ic-send:hover {{ background: var(--accent-hover); }}
+        .ic-out {{ color: var(--text-dim); font-size: 0.88rem; }}
+
+        /* Quick-switch palette (Ctrl+K) */
         #palette {{
-            position: fixed;
-            inset: 0;
-            background: rgba(2, 6, 23, 0.72);
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding-top: 14vh;
-            z-index: 40;
+            position: fixed; inset: 0; background: rgba(0, 30, 60, 0.45);
+            display: flex; align-items: flex-start; justify-content: center;
+            padding-top: 14vh; z-index: 40;
         }}
         #palette[hidden] {{ display: none; }}
         .pal-box {{
-            width: min(520px, 92vw);
-            background: #1e293b;
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            border-radius: 1rem;
-            overflow: hidden;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+            width: min(520px, 92vw); background: #fff;
+            border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
         }}
         #pal-input {{
-            width: 100%;
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-            color: #e2e8f0;
-            font-size: 1.05rem;
-            padding: 0.9rem 1.1rem;
-            outline: none;
+            width: 100%; background: transparent; border: none;
+            border-bottom: 1px solid var(--border); color: var(--text);
+            font-size: 1.05rem; padding: 0.9rem 1.1rem; outline: none;
         }}
         #pal-list {{ list-style: none; max-height: 46vh; overflow-y: auto; }}
-        #pal-list li {{
-            padding: 0.6rem 1.1rem;
-            color: #cbd5e1;
-            cursor: pointer;
-            font-size: 0.98rem;
-        }}
-        #pal-list li.sel {{ background: rgba(96, 165, 250, 0.16); color: #f1f5f9; }}
-        #pal-list li.none {{ color: #64748b; cursor: default; }}
-        .pal-hint {{
-            padding: 0.5rem 1.1rem 0.7rem;
-            color: #475569;
-            font-size: 0.78rem;
-            border-top: 1px solid rgba(148, 163, 184, 0.12);
-        }}
+        #pal-list li {{ padding: 0.6rem 1.1rem; color: var(--text); cursor: pointer; font-size: 0.98rem; }}
+        #pal-list li.sel {{ background: var(--accent-light); color: var(--accent); }}
+        #pal-list li.none {{ color: var(--text-dim); cursor: default; }}
+        .pal-hint {{ padding: 0.5rem 1.1rem 0.7rem; color: var(--text-dim); font-size: 0.78rem; border-top: 1px solid var(--border); }}
         #pal-hint {{
-            position: fixed;
-            right: 1.1rem;
-            bottom: 1.1rem;
-            background: rgba(30, 41, 59, 0.85);
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            border-radius: 0.55rem;
-            color: #94a3b8;
-            font-size: 0.8rem;
-            padding: 0.35rem 0.6rem;
-            cursor: pointer;
-            z-index: 30;
+            position: fixed; right: 1.1rem; bottom: 1.1rem;
+            background: var(--accent); color: #fff; border: none;
+            border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+            padding: 0.4rem 0.7rem; cursor: pointer; z-index: 30;
         }}
-        #pal-hint:hover {{ color: #e2e8f0; border-color: rgba(96, 165, 250, 0.5); }}
+        #pal-hint:hover {{ background: var(--accent-hover); }}
+
         footer {{
-            text-align: center;
-            padding: 2.5rem 2rem;
-            color: #475569;
-            font-size: 0.85rem;
-            letter-spacing: 0.01em;
+            background: var(--footer-bg); color: var(--footer-text);
+            padding: 22px 0; text-align: center; font-size: 14px; margin-top: 28px;
+        }}
+        footer a {{ color: var(--footer-text); text-decoration: none; opacity: 0.85; }}
+        footer a:hover {{ opacity: 1; text-decoration: underline; }}
+        footer .row {{ margin-top: 8px; }}
+
+        @media (max-width: 640px) {{
+            .header-row {{ flex-direction: column; align-items: flex-start; }}
+            .brand h1 {{ font-size: 22px; }}
         }}
     </style>
 </head>
 <body>
     {announcements}
     <header>
-        <h1>openSME</h1>
-        <p>Your self-hosted productivity suite</p>
+        <div class="container header-row">
+            <div class="brand">
+                <h1>openSME</h1>
+                <p>Dein Startpunkt für alle Dienste</p>
+            </div>
+            <nav class="user-nav" aria-label="Navigation">
+                <a class="btn-ghost" href="#dienste">Dienste</a>
+                <a class="btn-ghost" href="#aktuelles">Aktuelles</a>
+            </nav>
+        </div>
     </header>
-    <main class="grid">
-        {cards}
-        {ai_card}
-        {intercom_card}
+    <main class="container">
+        <section aria-label="Dienste" id="dienste">
+            <h2 class="section-title">Dienste</h2>
+            <div class="func-grid">
+                {cards}
+                {ai_card}
+                {intercom_card}
+            </div>
+        </section>
+        <section aria-label="Aktuelles" id="aktuelles">
+            <h2 class="section-title">Aktuelles</h2>
+            <div class="feeds">
+                {feed_cards}
+            </div>
+        </section>
     </main>
     <footer>
-        openSME Portal &mdash; {domain}
+        <div class="container">
+            <p>openSME — die selbst gehostete Suite für kleine und mittlere Unternehmen.</p>
+            <p class="row">Support &amp; Consulting: <a href="mailto:hello@opensme.org">hello@opensme.org</a> &middot; {domain}</p>
+        </div>
     </footer>
 </body>
 </html>"##
@@ -572,6 +594,12 @@ async fn handle_services(State(config): State<Arc<AppConfig>>) -> impl IntoRespo
 
 async fn handle_announcements(State(config): State<Arc<AppConfig>>) -> impl IntoResponse {
     Json(serde_json::json!({ "announcements": config.announcements.as_ref() }))
+}
+
+/// Same-origin news columns: server-side RSS aggregation (see feeds.rs).
+/// Always 200 — a broken upstream yields an empty column, never an error.
+async fn handle_feeds(State(config): State<Arc<AppConfig>>) -> impl IntoResponse {
+    Json(serde_json::json!({ "columns": config.feed_fetcher.snapshot().await }))
 }
 
 #[derive(Deserialize)]
@@ -702,6 +730,7 @@ fn build_router(config: Arc<AppConfig>) -> Router {
         .route("/health", get(handle_health))
         .route("/api/services", get(handle_services))
         .route("/api/announcements", get(handle_announcements))
+        .route("/api/feeds", get(handle_feeds))
         .route("/api/intercom", get(handle_intercom_list))
         .route("/api/intercom", post(handle_intercom_post));
 
@@ -884,6 +913,10 @@ fn load_config() -> Arc<AppConfig> {
             .timeout(Duration::from_secs(15))
             .build()
             .unwrap_or_default(),
+        feed_fetcher: Arc::new(feeds::FeedFetcher::new(feeds::parse_columns(&load_env(
+            "PORTAL_FEEDS",
+            "",
+        )))),
     })
 }
 
@@ -898,6 +931,7 @@ async fn main() {
         opensme_domain = %config.opensme_domain,
         ai_enabled = config.ai.is_some(),
         announcements = config.announcements.len(),
+        feed_columns = config.feed_fetcher.columns().len(),
         "starting opensme-portal"
     );
 
@@ -945,6 +979,7 @@ mod tests {
             },
             intercom_store: Arc::new(intercom::IntercomStore::default()),
             intercom_client: reqwest::Client::new(),
+            feed_fetcher: Arc::new(feeds::FeedFetcher::new(feeds::parse_columns(""))),
         }
     }
 
@@ -1106,6 +1141,47 @@ mod tests {
     #[test]
     fn html_escape_covers_angle_brackets() {
         assert_eq!(html_escape("<b>"), "&lt;b&gt;");
+    }
+
+    #[test]
+    fn landing_page_mentions_opensme() {
+        let html = build_landing_page(&cfg_with("", None, ""));
+        assert!(html.to_lowercase().contains("opensme"));
+        assert!(html.contains("lang=\"de\""));
+    }
+
+    #[test]
+    fn landing_page_renders_feed_cards_per_configured_column() {
+        let html = build_landing_page(&cfg_with("", None, ""));
+        // Default columns are rendered server-side; the client fills the
+        // lists from /api/feeds (no network needed for the shell).
+        assert!(html.contains("id=\"feed-startup\""));
+        assert!(html.contains("id=\"feed-markt\""));
+        assert!(html.contains("id=\"feed-legal\""));
+        assert!(html.contains(">Startup</h2>"));
+        assert!(html.contains("Aktuelles"));
+        assert!(html.contains("Lade Meldungen"));
+        assert!(html.contains("func-card"));
+    }
+
+    #[tokio::test]
+    async fn feeds_api_returns_columns_even_when_upstreams_dead() {
+        // FeedFetcher pointed at a dead address: the endpoint must still
+        // return 200 with the configured column shape (empty entries),
+        // never a 5xx — a broken upstream must not break the page.
+        let mut cfg = cfg_with("", None, "");
+        cfg.feed_fetcher = Arc::new(feeds::FeedFetcher::new(vec![feeds::FeedColumn {
+            id: "test".into(),
+            title: "Test".into(),
+            urls: vec!["http://127.0.0.1:1/rss".into()],
+        }]));
+        let resp = respond(cfg, "GET", "/api/feeds", None).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = body_json(resp).await;
+        let cols = body["columns"].as_array().expect("columns array");
+        assert_eq!(cols.len(), 1);
+        assert_eq!(cols[0]["id"], "test");
+        assert_eq!(cols[0]["entries"].as_array().unwrap().len(), 0);
     }
 
     #[test]

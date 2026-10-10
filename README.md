@@ -54,8 +54,9 @@ and the reason this project exists — is that everything already works
 - **One login** — Zitadel OIDC wired into every service that supports it;
   proven by automated end-to-end login flows in CI, not by screenshots.
 - **One entry point** — the portal: service cards, ⌘K fast-switch palette,
-  company announcements (intercom), and an AI assistant that works with
-  the built-in llama.cpp backend out of the box.
+  company announcements (intercom), an AI assistant that works with
+  the built-in llama.cpp backend out of the box, and news columns
+  (startup / market / legal RSS, server-aggregated).
 - **Optional, not separate** — ticketing, CMS, store and AI join the same
   identity, network, and TLS contracts via compose profiles; enable them
   and they simply fit in.
