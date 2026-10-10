@@ -81,6 +81,7 @@ MUTABLE_IMAGES = {
     "predictive-agent",
     "taskfleet",
     "ollama",
+    "seaweedfs",        # cached image from registry.hrz.uni-marburg.de; tracks latest
 }
 # Any service whose image resolves to a bare mutable tag but is NOT in this
 # list fails; unknown images default to requiring a pinned tag.
