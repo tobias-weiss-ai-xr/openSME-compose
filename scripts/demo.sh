@@ -156,7 +156,7 @@ if [[ "$TU_VAL" != *:* ]]; then
   ok "Regenerated TRAEFIK_USERS with user:hash prefix (dashboard auth fixed)"
 fi
 
-# ── Provision deploy-time Zitadel artifacts ─
+# Provision deploy-time Zitadel artifacts via apt (no Docker Hub pulls).
 # Both are gitignored and normally created by the ansible deploy role.
 # The masterkey must be exactly 32 bytes with no trailing newline.
 if [[ ! -s idm/secrets/masterkey ]]; then
@@ -166,9 +166,10 @@ if [[ ! -s idm/secrets/masterkey ]]; then
 fi
 if [[ ! -x idm/zitadel/busybox ]]; then
   mkdir -p idm/zitadel
-  cid=$(docker create busybox:stable-musl true)
-  docker cp "$cid":/bin/busybox idm/zitadel/busybox
-  docker rm "$cid" >/dev/null
+  if ! command -v busybox >/dev/null 2>&1; then
+    sudo apt-get update -qq && sudo apt-get install -y -qq busybox
+  fi
+  cp $(which busybox) idm/zitadel/busybox
   chmod +x idm/zitadel/busybox
   ok "Extracted busybox for the Zitadel healthcheck"
 fi
@@ -182,7 +183,7 @@ fi
 # flat string would pass the whole flag list as ONE argument.
 CF=(-f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml)
 info "Waiting for PostgreSQL..."
-docker compose "${CF[@]}" up -d postgres >/dev/null 2>&1
+docker compose "${CF[@]}" up -d postgres
 for _ in $(seq 1 60); do
   docker compose "${CF[@]}" ps --format json postgres 2>/dev/null | grep -qi '"health":"healthy"' && break
   sleep 5
