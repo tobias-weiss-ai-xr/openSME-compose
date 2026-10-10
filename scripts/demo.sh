@@ -169,7 +169,7 @@ if [[ ! -x idm/zitadel/busybox ]]; then
   if ! command -v busybox >/dev/null 2>&1; then
     sudo apt-get update -qq && sudo apt-get install -y -qq busybox
   fi
-  cp $(which busybox) idm/zitadel/busybox
+  cp "$(which busybox)" idm/zitadel/busybox
   chmod +x idm/zitadel/busybox
   ok "Extracted busybox for the Zitadel healthcheck"
 fi
