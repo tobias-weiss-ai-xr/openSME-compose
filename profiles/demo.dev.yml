@@ -79,6 +79,10 @@ services:
 
   # ── Portal (dev-friendly) ────────────────────
   portal:
+    environment:
+      # Demo is plain HTTP on :80; keep the landing-page service links alive
+      # (OPENCLOUD_URL defaults to https in docker-compose.yml).
+      OPENCLOUD_URL: http://${OPENCLOUD_DOMAIN:-cloud.opensme.local}
     ports:
       - "127.0.0.1:8080:8080"
     develop:
@@ -103,6 +107,19 @@ services:
 
   # ── Zitadel (minimal, direct PG, no pool) ──
   zitadel:
+    # Demo/.local hosts serve plain HTTP on :80; the base command forces
+    # https OIDC issuer via --tlsMode external, and a mixed setup would
+    # advertise https:// endpoints that Traefik cannot route. Override with
+    # the FULL command (overlay semantics REPLACE the base command) plus
+    # EXTERNALPORT=80 so the issuer/jwks/token URLs are plain http.
+    command:
+      - "start"
+      - "--masterkeyFile"
+      - "/secrets/masterkey"
+      - "--tlsMode"
+      - "disabled"
+    environment:
+      ZITADEL_EXTERNALPORT: "80"
     deploy:
       resources:
         limits:
@@ -120,6 +137,11 @@ services:
   # ── OpenCloud (minimal, local storage, no antivirus) ─
   opencloud:
     environment:
+      # Serve all internal URLs over http in demo; OIDC issuer stays https
+      # (OC_OIDC_ISSUER, OpenCloud refuses plain-http issuers) — the demo
+      # Traefik routes only :80, so https OC_URL bounces the UI to a dead
+      # :443.
+      OC_URL: http://${OPENCLOUD_DOMAIN:-cloud.opensme.local}
       OC_ADD_RUN_SERVICES: "notifications"
       STORAGE_USERS_DRIVER: ocis
     deploy:
@@ -135,6 +157,13 @@ services:
       - "traefik.http.routers.opencloud.tls=false"
       - "traefik.http.routers.opencloud.entrypoints=web"
       - "traefik.http.services.opencloud.loadbalancer.server.port=9200"
+      # OpenCloud's proxy middleware redirects (308) any request whose
+      # X-Forwarded-Proto is http to https (proxy/pkg/middleware/https_redirect);
+      # there is no env to disable it. Upstream's external-proxy docs set
+      # X-Forwarded-Proto: https explicitly; mirror that per-router so the
+      # http-only demo works. Only the opencloud router is affected.
+      - "traefik.http.routers.opencloud.middlewares=oc-https@docker"
+      - "traefik.http.middlewares.oc-https.headers.customrequestheaders.X-Forwarded-Proto=https"
 
   # ── Collabora (skip for demo/dev - too heavy) ─
   collabora:

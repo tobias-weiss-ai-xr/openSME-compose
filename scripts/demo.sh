@@ -167,11 +167,21 @@ fi
 if [[ ! -x idm/zitadel/busybox ]]; then
   mkdir -p idm/zitadel
   if ! command -v busybox >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq busybox
+    sudo apt-get update -qq && sudo apt-get install -y -qq busybox-static
   fi
   cp "$(which busybox)" idm/zitadel/busybox
   chmod +x idm/zitadel/busybox
   ok "Extracted busybox for the Zitadel healthcheck"
+fi
+# The healthcheck runs inside the distroless (static) Zitadel image which has
+# NO dynamic loader — a dynamically linked busybox fails exec with ENOENT and
+# the container is marked unhealthy (Traefik then skips it). Re-extract if we
+# ever picked up a non-static binary.
+if ! file idm/zitadel/busybox 2>/dev/null | grep -q 'static'; then
+  sudo apt-get update -qq && sudo apt-get install -y -qq busybox-static
+  cp "$(which busybox)" idm/zitadel/busybox
+  chmod +x idm/zitadel/busybox
+  ok "Re-extracted static busybox for the Zitadel healthcheck"
 fi
 
 # ── Initialize Zitadel (fresh installs) ─────

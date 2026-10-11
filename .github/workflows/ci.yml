@@ -171,13 +171,18 @@ jobs:
       - name: Provision deploy-time Zitadel artifacts (masterkey + busybox)
         # Both are gitignored and normally created by the ansible deploy role.
         # Use host-provided busybox (via apt) to avoid Docker Hub rate limits
-        # in GitHub Actions.
+        # in GitHub Actions. busybox-static is REQUIRED: the healthcheck runs
+        # inside the distroless Zitadel image which has no dynamic loader, so
+        # a dynamically linked binary fails exec with ENOENT and the container
+        # is marked unhealthy (Traefik then skips it -> IdP 404).
         run: |
           printf '%s' "$(openssl rand -base64 24)" > idm/secrets/masterkey
           mkdir -p idm/zitadel
-          sudo apt-get update -qq && sudo apt-get install -y -qq busybox
-          cp $(which busybox) idm/zitadel/busybox
+          sudo apt-get update -qq && sudo apt-get install -y -qq busybox-static
+          cp "$(which busybox)" idm/zitadel/busybox
           chmod +x idm/zitadel/busybox
+          file idm/zitadel/busybox
+          file idm/zitadel/busybox | grep -q static || { echo "::error::busybox is not static - cannot run in the distroless healthcheck"; exit 1; }
 
       - name: Log in to Docker Hub (if token provided)
         # Docker Hub unauthenticated pull rate limiting is the most common
