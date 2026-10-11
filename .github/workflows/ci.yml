@@ -200,6 +200,7 @@ jobs:
         # If the IdP is not reachable we collect diagnostics and STILL let the
         # suite run — run.py's per-endpoint status codes pinpoint the break.
         run: |
+          set +e
           timeout 300 bash -c 'until curl -sf --resolve auth.opensme.local:80:127.0.0.1 \
             http://auth.opensme.local/debug/ready >/dev/null 2>&1; do sleep 5; done'
           rc=$?
@@ -209,6 +210,8 @@ jobs:
             docker compose -f docker-compose.yml -f idm/zitadel.yml -f opencloud/opencloud.yml -f profiles/demo.dev.yml --profile standalone ps
             echo "--- zitadel health (docker) ---"
             docker inspect --format '{{json .State.Health}}' opensme-zitadel || true
+            echo "--- in-container probes (ipv4 vs ipv6 loopback) ---"
+            docker exec opensme-zitadel /busybox/sh -c 'wget -q -O - http://127.0.0.1:8080/debug/ready; echo v4_rc=$?; wget -q -O - "http://[::1]:8080/debug/ready"; echo v6_rc=$?' || true
             echo "--- direct backend probe (container->container) ---"
             docker run --rm --network opensme-net busybox wget -q -O- http://zitadel:8080/debug/ready || echo "direct backend probe FAIL"
             echo "--- through traefik (status) ---"
