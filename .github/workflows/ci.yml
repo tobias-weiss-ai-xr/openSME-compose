@@ -206,7 +206,9 @@ jobs:
         # suite run — run.py's per-endpoint status codes pinpoint the break.
         run: |
           set +e
-          timeout 300 bash -c 'until curl -sf --resolve auth.opensme.local:80:127.0.0.1 \
+          # -L -k: the edge redirects http→https (self-signed demo cert); -f only
+# succeeds on a final 200, so a redirect alone can never fake readiness.
+timeout 300 bash -c 'until curl -sfkL --resolve auth.opensme.local:80:127.0.0.1 --resolve auth.opensme.local:443:127.0.0.1 \
             http://auth.opensme.local/debug/ready >/dev/null 2>&1; do sleep 5; done'
           rc=$?
           echo "idp wait rc=$rc"

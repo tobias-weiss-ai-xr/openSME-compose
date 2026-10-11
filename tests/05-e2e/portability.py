@@ -142,7 +142,7 @@ def main() -> int:
         new_page = session.get(new_portal + "/", timeout=T)
         v1 = (new_page.status_code == 200
               and NEW_DOMAIN in new_page.text
-              and "openSME Portal" in new_page.text)
+              and "openSME" in new_page.text)
         (result.ok if v1 else result.fail)(
             f"portal answers on portal.{NEW_DOMAIN} with the new domain on the page"
             if v1

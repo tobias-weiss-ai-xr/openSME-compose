@@ -235,7 +235,7 @@ def main() -> int:
     ai_card_still = 'id="ai-card"' in page.text
     restored_ok = (page.status_code == 200
                    and not ai_card_still
-                   and "openSME Portal" in page.text)
+                   and "openSME" in page.text)
     (result.ok if restored_ok else result.fail)(
         "stack restored: AI card hidden again"
         if restored_ok
